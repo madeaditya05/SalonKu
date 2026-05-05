@@ -1,0 +1,71 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+:root {
+    --admin-bg: #f7f7f5;
+    --admin-main-bg: #fbfbfa;
+    --admin-card: #ffffff;
+    --admin-border: #e8e8e4;
+    --admin-text: #0f172a;
+    --admin-heading: #111827;
+    --admin-muted: #6b7280;
+    --admin-soft: #f2f3f0;
+    --admin-dark: #111827;
+    --admin-purple: #a855f7;
+    --admin-orange: #f97316;
+    --admin-blue: #3b82f6;
+    --admin-green: #84cc16;
+    --admin-red: #ef4444;
+    --admin-shadow: 0 14px 32px rgba(15, 23, 42, 0.08);
+    --admin-radius: 18px;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: var(--admin-bg);
+    color: var(--admin-text);
+}
+
+body.admin-body {
+    font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: var(--admin-bg);
+    color: var(--admin-text);
+}
+
+button,
+input,
+select,
+textarea {
+    font-family: inherit;
+}
+
+button {
+    font-family: inherit;
+}
+
+a {
+    color: inherit;
+}
+
+svg {
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+img {
+    max-width: 100%;
+}

@@ -1,0 +1,98 @@
+@media (max-width: 1200px) {
+    .admin-dashboard-chart-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 992px) {
+    body.admin-sidebar-collapsed .admin-sidebar {
+        width: 270px;
+        min-width: 270px;
+        max-width: 270px;
+    }
+
+    .admin-sidebar {
+        position: fixed;
+        inset: 0 auto 0 0;
+        transform: translateX(-100%);
+        z-index: 100;
+        box-shadow: 20px 0 45px rgba(15, 23, 42, .14);
+    }
+
+    .admin-sidebar.show {
+        transform: translateX(0);
+    }
+
+    .admin-sidebar-overlay.show {
+        display: block;
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, .45);
+        z-index: 90;
+    }
+
+    .admin-mobile-menu-btn {
+        display: inline-flex;
+    }
+
+    .admin-dashboard-metric-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-help-btn,
+    .admin-visit-btn {
+        width: 38px;
+        padding: 0;
+        justify-content: center;
+        font-size: 0;
+    }
+}
+
+@media (max-width: 768px) {
+    .admin-topbar {
+        padding: 0 14px;
+    }
+
+    .admin-topbar h1 {
+        font-size: 16px;
+    }
+
+    .admin-main-content {
+        padding: 12px;
+    }
+
+    .admin-dashboard-tabs-row,
+    .admin-table-card-head {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .admin-dashboard-tabs {
+        width: 100%;
+        overflow-x: auto;
+    }
+
+    .admin-dashboard-tab {
+        white-space: nowrap;
+    }
+
+    .admin-dashboard-actions,
+    .admin-table-tools {
+        width: 100%;
+        overflow-x: auto;
+    }
+
+    .admin-chart-tooltip {
+        display: none;
+    }
+
+    .admin-chart-legend {
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .admin-status-list div {
+        grid-template-columns: 1fr;
+        gap: 4px;
+    }
+}

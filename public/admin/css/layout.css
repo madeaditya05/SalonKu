@@ -1,0 +1,50 @@
+.admin-layout {
+    width: 100%;
+    height: 100vh;
+    min-height: 100vh;
+    display: flex;
+    background: var(--admin-bg);
+    overflow: hidden;
+}
+
+.admin-main-wrapper {
+    flex: 1;
+    min-width: 0;
+    height: 100vh;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    background: var(--admin-main-bg);
+    overflow: hidden;
+}
+
+.admin-main-content {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: calc(100vh - 64px);
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 16px;
+    background: var(--admin-main-bg);
+}
+
+.admin-main-content::-webkit-scrollbar {
+    width: 8px;
+}
+
+.admin-main-content::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.admin-main-content::-webkit-scrollbar-thumb {
+    background: #d1d5db;
+    border-radius: 999px;
+}
+
+.admin-main-content::-webkit-scrollbar-thumb:hover {
+    background: #9ca3af;
+}
+
+.admin-sidebar-overlay {
+    display: none;
+}
