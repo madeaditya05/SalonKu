@@ -14,7 +14,7 @@ class CalendarController extends Controller
     public function index(Request $request)
     {
         if (!Auth::check() || Auth::user()->role !== 'admin') {
-            abort(403, 'Akses ditolak.');
+            abort(403, 'Access denied.');
         }
 
         $view = $request->get('view', 'month');
@@ -51,7 +51,7 @@ class CalendarController extends Controller
             $rangeEnd = $baseDate->copy()->endOfWeek(Carbon::SATURDAY);
         }
 
-        $bookings = Booking::with(['provider', 'customer', 'service'])
+        $bookings = Booking::with(['provider', 'customer', 'service', 'services', 'branch', 'staff', 'payment'])
             ->whereBetween('booking_date', [
                 $rangeStart->format('Y-m-d'),
                 $rangeEnd->format('Y-m-d'),
@@ -128,11 +128,11 @@ class CalendarController extends Controller
 
             if ($weekStart->month === $weekEnd->month && $weekStart->year === $weekEnd->year) {
                 $calendarTitle = strtoupper(
-                    $weekStart->format('M j') . ' – ' . $weekEnd->format('j, Y')
+                    $weekStart->format('M j') . ' - ' . $weekEnd->format('j, Y')
                 );
             } else {
                 $calendarTitle = strtoupper(
-                    $weekStart->format('M j') . ' – ' . $weekEnd->format('M j, Y')
+                    $weekStart->format('M j') . ' - ' . $weekEnd->format('M j, Y')
                 );
             }
         } else {

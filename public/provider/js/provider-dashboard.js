@@ -4,6 +4,8 @@ document.addEventListener('DOMContentLoaded', function () {
     initProviderSubmenus();
     initProviderProfileDropdown();
     initProviderDashboardTabs();
+    initProviderDashboardTableSearch();
+    initAnalyticsDashboardTooltips();
 });
 
 function initProviderSidebar() {
@@ -297,5 +299,90 @@ function initProviderDashboardTabs() {
 
             tab.classList.add('active');
         });
+    });
+}
+
+function initProviderDashboardTableSearch() {
+    document.querySelectorAll('[data-dashboard-table-search]').forEach(function (input) {
+        const card = input.closest('.dashboard-table-card');
+        const table = card ? card.querySelector('[data-dashboard-table]') : null;
+
+        if (!table) {
+            return;
+        }
+
+        const rows = Array.from(table.querySelectorAll('tbody tr'));
+
+        input.addEventListener('input', function () {
+            const keyword = input.value.trim().toLowerCase();
+
+            rows.forEach(function (row) {
+                row.style.display = row.innerText.toLowerCase().includes(keyword) ? '' : 'none';
+            });
+        });
+    });
+}
+
+function initAnalyticsDashboardTooltips() {
+    const tooltip = document.querySelector('[data-dashboard-tooltip]');
+
+    if (!tooltip) {
+        return;
+    }
+
+    function showTooltip(target, event) {
+        const text = target.getAttribute('data-tooltip');
+
+        if (!text) {
+            return;
+        }
+
+        tooltip.textContent = text;
+        tooltip.classList.add('is-visible');
+        moveTooltip(event);
+    }
+
+    function moveTooltip(event) {
+        if (!event) {
+            return;
+        }
+
+        const spacing = 16;
+        const tooltipRect = tooltip.getBoundingClientRect();
+        const targetRect = event.target && event.target.getBoundingClientRect ? event.target.getBoundingClientRect() : null;
+        const anchorX = typeof event.clientX === 'number' ? event.clientX : (targetRect ? targetRect.left + targetRect.width / 2 : 0);
+        const anchorY = typeof event.clientY === 'number' ? event.clientY : (targetRect ? targetRect.top : 0);
+        let left = anchorX + spacing;
+        let top = anchorY + spacing;
+
+        if (left + tooltipRect.width > window.innerWidth - 12) {
+            left = anchorX - tooltipRect.width - spacing;
+        }
+
+        if (top + tooltipRect.height > window.innerHeight - 12) {
+            top = anchorY - tooltipRect.height - spacing;
+        }
+
+        tooltip.style.left = Math.max(12, left) + 'px';
+        tooltip.style.top = Math.max(12, top) + 'px';
+    }
+
+    function hideTooltip() {
+        tooltip.classList.remove('is-visible');
+    }
+
+    document.querySelectorAll('[data-tooltip]').forEach(function (target) {
+        target.addEventListener('mouseenter', function (event) {
+            showTooltip(target, event);
+        });
+
+        target.addEventListener('mousemove', moveTooltip);
+        target.addEventListener('mouseleave', hideTooltip);
+
+        target.addEventListener('focus', function (event) {
+            showTooltip(target, event);
+        });
+
+        target.addEventListener('blur', hideTooltip);
     });
 }

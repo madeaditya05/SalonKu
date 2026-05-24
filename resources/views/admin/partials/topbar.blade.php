@@ -23,6 +23,25 @@
             $imageUrl = asset('storage/' . $image);
         }
     }
+
+    $notificationConnection = config('broadcasting.connections.reverb', []);
+    $notificationOptions = $notificationConnection['options'] ?? [];
+    $notificationScheme = (string) ($notificationOptions['scheme'] ?? 'http');
+    $notificationHost = (string) ($notificationOptions['host'] ?? request()->getHost());
+    $notificationConfig = [
+        'userId' => $authUser ? (int) $authUser->id : null,
+        'csrfToken' => csrf_token(),
+        'indexUrl' => route('admin.notifications.index'),
+        'readAllUrl' => route('admin.notifications.read-all'),
+        'readUrlTemplate' => url('/admin/notifications/__ID__/read'),
+        'authEndpoint' => url('/broadcasting/auth'),
+        'broadcast' => [
+            'key' => (string) ($notificationConnection['key'] ?? ''),
+            'host' => $notificationHost !== '' ? $notificationHost : request()->getHost(),
+            'port' => (int) ($notificationOptions['port'] ?? 8080),
+            'scheme' => $notificationScheme,
+        ],
+    ];
 @endphp
 
 <header class="admin-topbar">
@@ -48,13 +67,32 @@
             Need help
         </a>
 
-        <button class="admin-topbar-icon notification-btn" type="button">
-            <svg viewBox="0 0 24 24">
-                <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path>
-                <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
-            </svg>
-            <span class="notification-dot">3</span>
-        </button>
+        <div class="notification-shell" data-notification-root>
+            <button class="admin-topbar-icon notification-btn" type="button" data-notification-toggle aria-expanded="false" title="Notifications">
+                <svg viewBox="0 0 24 24">
+                    <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path>
+                    <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                </svg>
+                <span class="notification-dot is-hidden" data-notification-count>0</span>
+            </button>
+
+            <div class="notification-popover" data-notification-popover>
+                <div class="notification-popover-head">
+                    <div>
+                        <strong>Notifikasi</strong>
+                        <span data-notification-subtitle>Memuat...</span>
+                    </div>
+
+                    <button type="button" data-notification-read-all>Tandai dibaca</button>
+                </div>
+
+                <div class="notification-list" data-notification-list></div>
+            </div>
+
+            <script type="application/json" data-notification-config>
+                {!! json_encode($notificationConfig, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) !!}
+            </script>
+        </div>
 
         <a href="{{ url('/') }}" class="admin-visit-btn">
             <svg viewBox="0 0 24 24">

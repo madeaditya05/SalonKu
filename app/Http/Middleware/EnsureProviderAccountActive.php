@@ -2,6 +2,8 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\ProviderProfile;
+use App\Support\ProviderMenuAccess;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -11,22 +13,22 @@ class EnsureProviderAccountActive
 {
     public function handle(Request $request, Closure $next): Response
     {
-        $user = Auth::user();
+        $providerGuard = Auth::guard($request->routeIs('provider-branch.*') ? 'provider_branch' : 'provider');
+        $user = $providerGuard->user() ?: Auth::user();
 
         if (!$user) {
-            return redirect()->route('login');
+            return redirect()->route('provider.login');
         }
 
         if ($user->role !== 'provider') {
             return $next($request);
         }
 
-        $profile = $user->providerProfile;
+        $profile = ProviderProfile::where('user_id', ProviderMenuAccess::providerOwnerId($user))->first();
 
         if (!$profile || $profile->status !== 'active') {
-            Auth::logout();
+            $providerGuard->logout();
 
-            $request->session()->invalidate();
             $request->session()->regenerateToken();
 
             return redirect()

@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\Coupon;
 use App\Models\Service;
 use App\Models\ServiceCategory;
-use App\Models\ServiceSubCategory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
@@ -22,6 +21,8 @@ class CouponController extends Controller
 
         $tab = $request->get('tab', 'valid');
         $search = $request->get('search');
+        $perPage = (int) $request->get('per_page', 10);
+        $perPage = in_array($perPage, [10, 25, 50, 100], true) ? $perPage : 10;
 
         $query = Coupon::query()->latest();
 
@@ -41,12 +42,13 @@ class CouponController extends Controller
             });
         }
 
-        $coupons = $query->paginate(10)->withQueryString();
+        $coupons = $query->paginate($perPage)->withQueryString();
 
         return view('admin.coupons.index', compact(
             'coupons',
             'tab',
-            'search'
+            'search',
+            'perPage'
         ));
     }
 
@@ -124,7 +126,7 @@ class CouponController extends Controller
                 'max:100',
                 Rule::unique('coupons', 'code')->ignore($couponId),
             ],
-            'product_type' => ['required', Rule::in(['all', 'service', 'category', 'subcategory'])],
+            'product_type' => ['required', Rule::in(['all', 'service', 'category'])],
             'product_ids' => ['nullable', 'array'],
             'product_ids.*' => ['integer'],
             'coupon_type' => ['required', Rule::in(['percentage', 'fixed'])],
@@ -178,10 +180,6 @@ class CouponController extends Controller
             $count = ServiceCategory::whereIn('id', $productIds)->count();
         }
 
-        if ($productType === 'subcategory') {
-            $count = ServiceSubCategory::whereIn('id', $productIds)->count();
-        }
-
         if ($count !== count(array_unique($productIds))) {
             throw ValidationException::withMessages([
                 'product_ids' => 'Data master yang dipilih tidak valid.',
@@ -197,10 +195,6 @@ class CouponController extends Controller
                 ->get(['id', 'title']),
 
             'categories' => ServiceCategory::query()
-                ->orderBy('name')
-                ->get(['id', 'name']),
-
-            'subCategories' => ServiceSubCategory::query()
                 ->orderBy('name')
                 ->get(['id', 'name']),
         ];

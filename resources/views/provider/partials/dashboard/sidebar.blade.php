@@ -1,15 +1,22 @@
 @php
     use Illuminate\Support\Str;
+    use App\Models\ProviderProfile;
+    use App\Support\ProviderMenuAccess;
 
     $authUser = auth()->user();
+    $canSeeMenu = fn ($item) => ProviderMenuAccess::userCanAccess($authUser, $item['key'] ?? null);
+    $chatUnreadCount = $authUser ? \App\Support\ChatUnreadCounter::forUser($authUser) : 0;
+    $chatUnreadLabel = $chatUnreadCount > 99 ? '99+' : (string) $chatUnreadCount;
 
-    $providerProfile = $authUser?->providerProfile;
+    $providerProfile = $authUser
+        ? ProviderProfile::where('user_id', ProviderMenuAccess::providerOwnerId($authUser))->first()
+        : null;
     $isDocumentVerified = optional($providerProfile)->document_status === 'verified';
 
     $lockedClass = $isDocumentVerified ? '' : 'sidebar-locked';
 
     $menuUrl = function ($url) use ($isDocumentVerified) {
-        return $isDocumentVerified ? $url : route('provider.profile');
+        return $isDocumentVerified ? $url : provider_route('provider.profile');
     };
 
     $userName = $authUser->name ?? 'Provider User';
@@ -44,9 +51,10 @@
             'items' => [
                 [
                     'type' => 'link',
+                    'key' => 'dashboard',
                     'label' => 'Dashboard',
                     'subtitle' => 'Overview',
-                    'url' => route('provider.dashboard'),
+                    'url' => provider_route('provider.dashboard'),
                     'active' => ['provider.dashboard'],
                     'locked' => false,
                     'keywords' => 'dashboard home overview beranda',
@@ -54,6 +62,7 @@
                 ],
                 [
                     'type' => 'link',
+                    'key' => 'leads',
                     'label' => 'Leads',
                     'subtitle' => 'Customers',
                     'url' => $menuUrl('#'),
@@ -69,16 +78,18 @@
             'items' => [
                 [
                     'type' => 'link',
-                    'label' => 'Transaction',
+                    'key' => 'payments',
+                    'label' => 'Pembayaran',
                     'subtitle' => 'Payments',
-                    'url' => $menuUrl('#'),
-                    'active' => ['provider.transactions.*', 'provider.transaction.*'],
+                    'url' => $menuUrl(provider_route('provider.payments.index')),
+                    'active' => ['provider.payments.*', 'provider.transactions.*', 'provider.transaction.*'],
                     'locked' => true,
                     'keywords' => 'transaction transaksi payment pembayaran invoice',
                     'icon' => '<svg viewBox="0 0 24 24"><path d="M4 5h16v14H4z"/><path d="M4 9h16"/><path d="M8 13h4"/></svg>',
                 ],
                 [
                     'type' => 'link',
+                    'key' => 'payout',
                     'label' => 'Payout',
                     'subtitle' => 'Withdraw',
                     'url' => $menuUrl('#'),
@@ -94,9 +105,10 @@
             'items' => [
                 [
                     'type' => 'link',
+                    'key' => 'services',
                     'label' => 'My Service',
                     'subtitle' => 'Services',
-                    'url' => $menuUrl(route('provider.services.index')),
+                    'url' => $menuUrl(provider_route('provider.services.index')),
                     'active' => ['provider.services.*'],
                     'locked' => true,
                     'keywords' => 'my service layanan jasa service',
@@ -104,9 +116,10 @@
                 ],
                 [
                     'type' => 'link',
-                    'label' => 'Bookings',
+                    'key' => 'bookings',
+                    'label' => 'Booking Hari Ini',
                     'subtitle' => 'Orders',
-                    'url' => $menuUrl('#'),
+                    'url' => $menuUrl(provider_route('provider.bookings.index')),
                     'active' => ['provider.bookings.*', 'provider.booking.*'],
                     'locked' => true,
                     'keywords' => 'bookings booking pesanan order appointment',
@@ -114,9 +127,10 @@
                 ],
                 [
                     'type' => 'link',
-                    'label' => 'Calendar',
+                    'key' => 'calendar',
+                    'label' => 'Kalender Staff',
                     'subtitle' => 'Schedule',
-                    'url' => $menuUrl('#'),
+                    'url' => $menuUrl(provider_route('provider.calendar.index')),
                     'active' => ['provider.calendar.*'],
                     'locked' => true,
                     'keywords' => 'calendar jadwal schedule agenda',
@@ -124,9 +138,32 @@
                 ],
                 [
                     'type' => 'link',
+                    'key' => 'queue',
+                    'label' => 'Antrian',
+                    'subtitle' => 'Queue',
+                    'url' => $menuUrl(provider_route('provider.queue.index')),
+                    'active' => ['provider.queue.*'],
+                    'locked' => true,
+                    'keywords' => 'queue antrian panggil waiting',
+                    'icon' => '<svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/><path d="M17 15l3 3-3 3"/></svg>',
+                ],
+                [
+                    'type' => 'link',
+                    'key' => 'walk_in',
+                    'label' => 'Walk-in',
+                    'subtitle' => 'Offline',
+                    'url' => $menuUrl(provider_route('provider.walk-in.index')),
+                    'active' => ['provider.walk-in.*'],
+                    'locked' => true,
+                    'keywords' => 'walk-in walkin offline customer antrian',
+                    'icon' => '<svg viewBox="0 0 24 24"><path d="M12 3v18"/><path d="M5 8h14"/><path d="M7 21h10"/><path d="M8 8v13M16 8v13"/></svg>',
+                ],
+                [
+                    'type' => 'link',
+                    'key' => 'branch',
                     'label' => 'Branch',
                     'subtitle' => 'Locations',
-                    'url' => $menuUrl(route('provider.branch.index')),
+                    'url' => $menuUrl(provider_route('provider.branch.index')),
                     'active' => ['provider.branch.*'],
                     'locked' => true,
                     'keywords' => 'branch cabang lokasi outlet',
@@ -134,13 +171,36 @@
                 ],
                 [
                     'type' => 'link',
+                    'key' => 'staffs',
                     'label' => 'Staffs',
                     'subtitle' => 'Employees',
-                    'url' => $menuUrl(route('provider.staffs.index')),
+                    'url' => $menuUrl(provider_route('provider.staffs.index')),
                     'active' => ['provider.staffs.*'],
                     'locked' => true,
                     'keywords' => 'staffs staff karyawan pegawai employee',
                     'icon' => '<svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+                ],
+                [
+                    'type' => 'link',
+                    'key' => 'staff_skills',
+                    'label' => 'Skill Staff',
+                    'subtitle' => 'Services',
+                    'url' => $menuUrl(provider_route('provider.staff.skills')),
+                    'active' => ['provider.staff.skills'],
+                    'locked' => true,
+                    'keywords' => 'skill staff service kemampuan layanan',
+                    'icon' => '<svg viewBox="0 0 24 24"><path d="M20 7 9 18l-5-5"/><path d="M15 7h5v5"/></svg>',
+                ],
+                [
+                    'type' => 'link',
+                    'key' => 'staff_schedules',
+                    'label' => 'Jadwal Staff',
+                    'subtitle' => 'Availability',
+                    'url' => $menuUrl(provider_route('provider.staff.schedules')),
+                    'active' => ['provider.staff.schedules'],
+                    'locked' => true,
+                    'keywords' => 'jadwal staff schedule availability jam kerja',
+                    'icon' => '<svg viewBox="0 0 24 24"><path d="M8 2v4M16 2v4"/><path d="M3 10h18"/><path d="M5 5h14v16H5z"/><path d="M8 14h4"/></svg>',
                 ],
             ],
         ],
@@ -149,6 +209,7 @@
             'items' => [
                 [
                     'type' => 'link',
+                    'key' => 'subscription',
                     'label' => 'Subscription',
                     'subtitle' => 'Plan',
                     'url' => $menuUrl('#'),
@@ -159,6 +220,7 @@
                 ],
                 [
                     'type' => 'link',
+                    'key' => 'reviews',
                     'label' => 'Reviews',
                     'subtitle' => 'Ratings',
                     'url' => $menuUrl('#'),
@@ -174,16 +236,19 @@
             'items' => [
                 [
                     'type' => 'link',
+                    'key' => 'chat',
                     'label' => 'Chat',
                     'subtitle' => 'Messages',
-                    'url' => $menuUrl('#'),
+                    'url' => provider_route('provider.chat.index'),
                     'active' => ['provider.chat.*', 'provider.chats.*'],
-                    'locked' => true,
+                    'locked' => false,
                     'keywords' => 'chat message pesan inbox',
+                    'badge' => $chatUnreadCount,
                     'icon' => '<svg viewBox="0 0 24 24"><path d="M21 15a4 4 0 0 1-4 4H7l-4 4V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/></svg>',
                 ],
                 [
                     'type' => 'link',
+                    'key' => 'notifications',
                     'label' => 'Notification',
                     'subtitle' => 'Alerts',
                     'url' => $menuUrl('#'),
@@ -194,12 +259,13 @@
                 ],
                 [
                     'type' => 'link',
-                    'label' => 'Tickets',
-                    'subtitle' => 'Support',
-                    'url' => $menuUrl('#'),
+                    'key' => 'tickets',
+                    'label' => 'Support Help',
+                    'subtitle' => 'FAQ & Tickets',
+                    'url' => provider_route('provider.tickets.index'),
                     'active' => ['provider.tickets.*', 'provider.ticket.*'],
-                    'locked' => true,
-                    'keywords' => 'tickets ticket support bantuan komplain',
+                    'locked' => false,
+                    'keywords' => 'support help faq tickets ticket bantuan komplain',
                     'icon' => '<svg viewBox="0 0 24 24"><path d="M4 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3a2 2 0 0 0 0 4v3a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-3a2 2 0 0 0 0-4V7z"/><path d="M9 9h6M9 15h6"/></svg>',
                 ],
             ],
@@ -209,9 +275,10 @@
             'items' => [
                 [
                     'type' => 'link',
+                    'key' => 'roles_permissions',
                     'label' => 'Roles & Permissions',
                     'subtitle' => 'Access Control',
-                    'url' => $menuUrl('#'),
+                    'url' => $menuUrl(provider_route('provider.roles-permissions.index')),
                     'active' => ['provider.roles.*', 'provider.permissions.*', 'provider.roles-permissions.*'],
                     'locked' => true,
                     'keywords' => 'roles permissions role permission akses hak akses',
@@ -224,6 +291,7 @@
             'items' => [
                 [
                     'type' => 'group',
+                    'key' => 'profile',
                     'label' => 'Settings',
                     'subtitle' => 'Preferences',
                     'active' => ['provider.settings.*', 'provider.profile', 'provider.profile.*'],
@@ -233,13 +301,15 @@
                     'children' => [
                         [
                             'label' => 'My Profile',
-                            'url' => route('provider.profile'),
+                            'key' => 'profile',
+                            'url' => provider_route('provider.profile'),
                             'active' => ['provider.profile', 'provider.profile.*'],
                             'locked' => false,
                             'keywords' => 'profile edit profile dokumen password akun',
                         ],
                         [
                             'label' => 'General Settings',
+                            'key' => 'settings_general',
                             'url' => $menuUrl('#'),
                             'active' => ['provider.settings.general'],
                             'locked' => true,
@@ -247,6 +317,7 @@
                         ],
                         [
                             'label' => 'Payment Settings',
+                            'key' => 'settings_payment',
                             'url' => $menuUrl('#'),
                             'active' => ['provider.settings.payment'],
                             'locked' => true,
@@ -254,6 +325,7 @@
                         ],
                         [
                             'label' => 'Notification Settings',
+                            'key' => 'settings_notification',
                             'url' => $menuUrl('#'),
                             'active' => ['provider.settings.notification'],
                             'locked' => true,
@@ -265,21 +337,59 @@
         ],
     ];
 
-    $isActive = function ($item) {
+    $sidebarSections = collect($sidebarSections)
+        ->map(function ($section) use ($canSeeMenu) {
+            $section['items'] = collect($section['items'])
+                ->map(function ($item) use ($canSeeMenu) {
+                    if (($item['type'] ?? 'link') === 'group') {
+                        $item['children'] = collect($item['children'] ?? [])
+                            ->filter(fn ($child) => $canSeeMenu($child))
+                            ->values()
+                            ->all();
+
+                        return ($canSeeMenu($item) || !empty($item['children'])) ? $item : null;
+                    }
+
+                    return $canSeeMenu($item) ? $item : null;
+                })
+                ->filter()
+                ->values()
+                ->all();
+
+            return $section;
+        })
+        ->filter(fn ($section) => !empty($section['items']))
+        ->values()
+        ->all();
+
+    $routePatterns = function (array $patterns) {
+        return collect($patterns)
+            ->flatMap(fn ($pattern) => [
+                $pattern,
+                Str::startsWith($pattern, 'provider.')
+                    ? 'provider-branch.' . Str::after($pattern, 'provider.')
+                    : $pattern,
+            ])
+            ->unique()
+            ->values()
+            ->all();
+    };
+
+    $isActive = function ($item) use ($routePatterns) {
         $patterns = $item['active'] ?? [];
 
         if (empty($patterns)) {
             return false;
         }
 
-        return request()->routeIs(...$patterns);
+        return request()->routeIs(...$routePatterns($patterns));
     };
 
-    $hasActiveChild = function ($item) {
+    $hasActiveChild = function ($item) use ($routePatterns) {
         foreach (($item['children'] ?? []) as $child) {
             $patterns = $child['active'] ?? [];
 
-            if (!empty($patterns) && request()->routeIs(...$patterns)) {
+            if (!empty($patterns) && request()->routeIs(...$routePatterns($patterns))) {
                 return true;
             }
         }
@@ -300,7 +410,7 @@
                 foreach (($item['children'] ?? []) as $child) {
                     $patterns = $child['active'] ?? [];
 
-                    if (!empty($patterns) && request()->routeIs(...$patterns)) {
+                    if (!empty($patterns) && request()->routeIs(...$routePatterns($patterns))) {
                         $currentItem = [
                             'type' => 'link',
                             'label' => $child['label'],
@@ -329,7 +439,7 @@
 
 <aside class="provider-sidebar" id="providerSidebar">
     <div class="sidebar-brand-row">
-        <a href="{{ route('provider.dashboard') }}" class="sidebar-brand">
+        <a href="{{ provider_route('provider.dashboard') }}" class="sidebar-brand">
             <span class="brand-mark">
                 <svg viewBox="0 0 24 24">
                     <path d="M4 4h16v16H4z"/>
@@ -369,7 +479,7 @@
     <div class="sidebar-current-wrap" id="providerSidebarCurrent">
         <p class="sidebar-current-label">Currently Open</p>
 
-        <a href="{{ $currentItem['url'] ?? route('provider.dashboard') }}"
+        <a href="{{ $currentItem['url'] ?? provider_route('provider.dashboard') }}"
            class="sidebar-current-menu {{ ($currentItem['locked'] ?? false) && !$isDocumentVerified ? 'sidebar-locked' : '' }}">
             <span class="sidebar-icon">
                 {!! $currentItem['icon'] !!}
@@ -379,6 +489,10 @@
                 <strong>{{ $currentItem['label'] }}</strong>
                 <small>{{ $currentItem['subtitle'] ?? 'Current menu' }}</small>
             </span>
+
+            @if (array_key_exists('badge', $currentItem))
+                <b class="sidebar-chat-badge {{ $chatUnreadCount > 0 ? '' : 'is-hidden' }}" data-sidebar-chat-badge>{{ $chatUnreadLabel }}</b>
+            @endif
         </a>
     </div>
 
@@ -410,6 +524,9 @@
                                 </span>
 
                                 <span class="sidebar-text">{{ $item['label'] }}</span>
+                                @if (array_key_exists('badge', $item))
+                                    <b class="sidebar-chat-badge {{ $chatUnreadCount > 0 ? '' : 'is-hidden' }}" data-sidebar-chat-badge>{{ $chatUnreadLabel }}</b>
+                                @endif
                                 <span class="sidebar-arrow">›</span>
                             </button>
 
@@ -443,6 +560,9 @@
                             </span>
 
                             <span class="sidebar-text">{{ $item['label'] }}</span>
+                            @if (array_key_exists('badge', $item))
+                                <b class="sidebar-chat-badge {{ $chatUnreadCount > 0 ? '' : 'is-hidden' }}" data-sidebar-chat-badge>{{ $chatUnreadLabel }}</b>
+                            @endif
                         </a>
                     @endif
                 @endforeach
@@ -469,7 +589,7 @@
                 <div class="warning-content">
                     <span class="warning-status">{{ ucfirst($documentStatus) }}</span>
                     <p>Lengkapi profile agar semua menu terbuka.</p>
-                    <a href="{{ route('provider.profile.edit') }}">Complete</a>
+                    <a href="{{ provider_route('provider.profile.edit') }}">Complete</a>
                 </div>
             </div>
         @endif
@@ -488,7 +608,7 @@
                 <span>{{ $userEmail }}</span>
             </div>
 
-            <form action="{{ route('provider.logout') }}" method="POST" class="sidebar-logout-form">
+            <form action="{{ provider_route('provider.logout') }}" method="POST" class="sidebar-logout-form">
                 @csrf
 
                 <button type="submit" title="Logout">

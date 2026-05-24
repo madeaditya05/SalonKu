@@ -38,7 +38,6 @@ return new class extends Migration
             $table->text('bio')->nullable();
 
             $table->unsignedBigInteger('category_id')->nullable();
-            $table->unsignedBigInteger('sub_category_id')->nullable();
             $table->unsignedBigInteger('branch_id')->nullable();
 
             $table->string('role')->default('staff');

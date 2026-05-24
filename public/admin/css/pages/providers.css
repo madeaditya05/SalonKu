@@ -199,6 +199,43 @@
     gap: 12px;
 }
 
+.provider-expand-btn {
+    width: 30px;
+    height: 30px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #ffffff;
+    color: #111827;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    cursor: pointer;
+    transition: 0.18s ease;
+    flex: 0 0 auto;
+}
+
+.provider-expand-btn svg {
+    width: 16px;
+    height: 16px;
+    transition: transform 0.18s ease;
+}
+
+.provider-expand-btn:hover {
+    background: #f3f4f6;
+    border-color: #111827;
+}
+
+.provider-expand-btn[aria-expanded="true"] svg {
+    transform: rotate(90deg);
+}
+
+.provider-expand-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    background: #f8fafc;
+}
+
 .provider-avatar,
 .provider-avatar-image,
 .category-avatar {
@@ -234,6 +271,152 @@
     color: #64748b;
     font-size: 12px;
     font-weight: 500;
+}
+
+.provider-branch-count {
+    width: fit-content;
+    min-height: 20px;
+    margin-top: 5px;
+    padding: 2px 7px;
+    border-radius: 8px;
+    background: #f8fafc;
+    color: #64748b;
+    display: inline-flex;
+    align-items: center;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.provider-parent-row.is-expanded td {
+    background: #fbfbfa;
+}
+
+.provider-branches-row td {
+    padding: 0;
+    background: #ffffff;
+}
+
+.provider-branch-panel {
+    padding: 10px 14px 14px;
+    border-top: 1px solid #e5e7eb;
+}
+
+.provider-branch-panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.provider-branch-panel-head strong,
+.provider-branch-panel-head span {
+    display: block;
+}
+
+.provider-branch-panel-head strong {
+    color: #0f172a;
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.provider-branch-panel-head span {
+    color: #64748b;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.provider-branch-list {
+    display: grid;
+    gap: 0;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #ffffff;
+}
+
+.provider-branch-line {
+    min-height: 44px;
+    display: grid;
+    grid-template-columns: minmax(220px, 1.4fr) minmax(150px, 1fr) minmax(130px, 0.8fr) 80px 86px;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    color: #475569;
+    font-size: 12px;
+    border-top: 1px solid #f1f5f9;
+}
+
+.provider-branch-line:first-child {
+    border-top: 0;
+}
+
+.provider-branch-line.head {
+    min-height: 34px;
+    background: #f8fafc;
+    color: #64748b;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.provider-branch-account,
+.provider-branch-account strong,
+.provider-branch-account small {
+    display: block;
+    min-width: 0;
+}
+
+.provider-branch-account strong {
+    color: #0f172a;
+    font-size: 13px;
+    font-weight: 800;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.provider-branch-account small {
+    margin-top: 2px;
+    color: #64748b;
+    font-size: 11px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.provider-branch-status {
+    width: fit-content;
+    min-height: 22px;
+    padding: 2px 8px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: capitalize;
+}
+
+.provider-branch-status.active {
+    background: #dcfce7;
+    color: #047857;
+}
+
+.provider-branch-status.inactive {
+    background: #fff7ed;
+    color: #9a3412;
+}
+
+.provider-branch-empty {
+    border: 1px dashed #d1d5db;
+    border-radius: 8px;
+    padding: 10px;
+    color: #64748b;
+    background: #ffffff;
+    font-size: 12px;
+    font-weight: 700;
+    text-align: center;
 }
 
 /* TOGGLE */

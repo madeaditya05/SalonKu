@@ -102,14 +102,28 @@
                     @forelse ($providers as $provider)
                         @php
                             $profile = $provider->providerProfile;
+                            $branchAccounts = $provider->branchAccounts ?? collect();
                             $accountStatus = $profile->status ?? 'inactive';
                             $documentStatus = $profile->document_status ?? 'pending';
                             $initial = strtoupper(substr($provider->name ?? 'P', 0, 1));
                         @endphp
 
-                        <tr>
+                        <tr class="provider-parent-row">
                             <td>
                                 <div class="provider-name-box">
+                                    <button
+                                        type="button"
+                                        class="provider-expand-btn"
+                                        data-provider-toggle="{{ $provider->id }}"
+                                        aria-expanded="false"
+                                        aria-controls="providerBranches-{{ $provider->id }}"
+                                        @disabled($branchAccounts->isEmpty())
+                                    >
+                                        <svg viewBox="0 0 24 24" fill="none">
+                                            <path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                        </svg>
+                                    </button>
+
                                     <div class="provider-avatar">
                                         {{ $initial }}
                                     </div>
@@ -117,6 +131,9 @@
                                     <div class="provider-name-text">
                                         <strong>{{ $provider->name }}</strong>
                                         <small>{{ $provider->username ?? 'Provider account' }}</small>
+                                        <span class="provider-branch-count">
+                                            {{ $branchAccounts->count() }} branch account
+                                        </span>
                                     </div>
                                 </div>
                             </td>
@@ -198,6 +215,60 @@
                                             </svg>
                                         </button>
                                     </form>
+                                </div>
+                            </td>
+                        </tr>
+
+                        <tr class="provider-branches-row" id="providerBranches-{{ $provider->id }}" hidden>
+                            <td colspan="7">
+                                <div class="provider-branch-panel">
+                                    <div class="provider-branch-panel-head">
+                                        <div>
+                                            <strong>Branch Accounts</strong>
+                                            <span>{{ $provider->name }}</span>
+                                        </div>
+
+                                        <span>{{ $branchAccounts->count() }} akun</span>
+                                    </div>
+
+                                    @if ($branchAccounts->isEmpty())
+                                        <div class="provider-branch-empty">
+                                            Provider pusat ini belum punya akun branch.
+                                        </div>
+                                    @else
+                                        <div class="provider-branch-list">
+                                            <div class="provider-branch-line head">
+                                                <span>Account</span>
+                                                <span>Branch</span>
+                                                <span>Role</span>
+                                                <span>Menu</span>
+                                                <span>Status</span>
+                                            </div>
+
+                                            @foreach ($branchAccounts as $account)
+                                                @php
+                                                    $branchName = $account->providerBranch->branch_name ?? 'Branch belum dipilih';
+                                                    $roleName = $account->providerRole->role_name ?? 'Role belum dipilih';
+                                                    $roleStatus = $account->providerRole->status ?? 'inactive';
+                                                    $menuCount = $account->providerRole?->menuPermissions?->count() ?? 0;
+                                                @endphp
+
+                                                <div class="provider-branch-line">
+                                                    <div class="provider-branch-account">
+                                                        <strong>{{ $account->name }}</strong>
+                                                        <small>{{ $account->email }}</small>
+                                                    </div>
+
+                                                    <span>{{ $branchName }}</span>
+                                                    <span>{{ $roleName }}</span>
+                                                    <span>{{ $menuCount }} menu</span>
+                                                    <span class="provider-branch-status {{ $roleStatus }}">
+                                                        {{ ucfirst($roleStatus) }}
+                                                    </span>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    @endif
                                 </div>
                             </td>
                         </tr>

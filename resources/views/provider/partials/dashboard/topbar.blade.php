@@ -1,4 +1,7 @@
 @php
+    use App\Models\ProviderProfile;
+    use App\Support\ProviderMenuAccess;
+
     $authUser = auth()->user();
 
     $providerName = $authUser->name ?? 'Provider User';
@@ -10,7 +13,10 @@
         ? strtoupper(substr($nameParts[0], 0, 1) . substr($nameParts[1], 0, 1))
         : strtoupper(substr($providerName, 0, 1));
 
-    $profile = $authUser?->providerProfile;
+    $profile = $authUser
+        ? ProviderProfile::where('user_id', ProviderMenuAccess::providerOwnerId($authUser))->first()
+        : null;
+    $canOpenProfile = ProviderMenuAccess::userCanAccess($authUser, 'profile');
     $documentStatus = optional($profile)->document_status ?? 'pending';
 
     $profileImage = optional($profile)->image;
@@ -27,6 +33,25 @@
             $profileImageUrl = asset('storage/' . $profileImage);
         }
     }
+
+    $notificationConnection = config('broadcasting.connections.reverb', []);
+    $notificationOptions = $notificationConnection['options'] ?? [];
+    $notificationScheme = (string) ($notificationOptions['scheme'] ?? 'http');
+    $notificationHost = (string) ($notificationOptions['host'] ?? request()->getHost());
+    $notificationConfig = [
+        'userId' => $authUser ? (int) $authUser->id : null,
+        'csrfToken' => csrf_token(),
+        'indexUrl' => provider_route('provider.notifications.index'),
+        'readAllUrl' => provider_route('provider.notifications.read-all'),
+        'readUrlTemplate' => provider_route('provider.notifications.read', ['notification' => '__ID__']),
+        'authEndpoint' => url('/broadcasting/auth'),
+        'broadcast' => [
+            'key' => (string) ($notificationConnection['key'] ?? ''),
+            'host' => $notificationHost !== '' ? $notificationHost : request()->getHost(),
+            'port' => (int) ($notificationOptions['port'] ?? 8080),
+            'scheme' => $notificationScheme,
+        ],
+    ];
 @endphp
 
 <header class="provider-topbar">
@@ -53,15 +78,34 @@
             <span>Need help</span>
         </a>
 
-        <button class="topbar-icon-btn notification-btn" type="button" title="Notifications">
-            <svg viewBox="0 0 24 24">
-                <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/>
-                <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-            </svg>
-            <span class="notification-badge">3</span>
-        </button>
+        <div class="notification-shell" data-notification-root>
+            <button class="topbar-icon-btn notification-btn" type="button" data-notification-toggle aria-expanded="false" title="Notifications">
+                <svg viewBox="0 0 24 24">
+                    <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/>
+                    <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                </svg>
+                <span class="notification-badge is-hidden" data-notification-count>0</span>
+            </button>
 
-        <a href="{{ url('/') }}" class="visit-site-btn">
+            <div class="notification-popover" data-notification-popover>
+                <div class="notification-popover-head">
+                    <div>
+                        <strong>Notifikasi</strong>
+                        <span data-notification-subtitle>Memuat...</span>
+                    </div>
+
+                    <button type="button" data-notification-read-all>Tandai dibaca</button>
+                </div>
+
+                <div class="notification-list" data-notification-list></div>
+            </div>
+
+            <script type="application/json" data-notification-config>
+                {!! json_encode($notificationConfig, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) !!}
+            </script>
+        </div>
+
+        <a href="{{ config('services.frontend.provider_url') }}" class="visit-site-btn">
             <svg viewBox="0 0 24 24">
                 <circle cx="12" cy="12" r="9"/>
                 <path d="M3 12h18"/>
@@ -106,22 +150,24 @@
                     </div>
                 </div>
 
-                <a href="{{ route('provider.dashboard') }}">
+                <a href="{{ provider_route('provider.dashboard') }}">
                     <svg viewBox="0 0 24 24">
                         <path d="M3 13h8V3H3v10Zm10 8h8V3h-8v18ZM3 21h8v-6H3v6Z"/>
                     </svg>
                     Dashboard
                 </a>
 
-                <a href="{{ route('provider.profile') }}">
-                    <svg viewBox="0 0 24 24">
-                        <path d="M20 21a8 8 0 1 0-16 0"/>
-                        <circle cx="12" cy="7" r="4"/>
-                    </svg>
-                    My Profile
-                </a>
+                @if ($canOpenProfile)
+                    <a href="{{ provider_route('provider.profile') }}">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M20 21a8 8 0 1 0-16 0"/>
+                            <circle cx="12" cy="7" r="4"/>
+                        </svg>
+                        My Profile
+                    </a>
+                @endif
 
-                <form action="{{ route('provider.logout') }}" method="POST">
+                <form action="{{ provider_route('provider.logout') }}" method="POST">
                     @csrf
 
                     <button type="submit">

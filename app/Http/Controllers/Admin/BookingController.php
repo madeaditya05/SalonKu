@@ -12,16 +12,22 @@ class BookingController extends Controller
     public function index(Request $request)
     {
         if (! Auth::check() || Auth::user()->role !== 'admin') {
-            abort(403, 'Akses ditolak.');
+            abort(403, 'Access denied.');
         }
 
         $status = $request->get('status', 'all');
         $search = $request->get('search');
+        $perPage = (int) $request->get('per_page', 10);
+        $perPage = in_array($perPage, [10, 25, 50, 100], true) ? $perPage : 10;
 
         $query = Booking::with([
             'provider',
             'customer',
             'service',
+            'services',
+            'branch',
+            'staff',
+            'payment',
         ])->orderBy('booking_date', 'desc');
 
         if ($status !== 'all') {
@@ -39,29 +45,39 @@ class BookingController extends Controller
                     })
                     ->orWhereHas('service', function ($serviceQuery) use ($search) {
                         $serviceQuery->where('title', 'like', '%' . $search . '%');
+                    })
+                    ->orWhereHas('services', function ($serviceQuery) use ($search) {
+                        $serviceQuery->where('title', 'like', '%' . $search . '%');
+                    })
+                    ->orWhereHas('branch', function ($branchQuery) use ($search) {
+                        $branchQuery->where('branch_name', 'like', '%' . $search . '%')
+                            ->orWhere('city_id', 'like', '%' . $search . '%');
                     });
             });
         }
 
-        $bookings = $query->paginate(10)->withQueryString();
+        $bookings = $query->paginate($perPage)->withQueryString();
 
         $tabs = [
             'all' => 'All Bookings',
+            'pending_payment' => 'Pending Payment',
+            'confirmed' => 'Confirmed',
+            'waiting' => 'Waiting',
+            'checked_in' => 'Checked In',
+            'in_progress' => 'In Progress',
             'pending' => 'Pending',
             'inprogress' => 'Inprogress',
             'completed' => 'Completed',
-            'order_completed' => 'Order Completed',
-            'refund_completed' => 'Refund completed',
-            'provider_cancelled' => 'Provider Cancelled',
-            'customer_cancelled' => 'Customer Cancelled',
-            'rescheduled' => 'Rescheduled',
+            'cancelled' => 'Cancelled',
+            'no_show' => 'No-show',
         ];
 
         return view('admin.bookings.index', compact(
             'bookings',
             'tabs',
             'status',
-            'search'
+            'search',
+            'perPage'
         ));
     }
 }

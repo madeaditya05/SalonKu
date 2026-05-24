@@ -1,21 +1,28 @@
 @extends('admin.layouts.app')
 
+@section('title', 'Edit Coupon - JasaKu')
+@section('page_title', 'Edit Coupon')
+
 @section('content')
-<section class="coupon-form-page">
+<section class="admin-coupon-page">
     <form action="{{ route('admin.coupons.update', $coupon->id) }}" method="POST" id="couponForm">
         @csrf
         @method('PUT')
 
-        <div class="page-header coupon-form-header">
+        <div class="admin-coupon-heading">
             <div>
                 <h1>Edit Coupon</h1>
 
-                <div class="breadcrumb">
-                    Dashboard <span>/</span> Application <span>/</span> Edit Coupon
+                <div class="admin-coupon-breadcrumb">
+                    <a href="{{ route('admin.dashboard') }}">Dashboard</a>
+                    <span>&rsaquo;</span>
+                    <a href="{{ route('admin.coupons.index') }}">Coupons</a>
+                    <span>&rsaquo;</span>
+                    <strong>Edit Coupon</strong>
                 </div>
             </div>
 
-            <button type="submit" class="coupon-save-btn">
+            <button type="submit" class="admin-coupon-primary">
                 Save
             </button>
         </div>
@@ -30,7 +37,6 @@
             'coupon' => $coupon,
             'services' => $services,
             'categories' => $categories,
-            'subCategories' => $subCategories,
         ])
     </form>
 </section>

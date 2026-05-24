@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Provider;
 use App\Http\Controllers\Controller;
 use App\Models\ProviderBranch;
 use App\Models\ProviderStaff;
+use App\Support\ProviderAccountScope;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -20,32 +21,46 @@ class BranchController extends Controller
             abort(401);
         }
 
-        return (int) (data_get($user, 'provider_id') ?: $user->getAuthIdentifier());
+        return ProviderAccountScope::providerId($user);
+    }
+
+    private function branchId(): ?int
+    {
+        return ProviderAccountScope::branchId(Auth::user());
+    }
+
+    private function isBranchAccount(): bool
+    {
+        return ProviderAccountScope::isBranchAccount(Auth::user());
     }
 
     public function index()
     {
         $branches = ProviderBranch::withCount('staffs')
             ->where('provider_id', $this->providerId())
-            ->latest()
-            ->get();
+            ->latest();
+        ProviderAccountScope::applyBranchModelScope($branches, $this->branchId());
 
-        return view('provider.page.branch.index', compact('branches'));
+        $branches = $branches->get();
+        $isBranchAccount = $this->isBranchAccount();
+
+        return view('provider.pages.branches.index', compact('branches', 'isBranchAccount'));
     }
 
     public function create(Request $request)
     {
+        abort_if($this->isBranchAccount(), 403, 'Akun cabang tidak dapat membuat branch baru.');
+
         $step = $request->get('step', 'branch');
 
         if ($step === 'staff' && !session()->has('branch_draft')) {
-            return redirect()
-                ->route('provider.branch.create')
-                ->with('error', 'Isi Branch Information dulu, lalu klik Continue.');
+            return provider_route_redirect('provider.branch.create')
+                ->with('error', 'Complete Branch Information first, then click Continue.');
         }
 
         $data = $this->dropdownData();
 
-        return view('provider.page.branch.form', array_merge($data, [
+        return view('provider.pages.branches.form', array_merge($data, [
             'mode' => 'create',
             'step' => $step,
             'branch' => null,
@@ -56,6 +71,8 @@ class BranchController extends Controller
 
     public function continue(Request $request)
     {
+        abort_if($this->isBranchAccount(), 403, 'Akun cabang tidak dapat membuat branch baru.');
+
         $validated = $this->validateBranch($request);
 
         $validated['holidays'] = array_values(array_filter($validated['holidays'] ?? []));
@@ -71,17 +88,17 @@ class BranchController extends Controller
             'branch_draft' => $validated,
         ]);
 
-        return redirect()
-            ->route('provider.branch.create', ['step' => 'staff'])
-            ->with('success', 'Branch Information berhasil disimpan sementara.');
+        return provider_route_redirect('provider.branch.create', ['step' => 'staff'])
+            ->with('success', 'Branch information has been saved temporarily.');
     }
 
     public function store(Request $request)
     {
+        abort_if($this->isBranchAccount(), 403, 'Akun cabang tidak dapat membuat branch baru.');
+
         if (!session()->has('branch_draft')) {
-            return redirect()
-                ->route('provider.branch.create')
-                ->with('error', 'Data Branch Information belum diisi.');
+            return provider_route_redirect('provider.branch.create')
+                ->with('error', 'Branch information has not been completed.');
         }
 
         $request->validate([
@@ -108,9 +125,8 @@ class BranchController extends Controller
 
         session()->forget('branch_draft');
 
-        return redirect()
-            ->route('provider.branch.index')
-            ->with('success', 'Branch berhasil ditambahkan.');
+        return provider_route_redirect('provider.branch.index')
+            ->with('success', 'Branch has been added.');
     }
 
     public function edit(Request $request, ProviderBranch $branch)
@@ -120,7 +136,7 @@ class BranchController extends Controller
         $step = $request->get('step', 'branch');
         $data = $this->dropdownData();
 
-        return view('provider.page.branch.form', array_merge($data, [
+        return view('provider.pages.branches.form', array_merge($data, [
             'mode' => 'edit',
             'step' => $step,
             'branch' => $branch->load('staffs'),
@@ -152,12 +168,11 @@ class BranchController extends Controller
 
         $branch->update($validated);
 
-        return redirect()
-            ->route('provider.branch.edit', [
+        return provider_route_redirect('provider.branch.edit', [
                 'branch' => $branch->id,
                 'step' => 'staff',
             ])
-            ->with('success', 'Branch Information berhasil diperbarui.');
+            ->with('success', 'Branch information has been updated.');
     }
 
     public function updateStaff(Request $request, ProviderBranch $branch)
@@ -187,14 +202,14 @@ class BranchController extends Controller
             }
         });
 
-        return redirect()
-            ->route('provider.branch.index')
-            ->with('success', 'Staff branch berhasil diperbarui.');
+        return provider_route_redirect('provider.branch.index')
+            ->with('success', 'Branch staff has been updated.');
     }
 
     public function destroy(ProviderBranch $branch)
     {
         $this->authorizeBranch($branch);
+        abort_if($this->isBranchAccount(), 403, 'Akun cabang tidak dapat menghapus branch.');
 
         DB::transaction(function () use ($branch) {
             ProviderStaff::where('provider_id', $this->providerId())
@@ -210,9 +225,8 @@ class BranchController extends Controller
             $branch->delete();
         });
 
-        return redirect()
-            ->route('provider.branch.index')
-            ->with('success', 'Branch berhasil dihapus.');
+        return provider_route_redirect('provider.branch.index')
+            ->with('success', 'Branch has been deleted.');
     }
 
     private function validateBranch(Request $request, ?int $branchId = null): array
@@ -235,6 +249,8 @@ class BranchController extends Controller
             'country_id' => ['required', 'string', 'max:255'],
             'state_id' => ['required', 'string', 'max:255'],
             'city_id' => ['required', 'string', 'max:255'],
+            'latitude' => ['nullable', 'numeric', 'between:-90,90'],
+            'longitude' => ['nullable', 'numeric', 'between:-180,180'],
 
             'zip_code' => ['required', 'string', 'max:20'],
 
@@ -267,8 +283,10 @@ class BranchController extends Controller
         $cities = collect();
 
         $staffs = ProviderStaff::where('provider_id', $this->providerId())
-            ->latest()
-            ->get();
+            ->latest();
+        ProviderAccountScope::applyBranchScope($staffs, $this->branchId());
+
+        $staffs = $staffs->get();
 
         return compact('countries', 'states', 'cities', 'staffs');
     }
@@ -276,6 +294,7 @@ class BranchController extends Controller
     private function validStaffIds(array $staffIds): array
     {
         return ProviderStaff::where('provider_id', $this->providerId())
+            ->when($this->branchId() !== null, fn ($query) => $query->where('branch_id', $this->branchId()))
             ->whereIn('id', $staffIds)
             ->pluck('id')
             ->toArray();
@@ -284,5 +303,6 @@ class BranchController extends Controller
     private function authorizeBranch(ProviderBranch $branch): void
     {
         abort_if($branch->provider_id !== $this->providerId(), 403);
+        abort_if($this->branchId() !== null && (int) $branch->id !== $this->branchId(), 403);
     }
 }

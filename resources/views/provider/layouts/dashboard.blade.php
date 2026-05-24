@@ -24,6 +24,8 @@
         <div class="provider-sidebar-overlay" id="providerSidebarOverlay"></div>
     </div>
 
+    <script src="https://js.pusher.com/8.4.0/pusher.min.js"></script>
+    <script src="{{ asset('js/realtime-notifications.js') }}"></script>
     <script src="{{ asset('provider/js/provider-dashboard.js') }}"></script>
 
     @stack('scripts')

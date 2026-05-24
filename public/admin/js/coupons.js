@@ -35,7 +35,6 @@ document.addEventListener('DOMContentLoaded', function () {
         const labels = {
             service: 'Service',
             category: 'Category',
-            subcategory: 'Sub Category',
         };
 
         return labels[type] || '';
@@ -236,7 +235,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         if (couponTypeSelect.value === 'fixed') {
-            couponValueSuffix.textContent = '$';
+            couponValueSuffix.textContent = 'Rp';
         } else {
             couponValueSuffix.textContent = '%';
         }

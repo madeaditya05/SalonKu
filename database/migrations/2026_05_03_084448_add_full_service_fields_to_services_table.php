@@ -9,10 +9,6 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('services', function (Blueprint $table) {
-            if (!Schema::hasColumn('services', 'sub_category')) {
-                $table->string('sub_category')->nullable()->after('category');
-            }
-
             if (!Schema::hasColumn('services', 'description')) {
                 $table->longText('description')->nullable()->after('code');
             }
@@ -55,7 +51,6 @@ return new class extends Migration
     {
         Schema::table('services', function (Blueprint $table) {
             $columns = [
-                'sub_category',
                 'description',
                 'includes',
                 'price_type',

@@ -24,6 +24,8 @@
 
     <div class="admin-sidebar-overlay" id="sidebarOverlay"></div>
 
+    <script src="https://js.pusher.com/8.4.0/pusher.min.js"></script>
+    <script src="{{ asset('js/realtime-notifications.js') }}"></script>
     <script src="{{ asset('admin/js/admin-layout.js') }}"></script>
     @stack('scripts')
 </body>

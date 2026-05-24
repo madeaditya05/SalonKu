@@ -1,6 +1,5 @@
 document.addEventListener('DOMContentLoaded', function () {
     initServiceAccordions();
-    initServiceCategoryFilter();
     initAdditionalServices();
     initServiceHolidays();
     initServiceSlots();
@@ -245,48 +244,6 @@ function initAccordionAutoRefresh() {
             refreshActiveAccordionHeight(img);
         });
     });
-}
-
-/* =========================================================
-   CATEGORY FILTER
-========================================================= */
-function initServiceCategoryFilter() {
-    const categorySelect = document.getElementById('serviceCategorySelect');
-    const subCategorySelect = document.getElementById('serviceSubCategorySelect');
-
-    if (!categorySelect || !subCategorySelect) {
-        return;
-    }
-
-    function filterSubCategories() {
-        const selectedOption = categorySelect.options[categorySelect.selectedIndex];
-        const categoryId = selectedOption ? (selectedOption.dataset.categoryId || '') : '';
-
-        Array.from(subCategorySelect.options).forEach(function (option) {
-            if (!option.value) {
-                option.hidden = false;
-                option.disabled = false;
-                return;
-            }
-
-            const optionCategoryId = option.dataset.categoryId || '';
-            const isMatch = !categoryId || optionCategoryId === categoryId;
-
-            option.hidden = !isMatch;
-            option.disabled = !isMatch;
-        });
-
-        const selectedSub = subCategorySelect.options[subCategorySelect.selectedIndex];
-
-        if (selectedSub && selectedSub.disabled) {
-            subCategorySelect.value = '';
-        }
-
-        refreshActiveAccordionHeight(subCategorySelect);
-    }
-
-    categorySelect.addEventListener('change', filterSubCategories);
-    filterSubCategories();
 }
 
 /* =========================================================

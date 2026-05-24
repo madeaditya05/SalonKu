@@ -9,16 +9,16 @@
     $search = request('search', $search ?? '');
     $currentStatus = request('status', $status ?? 'all');
 
-    $statusTabs = [
+    $statusTabs = $tabs ?? [
         'all' => 'All Bookings',
-        'pending' => 'Pending',
-        'inprogress' => 'Inprogress',
+        'pending_payment' => 'Pending Payment',
+        'confirmed' => 'Confirmed',
+        'waiting' => 'Waiting',
+        'checked_in' => 'Checked In',
+        'in_progress' => 'In Progress',
         'completed' => 'Completed',
-        'order_completed' => 'Order Completed',
-        'refund_completed' => 'Refund Completed',
-        'provider_cancelled' => 'Provider Cancelled',
-        'customer_cancelled' => 'Customer Cancelled',
-        'rescheduled' => 'Rescheduled',
+        'cancelled' => 'Cancelled',
+        'no_show' => 'No-show',
     ];
 
     $bookingCollection = $bookings ?? collect();
@@ -38,9 +38,9 @@
     function adminBookingStatusClass($statusValue) {
         return match ($statusValue) {
             'completed', 'order_completed', 'refund_completed' => 'success',
-            'pending', 'rescheduled' => 'warning',
-            'inprogress' => 'info',
-            'provider_cancelled', 'customer_cancelled', 'cancelled', 'rejected' => 'danger',
+            'pending', 'pending_payment', 'waiting', 'confirmed', 'rescheduled' => 'warning',
+            'checked_in', 'inprogress', 'in_progress' => 'info',
+            'provider_cancelled', 'customer_cancelled', 'cancelled', 'no_show', 'rejected' => 'danger',
             default => 'neutral',
         };
     }
@@ -53,7 +53,7 @@
 
             <div class="admin-breadcrumb">
                 <a href="{{ route('admin.dashboard') }}">Dashboard</a>
-                <span>›</span>
+                <span>/</span>
                 <strong>Booking List</strong>
             </div>
         </div>
@@ -135,13 +135,17 @@
             <table class="admin-booking-table">
                 <thead>
                     <tr>
-                        <th># <span>↕</span></th>
-                        <th>Date <span>↕</span></th>
-                        <th>Provider <span>↕</span></th>
-                        <th>User <span>↕</span></th>
-                        <th>Service <span>↕</span></th>
-                        <th>Amount <span>↕</span></th>
-                        <th>Status <span>↕</span></th>
+                        <th># <span>sort</span></th>
+                        <th>Appointment <span>sort</span></th>
+                        <th>Provider <span>sort</span></th>
+                        <th>User <span>sort</span></th>
+                        <th>Service <span>sort</span></th>
+                        <th>Branch <span>sort</span></th>
+                        <th>Staff <span>sort</span></th>
+                        <th>Mode <span>sort</span></th>
+                        <th>Total <span>sort</span></th>
+                        <th>Payment <span>sort</span></th>
+                        <th>Status <span>sort</span></th>
                     </tr>
                 </thead>
 
@@ -161,12 +165,28 @@
                                 ?? $booking->customer_name
                                 ?? '-';
 
-                            $serviceName = $booking->service->title
-                                ?? $booking->service->name
-                                ?? $booking->service_name
+                            $multiServices = $booking->services ?? collect();
+                            $serviceName = $multiServices->isNotEmpty()
+                                ? $multiServices->pluck('title')->join(', ')
+                                : ($booking->service->title
+                                    ?? $booking->service->name
+                                    ?? $booking->service_name
+                                    ?? '-');
+
+                            $branchName = $booking->branch->branch_name
+                                ?? $booking->branch_name
                                 ?? '-';
 
-                            $amount = $booking->amount
+                            $branchLocation = $booking->branch
+                                ? collect([$booking->branch->city_id, $booking->branch->state_id])->filter()->implode(', ')
+                                : '';
+
+                            $staffName = $booking->staff->full_name ?? 'Any Available';
+                            $bookingType = $booking->booking_type ?? 'scheduled';
+                            $paymentStatus = $booking->payment_status ?? optional($booking->payment)->status ?? 'unpaid';
+
+                            $amount = $booking->total_price
+                                ?? $booking->amount
                                 ?? $booking->total_amount
                                 ?? $booking->price
                                 ?? 0;
@@ -175,6 +195,8 @@
                                 ?? $booking->date
                                 ?? $booking->created_at
                                 ?? null;
+
+                            $timeValue = $booking->start_time ?? $booking->booking_time ?? null;
                         @endphp
 
                         <tr>
@@ -192,8 +214,8 @@
                                         @endif
                                     </strong>
 
-                                    @if (!empty($booking->created_at))
-                                        <small>{{ \Carbon\Carbon::parse($booking->created_at)->format('h:i A') }}</small>
+                                    @if (!empty($timeValue))
+                                        <small>{{ \Carbon\Carbon::parse($timeValue)->format('H:i') }}</small>
                                     @endif
                                 </div>
                             </td>
@@ -215,9 +237,32 @@
                             <td>{{ $serviceName }}</td>
 
                             <td>
+                                <div class="admin-booking-date">
+                                    <strong>{{ $branchName }}</strong>
+                                    @if ($branchLocation)
+                                        <small>{{ $branchLocation }}</small>
+                                    @endif
+                                </div>
+                            </td>
+
+                            <td>{{ $staffName }}</td>
+
+                            <td>
+                                <span class="admin-booking-status neutral">
+                                    {{ adminBookingStatusLabel($bookingType) }}
+                                </span>
+                            </td>
+
+                            <td>
                                 <strong class="admin-booking-amount">
-                                    ${{ number_format((float) $amount, 2) }}
+                                    Rp{{ number_format((float) $amount, 0, ',', '.') }}
                                 </strong>
+                            </td>
+
+                            <td>
+                                <span class="admin-booking-status {{ adminBookingStatusClass($paymentStatus) }}">
+                                    {{ adminBookingStatusLabel($paymentStatus) }}
+                                </span>
                             </td>
 
                             <td>
@@ -228,7 +273,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="admin-booking-empty">
+                            <td colspan="11" class="admin-booking-empty">
                                 <div>
                                     <span>
                                         <svg viewBox="0 0 24 24">
@@ -239,8 +284,8 @@
                                         </svg>
                                     </span>
 
-                                    <strong>Belum ada data booking.</strong>
-                                    <p>Data booking akan tampil di sini setelah ada transaksi masuk.</p>
+                                    <strong>No booking data yet.</strong>
+                                    <p>Booking data will appear here after a customer creates a reservation.</p>
                                 </div>
                             </td>
                         </tr>

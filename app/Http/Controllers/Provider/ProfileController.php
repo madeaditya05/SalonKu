@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Provider;
 use App\Http\Controllers\Controller;
 use App\Models\ProviderProfile;
 use App\Models\User;
+use App\Services\AppNotificationService;
+use App\Support\ProviderMenuAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -19,20 +21,20 @@ class ProfileController extends Controller
         $authId = Auth::id();
 
         if (! $authId) {
-            return redirect()->route('login');
+            return redirect()->route('provider.login');
         }
 
         $user = User::query()->findOrFail($authId);
 
         $profile = ProviderProfile::query()->firstOrCreate(
-            ['user_id' => $user->id],
+            ['user_id' => ProviderMenuAccess::providerOwnerId($user)],
             [
                 'status' => 'active',
                 'document_status' => 'pending',
             ]
         );
 
-        return view('provider.page.profile.show', compact('user', 'profile'));
+        return view('provider.pages.profile.show', compact('user', 'profile'));
     }
 
     public function edit()
@@ -40,20 +42,20 @@ class ProfileController extends Controller
         $authId = Auth::id();
 
         if (! $authId) {
-            return redirect()->route('login');
+            return redirect()->route('provider.login');
         }
 
         $user = User::query()->findOrFail($authId);
 
         $profile = ProviderProfile::query()->firstOrCreate(
-            ['user_id' => $user->id],
+            ['user_id' => ProviderMenuAccess::providerOwnerId($user)],
             [
                 'status' => 'active',
                 'document_status' => 'pending',
             ]
         );
 
-        return view('provider.page.profile.edit', compact('user', 'profile'));
+        return view('provider.pages.profile.edit', compact('user', 'profile'));
     }
 
     public function update(Request $request)
@@ -61,13 +63,17 @@ class ProfileController extends Controller
         $authId = Auth::id();
 
         if (! $authId) {
-            return redirect()->route('login');
+            return redirect()->route('provider.login');
         }
 
         $user = User::query()->findOrFail($authId);
 
+        if (! ProviderMenuAccess::isProviderOwner($user)) {
+            return back()->with('error', 'Akun cabang tidak boleh mengubah profil utama provider.');
+        }
+
         $profile = ProviderProfile::query()->firstOrCreate(
-            ['user_id' => $user->id],
+            ['user_id' => ProviderMenuAccess::providerOwnerId($user)],
             [
                 'status' => 'active',
                 'document_status' => 'pending',
@@ -125,8 +131,7 @@ class ProfileController extends Controller
 
             DB::commit();
 
-            return redirect()
-                ->route('provider.profile')
+            return provider_route_redirect('provider.profile')
                 ->with('success', 'Profile berhasil diperbarui.');
         } catch (\Throwable $e) {
             DB::rollBack();
@@ -142,13 +147,17 @@ class ProfileController extends Controller
         $authId = Auth::id();
 
         if (! $authId) {
-            return redirect()->route('login');
+            return redirect()->route('provider.login');
         }
 
         $user = User::query()->findOrFail($authId);
 
+        if (! ProviderMenuAccess::isProviderOwner($user)) {
+            return back()->with('error', 'Akun cabang tidak boleh mengubah dokumen provider.');
+        }
+
         $profile = ProviderProfile::query()->firstOrCreate(
-            ['user_id' => $user->id],
+            ['user_id' => ProviderMenuAccess::providerOwnerId($user)],
             [
                 'status' => 'active',
                 'document_status' => 'pending',
@@ -242,8 +251,19 @@ class ProfileController extends Controller
 
             DB::commit();
 
-            return redirect()
-                ->route('provider.profile')
+            app(AppNotificationService::class)->createForUsers(
+                app(AppNotificationService::class)->adminRecipients(),
+                'provider.document.submitted',
+                'Dokumen provider dikirim',
+                ($user->name ?: 'Provider') . ' mengirim dokumen untuk diverifikasi.',
+                route('admin.providers.show', ProviderMenuAccess::providerOwnerId($user)),
+                [
+                    'provider_id' => ProviderMenuAccess::providerOwnerId($user),
+                ],
+                (int) $user->id
+            );
+
+            return provider_route_redirect('provider.profile')
                 ->with('success', 'Dokumen berhasil dikirim. Status dokumen sekarang Submitted dan menunggu verifikasi admin.');
         } catch (\Throwable $e) {
             DB::rollBack();
@@ -259,7 +279,7 @@ class ProfileController extends Controller
         $authId = Auth::id();
 
         if (! $authId) {
-            return redirect()->route('login');
+            return redirect()->route('provider.login');
         }
 
         $user = User::query()->findOrFail($authId);
@@ -286,8 +306,7 @@ class ProfileController extends Controller
                 'password' => Hash::make($validated['password']),
             ]);
 
-        return redirect()
-            ->route('provider.profile')
+        return provider_route_redirect('provider.profile')
             ->with('success', 'Password berhasil diperbarui.');
     }
 

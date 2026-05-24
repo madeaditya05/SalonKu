@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Provider;
 use App\Http\Controllers\Controller;
 use App\Models\ProviderBranch;
 use App\Models\Service;
+use App\Support\ProviderAccountScope;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -22,17 +23,24 @@ class ServiceController extends Controller
             abort(401);
         }
 
-        return (int) (data_get($user, 'provider_id') ?: $user->getAuthIdentifier());
+        return ProviderAccountScope::providerId($user);
+    }
+
+    private function branchId(): ?int
+    {
+        return ProviderAccountScope::branchId(Auth::user());
     }
 
     public function index()
     {
         $services = Service::with('provider.providerProfile')
             ->where('provider_id', $this->providerId())
-            ->latest()
-            ->get();
+            ->latest();
+        ProviderAccountScope::applyServiceBranchScope($services, $this->branchId());
 
-        return view('provider.page.services.index', compact('services'));
+        $services = $services->get();
+
+        return view('provider.pages.services.index', compact('services'));
     }
 
     public function create(Request $request)
@@ -40,25 +48,25 @@ class ServiceController extends Controller
         $step = $request->get('step', 'service');
 
         if (in_array($step, ['branch', 'gallery']) && !session()->has('service_draft')) {
-            return redirect()
-                ->route('provider.services.create')
+            return provider_route_redirect('provider.services.create')
                 ->with('error', 'Isi Service Information dulu, lalu klik Continue.');
         }
 
         if ($step === 'gallery' && !session()->has('service_branch_draft')) {
-            return redirect()
-                ->route('provider.services.create', ['step' => 'branch'])
+            return provider_route_redirect('provider.services.create', ['step' => 'branch'])
                 ->with('error', 'Pilih Branch dulu, lalu klik Continue.');
         }
 
         $data = $this->formData();
 
-        return view('provider.page.services.create', array_merge($data, [
+        return view('provider.pages.services.create', array_merge($data, [
             'mode' => 'create',
             'step' => $step,
             'service' => null,
             'draft' => session('service_draft', []),
-            'branchDraft' => session('service_branch_draft', []),
+            'branchDraft' => session('service_branch_draft', $this->branchId() !== null && $this->branchId() > 0 ? [
+                'branch_ids' => [$this->branchId()],
+            ] : []),
         ]));
     }
 
@@ -70,8 +78,7 @@ class ServiceController extends Controller
             'service_draft' => $validated,
         ]);
 
-        return redirect()
-            ->route('provider.services.create', ['step' => 'branch'])
+        return provider_route_redirect('provider.services.create', ['step' => 'branch'])
             ->with('success', 'Service Information berhasil disimpan sementara.');
     }
 
@@ -88,22 +95,19 @@ class ServiceController extends Controller
             'service_branch_draft' => $validated,
         ]);
 
-        return redirect()
-            ->route('provider.services.create', ['step' => 'gallery'])
+        return provider_route_redirect('provider.services.create', ['step' => 'gallery'])
             ->with('success', 'Branch Information berhasil disimpan sementara.');
     }
 
     public function store(Request $request)
     {
         if (!session()->has('service_draft')) {
-            return redirect()
-                ->route('provider.services.create')
+            return provider_route_redirect('provider.services.create')
                 ->with('error', 'Service Information belum diisi.');
         }
 
         if (!session()->has('service_branch_draft')) {
-            return redirect()
-                ->route('provider.services.create', ['step' => 'branch'])
+            return provider_route_redirect('provider.services.create', ['step' => 'branch'])
                 ->with('error', 'Branch Information belum diisi.');
         }
 
@@ -126,12 +130,20 @@ class ServiceController extends Controller
             'title' => $title,
             'slug' => $slug,
             'category' => $draft['category'],
-            'sub_category' => $draft['sub_category'] ?? null,
+            'category_id' => $draft['category_id'] ?? null,
             'code' => $draft['code'] ?? null,
             'description' => $draft['description'] ?? null,
             'includes' => $draft['includes'] ?? null,
             'price_type' => $draft['price_type'] ?? null,
             'price' => $draft['price'] ?? 0,
+            'minimum_duration' => $draft['minimum_duration'] ?? 0,
+            'estimated_duration' => $draft['estimated_duration'] ?? 30,
+            'maximum_duration' => $draft['maximum_duration'] ?? 60,
+            'is_queue_enabled' => $draft['is_queue_enabled'] ?? true,
+            'is_scheduled_enabled' => $draft['is_scheduled_enabled'] ?? true,
+            'requires_dp' => $draft['requires_dp'] ?? false,
+            'dp_amount' => $draft['dp_amount'] ?? null,
+            'payment_policy' => $draft['payment_policy'] ?? null,
             'slots' => $draft['slots'] ?? [],
             'additional_services' => $draft['additional_services'] ?? [],
             'holidays' => $draft['holidays'] ?? [],
@@ -153,19 +165,18 @@ class ServiceController extends Controller
             'service_branch_draft',
         ]);
 
-        return redirect()
-            ->route('provider.services.index')
+        return provider_route_redirect('provider.services.index')
             ->with('success', 'Service berhasil ditambahkan.');
     }
 
     public function edit(Request $request, Service $service)
     {
-        abort_if($service->provider_id !== $this->providerId(), 403);
+        $this->authorizeService($service);
 
         $step = $request->get('step', 'service');
         $data = $this->formData();
 
-        return view('provider.page.services.create', array_merge($data, [
+        return view('provider.pages.services.create', array_merge($data, [
             'mode' => 'edit',
             'step' => $step,
             'service' => $service,
@@ -178,7 +189,7 @@ class ServiceController extends Controller
 
     public function update(Request $request, Service $service)
     {
-        abort_if($service->provider_id !== $this->providerId(), 403);
+        $this->authorizeService($service);
 
         $validated = $this->validateServiceInformation($request);
 
@@ -190,19 +201,26 @@ class ServiceController extends Controller
             'title' => $validated['title'],
             'slug' => $newSlug,
             'category' => $validated['category'],
-            'sub_category' => $validated['sub_category'] ?? null,
+            'category_id' => $validated['category_id'] ?? null,
             'code' => $validated['code'] ?? null,
             'description' => $validated['description'] ?? null,
             'includes' => $validated['includes'] ?? null,
             'price_type' => $validated['price_type'] ?? null,
             'price' => $validated['price'],
+            'minimum_duration' => $validated['minimum_duration'] ?? 0,
+            'estimated_duration' => $validated['estimated_duration'] ?? 30,
+            'maximum_duration' => $validated['maximum_duration'] ?? 60,
+            'is_queue_enabled' => $validated['is_queue_enabled'] ?? true,
+            'is_scheduled_enabled' => $validated['is_scheduled_enabled'] ?? true,
+            'requires_dp' => $validated['requires_dp'] ?? false,
+            'dp_amount' => $validated['dp_amount'] ?? null,
+            'payment_policy' => $validated['payment_policy'] ?? null,
             'slots' => $validated['slots'] ?? [],
             'additional_services' => $validated['additional_services'] ?? [],
             'holidays' => $validated['holidays'] ?? [],
         ]);
 
-        return redirect()
-            ->route('provider.services.edit', [
+        return provider_route_redirect('provider.services.edit', [
                 'service' => $service->id,
                 'step' => 'branch',
             ])
@@ -211,7 +229,7 @@ class ServiceController extends Controller
 
     public function updateBranch(Request $request, Service $service)
     {
-        abort_if($service->provider_id !== $this->providerId(), 403);
+        $this->authorizeService($service);
 
         $validated = $request->validate([
             'branch_ids' => ['nullable', 'array'],
@@ -220,12 +238,22 @@ class ServiceController extends Controller
 
         $branchIds = $this->validBranchIds($validated['branch_ids'] ?? []);
 
+        if ($this->branchId() !== null) {
+            $existingBranchIds = collect($service->branch_ids ?? [])
+                ->map(fn ($id) => (int) $id)
+                ->filter()
+                ->values();
+
+            $branchIds = $existingBranchIds->isEmpty()
+                ? []
+                : $existingBranchIds->merge($branchIds)->unique()->values()->all();
+        }
+
         $service->update([
             'branch_ids' => $branchIds,
         ]);
 
-        return redirect()
-            ->route('provider.services.edit', [
+        return provider_route_redirect('provider.services.edit', [
                 'service' => $service->id,
                 'step' => 'gallery',
             ])
@@ -234,7 +262,7 @@ class ServiceController extends Controller
 
     public function updateGallery(Request $request, Service $service)
     {
-        abort_if($service->provider_id !== $this->providerId(), 403);
+        $this->authorizeService($service);
 
         $validated = $this->validateGallery($request);
 
@@ -253,27 +281,25 @@ class ServiceController extends Controller
             'video_url' => $validated['video_url'] ?? null,
         ]);
 
-        return redirect()
-            ->route('provider.services.index')
+        return provider_route_redirect('provider.services.index')
             ->with('success', 'Service berhasil diperbarui.');
     }
 
     public function toggleStatus(Service $service)
     {
-        abort_if($service->provider_id !== $this->providerId(), 403);
+        $this->authorizeService($service);
 
         $service->update([
             'status' => $service->status === 'active' ? 'inactive' : 'active',
         ]);
 
-        return redirect()
-            ->route('provider.services.index')
+        return provider_route_redirect('provider.services.index')
             ->with('success', 'Status service berhasil diperbarui.');
     }
 
     public function destroy(Service $service)
     {
-        abort_if($service->provider_id !== $this->providerId(), 403);
+        $this->authorizeService($service);
 
         if ($service->gallery_image) {
             Storage::disk('public')->delete($service->gallery_image);
@@ -281,8 +307,7 @@ class ServiceController extends Controller
 
         $service->delete();
 
-        return redirect()
-            ->route('provider.services.index')
+        return provider_route_redirect('provider.services.index')
             ->with('success', 'Service berhasil dihapus.');
     }
 
@@ -292,11 +317,19 @@ class ServiceController extends Controller
             'title' => ['required', 'string', 'max:255'],
             'code' => ['nullable', 'string', 'max:255'],
             'category' => ['required', 'string', 'max:255'],
-            'sub_category' => ['nullable', 'string', 'max:255'],
+            'category_id' => ['nullable', 'integer', 'exists:service_categories,id'],
             'description' => ['nullable', 'string'],
             'includes' => ['nullable', 'string'],
             'price_type' => ['nullable', 'string', 'max:255'],
             'price' => ['required', 'numeric', 'min:0'],
+            'minimum_duration' => ['nullable', 'integer', 'min:0'],
+            'estimated_duration' => ['nullable', 'integer', 'min:1'],
+            'maximum_duration' => ['nullable', 'integer', 'min:1'],
+            'is_queue_enabled' => ['nullable', 'boolean'],
+            'is_scheduled_enabled' => ['nullable', 'boolean'],
+            'requires_dp' => ['nullable', 'boolean'],
+            'dp_amount' => ['nullable', 'numeric', 'min:0'],
+            'payment_policy' => ['nullable', 'string', 'max:1000'],
 
             'slots' => ['nullable', 'array'],
             'slots.*' => ['nullable', 'array'],
@@ -390,6 +423,12 @@ class ServiceController extends Controller
 
     private function validBranchIds(array $branchIds): array
     {
+        if ($this->branchId() !== null) {
+            abort_if($this->branchId() < 1, 403, 'Akun cabang belum terhubung ke branch.');
+
+            return [$this->branchId()];
+        }
+
         return ProviderBranch::where('provider_id', $this->providerId())
             ->whereIn('id', $branchIds)
             ->pluck('id')
@@ -400,7 +439,6 @@ class ServiceController extends Controller
     private function formData(): array
     {
         $categories = collect();
-        $subCategories = collect();
         $branches = collect();
 
         if (Schema::hasTable('service_categories')) {
@@ -411,26 +449,22 @@ class ServiceController extends Controller
                 ->get();
         }
 
-        if (Schema::hasTable('service_sub_categories')) {
-            $subCategories = DB::table('service_sub_categories')
-                ->select(
-                    'id',
-                    'name',
-                    DB::raw('service_category_id as category_id')
-                )
-                ->where('status', 'active')
-                ->orderBy('name')
-                ->get();
-        }
-
         if (Schema::hasTable('provider_branches')) {
             $branches = ProviderBranch::where('provider_id', $this->providerId())
                 ->with('staffs')
-                ->latest()
-                ->get();
+                ->latest();
+            ProviderAccountScope::applyBranchModelScope($branches, $this->branchId());
+
+            $branches = $branches->get();
         }
 
-        return compact('categories', 'subCategories', 'branches');
+        return compact('categories', 'branches');
+    }
+
+    private function authorizeService(Service $service): void
+    {
+        abort_if((int) $service->provider_id !== $this->providerId(), 403);
+        abort_unless(ProviderAccountScope::serviceBelongsToBranch($service, $this->branchId()), 403);
     }
 
     private function uniqueSlug(string $title, ?int $ignoreId = null): string

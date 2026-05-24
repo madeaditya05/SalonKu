@@ -24,6 +24,9 @@
         }
     }
 
+    $chatUnreadCount = $authUser ? \App\Support\ChatUnreadCounter::forUser($authUser) : 0;
+    $chatUnreadLabel = $chatUnreadCount > 99 ? '99+' : (string) $chatUnreadCount;
+
     $menuSections = [
         [
             'title' => 'Main Menu',
@@ -58,9 +61,10 @@
                 ],
                 [
                     'label' => 'Chat',
-                    'url' => '#',
-                    'active' => false,
+                    'url' => \Illuminate\Support\Facades\Route::has('admin.chat.index') ? route('admin.chat.index') : '#',
+                    'active' => request()->routeIs('admin.chat.*'),
                     'keywords' => 'chat message',
+                    'badge' => $chatUnreadCount,
                     'icon' => '<svg viewBox="0 0 24 24"><path d="M21 15a4 4 0 0 1-4 4H7l-4 4V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"></path></svg>',
                 ],
                 [
@@ -92,8 +96,8 @@
                 [
                     'label' => 'Services',
                     'url' => \Illuminate\Support\Facades\Route::has('admin.services.index') ? route('admin.services.index') : '#',
-                    'active' => request()->routeIs('admin.services.*') || request()->routeIs('admin.service-categories.*') || request()->routeIs('admin.service-subcategories.*'),
-                    'keywords' => 'services service categories subcategories',
+                    'active' => request()->routeIs('admin.services.*') || request()->routeIs('admin.service-categories.*'),
+                    'keywords' => 'services service categories',
                     'icon' => '<svg viewBox="0 0 24 24"><path d="M4 7h16"></path><path d="M4 12h16"></path><path d="M4 17h16"></path></svg>',
                     'children' => [
                         [
@@ -105,11 +109,6 @@
                             'label' => 'Category',
                             'url' => \Illuminate\Support\Facades\Route::has('admin.service-categories.index') ? route('admin.service-categories.index') : '#',
                             'active' => request()->routeIs('admin.service-categories.*'),
-                        ],
-                        [
-                            'label' => 'Sub Category',
-                            'url' => \Illuminate\Support\Facades\Route::has('admin.service-subcategories.index') ? route('admin.service-subcategories.index') : '#',
-                            'active' => request()->routeIs('admin.service-subcategories.*'),
                         ],
                     ],
                 ],
@@ -245,8 +244,8 @@
             'items' => [
                 [
                     'label' => 'Tickets',
-                    'url' => '#',
-                    'active' => false,
+                    'url' => \Illuminate\Support\Facades\Route::has('admin.tickets.index') ? route('admin.tickets.index') : '#',
+                    'active' => request()->routeIs('admin.tickets.*'),
                     'keywords' => 'tickets support',
                     'icon' => '<svg viewBox="0 0 24 24"><path d="M4 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3a2 2 0 0 0 0 4v3a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-3a2 2 0 0 0 0-4V7z"></path></svg>',
                 ],
@@ -344,10 +343,14 @@
         <a href="{{ $currentItem['url'] ?? '#' }}" class="admin-current-link">
             <span class="admin-menu-icon">{!! $currentItem['icon'] !!}</span>
 
-            <span>
+            <span class="admin-current-text">
                 <strong>{{ $currentItem['label'] }}</strong>
                 <small>{{ $currentItem['subtitle'] ?? 'Overview' }}</small>
             </span>
+
+            @if (array_key_exists('badge', $currentItem))
+                <b class="admin-menu-badge {{ $chatUnreadCount > 0 ? '' : 'is-hidden' }}" data-sidebar-chat-badge>{{ $chatUnreadLabel }}</b>
+            @endif
         </a>
     </div>
 
@@ -367,6 +370,9 @@
                             <button type="button" class="admin-menu-item admin-menu-parent {{ $item['active'] ? 'active' : '' }}" data-submenu-toggle>
                                 <span class="admin-menu-icon">{!! $item['icon'] !!}</span>
                                 <span class="admin-menu-label">{{ $item['label'] }}</span>
+                                @if (array_key_exists('badge', $item))
+                                    <b class="admin-menu-badge {{ $chatUnreadCount > 0 ? '' : 'is-hidden' }}" data-sidebar-chat-badge>{{ $chatUnreadLabel }}</b>
+                                @endif
                                 <span class="admin-menu-arrow">›</span>
                             </button>
 
@@ -384,6 +390,9 @@
                            data-keywords="{{ $item['keywords'] ?? $item['label'] }}">
                             <span class="admin-menu-icon">{!! $item['icon'] !!}</span>
                             <span class="admin-menu-label">{{ $item['label'] }}</span>
+                            @if (array_key_exists('badge', $item))
+                                <b class="admin-menu-badge {{ $chatUnreadCount > 0 ? '' : 'is-hidden' }}" data-sidebar-chat-badge>{{ $chatUnreadLabel }}</b>
+                            @endif
                         </a>
                     @endif
                 @endforeach

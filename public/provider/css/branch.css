@@ -492,6 +492,10 @@
     margin-top: 14px;
 }
 
+.branch-form-grid .branch-form-group.full {
+    grid-column: 1 / -1;
+}
+
 .branch-form-group label {
     margin-bottom: 7px;
     color: #111827;
@@ -525,6 +529,38 @@
     margin-top: 5px;
     color: #dc2626;
     font-size: 12px;
+}
+
+.branch-location-helper {
+    display: grid;
+    gap: 8px;
+    padding: 12px;
+    background: #f8fafc;
+    border: 1px solid #e8e8e4;
+    border-radius: 14px;
+}
+
+.branch-location-helper small {
+    margin: 0;
+    color: #64748b;
+}
+
+.branch-location-btn {
+    width: max-content;
+    min-height: 38px;
+    padding: 0 16px;
+    color: #111827;
+    background: #ffffff;
+    border: 1px solid #d1d5db;
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.branch-location-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.7;
 }
 
 .branch-phone-row {

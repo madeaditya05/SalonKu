@@ -7,11 +7,13 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
+use App\Support\ProviderMenuAccess;
 
 class User extends Authenticatable
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable;
+
+    use HasApiTokens, HasFactory, Notifiable;
 
     protected $fillable = [
         'name',
@@ -19,6 +21,10 @@ class User extends Authenticatable
         'email',
         'password',
         'role',
+        'provider_id',
+        'branch_id',
+        'provider_role_id',
+        'email_verified_at',
     ];
 
     protected $hidden = [
@@ -40,9 +46,24 @@ class User extends Authenticatable
     }
 
     public function providerProfile()
-{
-    return $this->hasOne(\App\Models\ProviderProfile::class, 'user_id');
-}
+    {
+        return $this->hasOne(ProviderProfile::class, 'user_id');
+    }
+
+    public function parentProvider()
+    {
+        return $this->belongsTo(User::class, 'provider_id');
+    }
+
+    public function providerBranch()
+    {
+        return $this->belongsTo(ProviderBranch::class, 'branch_id');
+    }
+
+    public function providerRole()
+    {
+        return $this->belongsTo(ProviderRole::class, 'provider_role_id');
+    }
 
     public function customerProfile()
     {
@@ -57,6 +78,31 @@ class User extends Authenticatable
     public function customerBookings()
     {
         return $this->hasMany(Booking::class, 'customer_id');
+    }
+
+    public function providerBranches()
+    {
+        return $this->hasMany(ProviderBranch::class, 'provider_id');
+    }
+
+    public function branchAccounts()
+    {
+        return $this->hasMany(User::class, 'provider_id')->where('role', 'provider');
+    }
+
+    public function services()
+    {
+        return $this->hasMany(Service::class, 'provider_id');
+    }
+
+    public function providerStaffs()
+    {
+        return $this->hasMany(ProviderStaff::class, 'provider_id');
+    }
+
+    public function appNotifications()
+    {
+        return $this->hasMany(AppNotification::class);
     }
 
     public function isAdmin(): bool
@@ -81,7 +127,7 @@ public function isProviderAccountActive(): bool
         return true;
     }
 
-    return optional($this->providerProfile)->status === 'active';
+    return optional(ProviderProfile::where('user_id', ProviderMenuAccess::providerOwnerId($this))->first())->status === 'active';
 }
 
 public function isProviderDocumentVerified(): bool
@@ -90,6 +136,6 @@ public function isProviderDocumentVerified(): bool
         return true;
     }
 
-    return optional($this->providerProfile)->document_status === 'verified';
+    return optional(ProviderProfile::where('user_id', ProviderMenuAccess::providerOwnerId($this))->first())->document_status === 'verified';
 }
 }

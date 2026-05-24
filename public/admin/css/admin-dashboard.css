@@ -2,6 +2,7 @@
 @import url('./layout.css');
 @import url('./sidebar.css');
 @import url('./topbar.css');
+@import url('../../css/realtime-notifications.css');
 
 @import url('./pages/dashboard.css');
 @import url('./pages/booking.css');
@@ -9,7 +10,6 @@
 @import url('./pages/profile.css');
 @import url('./pages/services.css');
 @import url('./pages/service-categories.css');
-@import url('./pages/service-subcategories.css');
 @import url('./pages/coupons.css');
 @import url('./pages/providers.css');
 @import url('./pages/users.css');

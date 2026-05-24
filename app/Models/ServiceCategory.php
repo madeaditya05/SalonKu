@@ -31,8 +31,8 @@ class ServiceCategory extends Model
         return $this->status === 'active';
     }
 
-    public function subCategories()
-{
-    return $this->hasMany(ServiceSubCategory::class, 'service_category_id');
-}
+    public function services()
+    {
+        return $this->hasMany(Service::class, 'category_id');
+    }
 }

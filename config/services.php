@@ -35,4 +35,15 @@ return [
         ],
     ],
 
+    'frontend' => [
+        'provider_url' => env('PROVIDER_FRONTEND_URL', 'http://127.0.0.1:5173'),
+        'customer_url' => env('CUSTOMER_FRONTEND_URL', 'http://127.0.0.1:5174'),
+    ],
+
+    'midtrans' => [
+        'server_key' => env('MIDTRANS_SERVER_KEY'),
+        'client_key' => env('MIDTRANS_CLIENT_KEY'),
+        'is_production' => env('MIDTRANS_IS_PRODUCTION', false),
+    ],
+
 ];

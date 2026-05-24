@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\ProviderBranch;
 use App\Models\ProviderStaff;
 use App\Models\ServiceCategory;
-use App\Models\ServiceSubCategory;
+use App\Support\ProviderAccountScope;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -16,7 +16,12 @@ class StaffController extends Controller
 {
     private function providerId(): int
     {
-        return (int) (Auth::user()->provider_id ?? Auth::id());
+        return ProviderAccountScope::providerId(Auth::user());
+    }
+
+    private function branchId(): ?int
+    {
+        return ProviderAccountScope::branchId(Auth::user());
     }
 
     public function index(Request $request)
@@ -44,18 +49,6 @@ class StaffController extends Controller
 
         /*
         |--------------------------------------------------------------------------
-        | Ambil Sub Category dari table service_sub_categories
-        |--------------------------------------------------------------------------
-        */
-
-        $subCategories = ServiceSubCategory::query()
-            ->where('status', 'active')
-            ->orderByDesc('is_featured')
-            ->orderBy('name')
-            ->get();
-
-        /*
-        |--------------------------------------------------------------------------
         | Ambil Branch dari table provider_branches berdasarkan provider login
         |--------------------------------------------------------------------------
         */
@@ -63,8 +56,10 @@ class StaffController extends Controller
         $branches = ProviderBranch::query()
             ->where('provider_id', $providerId)
             ->where('status', 'active')
-            ->orderBy('branch_name')
-            ->get();
+            ->orderBy('branch_name');
+        ProviderAccountScope::applyBranchModelScope($branches, $this->branchId());
+
+        $branches = $branches->get();
 
         /*
         |--------------------------------------------------------------------------
@@ -77,7 +72,7 @@ class StaffController extends Controller
             ->with([
                 'branch:id,provider_id,branch_name,status',
                 'category:id,name,status',
-                'subCategory:id,service_category_id,name,status',
+                'providerRole:id,role_name,status',
             ])
             ->when($search, function ($query) use ($search) {
                 $query->where(function ($q) use ($search) {
@@ -91,22 +86,21 @@ class StaffController extends Controller
                         })
                         ->orWhereHas('category', function ($categoryQuery) use ($search) {
                             $categoryQuery->where('name', 'like', '%' . $search . '%');
-                        })
-                        ->orWhereHas('subCategory', function ($subCategoryQuery) use ($search) {
-                            $subCategoryQuery->where('name', 'like', '%' . $search . '%');
                         });
                 });
             })
-            ->latest()
+            ->latest();
+        ProviderAccountScope::applyBranchScope($staffs, $this->branchId());
+
+        $staffs = $staffs
             ->paginate($perPage)
             ->withQueryString();
 
-        return view('provider.page.staffs.index', compact(
+        return view('provider.pages.staff.index', compact(
             'staffs',
             'search',
             'perPage',
             'categories',
-            'subCategories',
             'branches'
         ));
     }
@@ -124,8 +118,7 @@ class StaffController extends Controller
 
         ProviderStaff::create($validated);
 
-        return redirect()
-            ->route('provider.staffs.index')
+        return provider_route_redirect('provider.staffs.index')
             ->with('success', 'Staff berhasil ditambahkan.');
     }
 
@@ -143,12 +136,13 @@ class StaffController extends Controller
             $validated['image'] = $request->file('image')->store('provider/staffs', 'public');
         }
 
-        $validated['role'] = 'staff';
+        if (! $staff->provider_role_id) {
+            $validated['role'] = 'staff';
+        }
 
         $staff->update($validated);
 
-        return redirect()
-            ->route('provider.staffs.index')
+        return provider_route_redirect('provider.staffs.index')
             ->with('success', 'Staff berhasil diperbarui.');
     }
 
@@ -162,8 +156,7 @@ class StaffController extends Controller
 
         $staff->delete();
 
-        return redirect()
-            ->route('provider.staffs.index')
+        return provider_route_redirect('provider.staffs.index')
             ->with('success', 'Staff berhasil dihapus.');
     }
 
@@ -171,7 +164,7 @@ class StaffController extends Controller
     {
         $providerId = $this->providerId();
 
-        return $request->validate([
+        $validated = $request->validate([
             'image' => [
                 'nullable',
                 'image',
@@ -276,25 +269,6 @@ class StaffController extends Controller
 
             /*
             |--------------------------------------------------------------------------
-            | Sub Category dari table service_sub_categories
-            | Harus sesuai dengan category_id yang dipilih
-            |--------------------------------------------------------------------------
-            */
-
-            'sub_category_id' => [
-                'required',
-                Rule::exists('service_sub_categories', 'id')
-                    ->where(function ($query) use ($request) {
-                        $query->where('status', 'active');
-
-                        if ($request->filled('category_id')) {
-                            $query->where('service_category_id', $request->category_id);
-                        }
-                    }),
-            ],
-
-            /*
-            |--------------------------------------------------------------------------
             | Branch dari table provider_branches
             | Hanya branch milik provider yang sedang login
             |--------------------------------------------------------------------------
@@ -306,6 +280,8 @@ class StaffController extends Controller
                     ->where(function ($query) use ($providerId) {
                         $query->where('provider_id', $providerId)
                             ->where('status', 'active');
+
+                        ProviderAccountScope::applyBranchScope($query, $this->branchId(), 'id');
                     }),
             ],
 
@@ -321,16 +297,24 @@ class StaffController extends Controller
             'email.unique' => 'Email staff sudah digunakan.',
             'category_id.required' => 'Category wajib dipilih.',
             'category_id.exists' => 'Category tidak valid.',
-            'sub_category_id.required' => 'Sub category wajib dipilih.',
-            'sub_category_id.exists' => 'Sub category tidak valid atau tidak sesuai dengan category.',
             'branch_id.required' => 'Branch wajib dipilih.',
             'branch_id.exists' => 'Branch tidak valid atau bukan milik provider ini.',
         ]);
+
+        if ($this->branchId() !== null) {
+            $validated['branch_id'] = $this->branchId();
+        }
+
+        return $validated;
     }
 
     private function authorizeProviderStaff(ProviderStaff $staff): void
     {
         if ((int) $staff->provider_id !== $this->providerId()) {
+            abort(403, 'Akses ditolak.');
+        }
+
+        if ($this->branchId() !== null && (int) $staff->branch_id !== $this->branchId()) {
             abort(403, 'Akses ditolak.');
         }
     }

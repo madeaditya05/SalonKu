@@ -29,14 +29,17 @@ class ProviderStaff extends Model
         'postal_code',
         'bio',
         'category_id',
-        'sub_category_id',
         'branch_id',
         'role',
+        'provider_role_id',
+        'rating',
+        'current_status',
         'status',
     ];
 
     protected $casts = [
         'date_of_birth' => 'date',
+        'rating' => 'decimal:2',
     ];
 
     protected $appends = [
@@ -53,6 +56,11 @@ class ProviderStaff extends Model
         return $this->belongsTo(User::class, 'provider_id');
     }
 
+    public function providerRole()
+    {
+        return $this->belongsTo(ProviderRole::class, 'provider_role_id');
+    }
+
     public function branch()
     {
         return $this->belongsTo(ProviderBranch::class, 'branch_id');
@@ -63,8 +71,19 @@ class ProviderStaff extends Model
         return $this->belongsTo(ServiceCategory::class, 'category_id');
     }
 
-    public function subCategory()
+    public function skills()
     {
-        return $this->belongsTo(ServiceSubCategory::class, 'sub_category_id');
+        return $this->belongsToMany(Service::class, 'staff_skills', 'staff_id', 'service_id')
+            ->withTimestamps();
+    }
+
+    public function schedules()
+    {
+        return $this->hasMany(StaffSchedule::class, 'staff_id');
+    }
+
+    public function bookings()
+    {
+        return $this->hasMany(Booking::class, 'staff_id');
     }
 }

@@ -127,10 +127,6 @@
                             <td>
                                 <div class="admin-service-name">
                                     <strong>{{ $service->title ?? '-' }}</strong>
-
-                                    @if (!empty($service->sub_category))
-                                        <small>{{ $service->sub_category }}</small>
-                                    @endif
                                 </div>
                             </td>
 

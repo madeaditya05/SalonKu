@@ -18,21 +18,19 @@
                 'label' => $category->name,
             ];
         })->values(),
-
-        'subcategory' => $subCategories->map(function ($subCategory) {
-            return [
-                'id' => $subCategory->id,
-                'label' => $subCategory->name,
-            ];
-        })->values(),
     ];
 @endphp
 
 <div class="coupon-form-card">
+    <div class="coupon-form-title">
+        <strong>Coupon Detail</strong>
+        <span>Atur kode voucher, nilai diskon, cakupan layanan, dan masa aktif.</span>
+    </div>
+
     <div class="coupon-form-grid">
         <div class="form-group">
-            <label>Code <span>*</span></label>
-            <input type="text" name="code" value="{{ old('code', $coupon->code) }}" placeholder="Enter Code" required>
+            <label>Coupon Code <span>*</span></label>
+            <input type="text" name="code" value="{{ old('code', $coupon->code) }}" placeholder="Contoh: SALONHEMAT" required>
         </div>
 
         <div class="form-group">
@@ -41,15 +39,14 @@
                 <option value="all" {{ $selectedProductType === 'all' ? 'selected' : '' }}>All</option>
                 <option value="service" {{ $selectedProductType === 'service' ? 'selected' : '' }}>Service</option>
                 <option value="category" {{ $selectedProductType === 'category' ? 'selected' : '' }}>Category</option>
-                <option value="subcategory" {{ $selectedProductType === 'subcategory' ? 'selected' : '' }}>Sub Category</option>
             </select>
         </div>
 
         <div class="form-group coupon-product-field"
              id="couponProductField"
-             data-selected='@json(array_map("intval", $selectedProductIds))'>
+            data-selected='@json(array_map("intval", $selectedProductIds))'>
             <label>
-                <span id="couponProductLabel">Sub Category</span>
+                <span id="couponProductLabel">Category</span>
                 <span>*</span>
             </label>
 
@@ -94,9 +91,9 @@
         </div>
 
         <div class="form-group">
-            <label>Quantity <span>*</span></label>
+            <label>Quantity</label>
             <select name="quantity">
-                <option value="">Select Quantity</option>
+                <option value="">Unlimited</option>
                 <option value="10" {{ old('quantity', $coupon->quantity) == 10 ? 'selected' : '' }}>10</option>
                 <option value="25" {{ old('quantity', $coupon->quantity) == 25 ? 'selected' : '' }}>25</option>
                 <option value="50" {{ old('quantity', $coupon->quantity) == 50 ? 'selected' : '' }}>50</option>
@@ -121,7 +118,13 @@
                    required>
         </div>
 
-        <input type="hidden" name="status" value="{{ old('status', $coupon->status ?? 'active') }}">
+        <div class="form-group">
+            <label>Status <span>*</span></label>
+            <select name="status" required>
+                <option value="active" {{ old('status', $coupon->status ?? 'active') === 'active' ? 'selected' : '' }}>Active</option>
+                <option value="inactive" {{ old('status', $coupon->status ?? 'active') === 'inactive' ? 'selected' : '' }}>Inactive</option>
+            </select>
+        </div>
     </div>
 </div>
 

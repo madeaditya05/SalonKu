@@ -3,7 +3,6 @@ document.addEventListener('DOMContentLoaded', function () {
     initStaffModal();
     initStaffDeleteModal();
     initStaffImagePreview();
-    initStaffCategoryFilter();
     initStaffCountryStateCityAndPhoneCode();
 });
 
@@ -270,7 +269,6 @@ function initStaffModal() {
             setInput('status', staff.status || 'active');
             setInput('postal_code', staff.postal_code);
             setInput('category_id', staff.category_id);
-            setInput('sub_category_id', staff.sub_category_id);
             setInput('branch_id', staff.branch_id);
             setInput('address', staff.address);
             setInput('bio', staff.bio);
@@ -285,8 +283,6 @@ function initStaffModal() {
                     phoneCode: staff.country_code || '+62',
                 },
             }));
-
-            filterStaffSubCategories(staff.category_id, staff.sub_category_id);
 
             openModal();
         });
@@ -383,51 +379,6 @@ function initStaffImagePreview() {
 
         reader.readAsDataURL(file);
     });
-}
-
-function initStaffCategoryFilter() {
-    const categorySelect = document.getElementById('staffCategorySelect');
-    const subCategorySelect = document.getElementById('staffSubCategorySelect');
-
-    if (!categorySelect || !subCategorySelect) {
-        return;
-    }
-
-    categorySelect.addEventListener('change', function () {
-        filterStaffSubCategories(categorySelect.value, '');
-    });
-
-    filterStaffSubCategories(categorySelect.value, subCategorySelect.value);
-}
-
-function filterStaffSubCategories(categoryId, selectedSubCategoryId = '') {
-    const subCategorySelect = document.getElementById('staffSubCategorySelect');
-
-    if (!subCategorySelect) {
-        return;
-    }
-
-    Array.from(subCategorySelect.options).forEach(function (option) {
-        if (!option.value) {
-            option.hidden = false;
-            return;
-        }
-
-        const optionCategoryId = option.dataset.categoryId || '';
-
-        option.hidden = categoryId && optionCategoryId && optionCategoryId !== String(categoryId);
-    });
-
-    if (selectedSubCategoryId) {
-        subCategorySelect.value = selectedSubCategoryId;
-        return;
-    }
-
-    const currentOption = subCategorySelect.options[subCategorySelect.selectedIndex];
-
-    if (currentOption && currentOption.hidden) {
-        subCategorySelect.value = '';
-    }
 }
 
 function initStaffCountryStateCityAndPhoneCode() {

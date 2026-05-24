@@ -8,16 +8,17 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 */
 
-use App\Http\Controllers\Admin\Auth\LoginController;
+use App\Http\Controllers\Auth\UnifiedLoginController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\BookingController;
 use App\Http\Controllers\Admin\CalendarController;
 use App\Http\Controllers\Admin\ServiceController;
 use App\Http\Controllers\Admin\ServiceCategoryController;
-use App\Http\Controllers\Admin\ServiceSubCategoryController;
 use App\Http\Controllers\Admin\CouponController;
 use App\Http\Controllers\Admin\ProviderController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\SupportChatController;
 
 /*
 |--------------------------------------------------------------------------
@@ -25,74 +26,26 @@ use App\Http\Controllers\Admin\UserController;
 |--------------------------------------------------------------------------
 */
 
-use App\Http\Controllers\Provider\ProviderLandingController;
 use App\Http\Controllers\Provider\DashboardController as ProviderDashboardController;
 use App\Http\Controllers\Provider\ServiceController as ProviderServiceController;
 use App\Http\Controllers\Provider\StaffController as ProviderStaffController;
 use App\Http\Controllers\Provider\BranchController;
+use App\Http\Controllers\Provider\BookingController as ProviderBookingController;
 use App\Http\Controllers\Provider\ProfileController as ProviderProfileController;
-
-/*
-|--------------------------------------------------------------------------
-| Customer Controllers
-|--------------------------------------------------------------------------
-*/
+use App\Http\Controllers\Provider\RolePermissionController as ProviderRolePermissionController;
 use Illuminate\Support\Facades\Auth;
-use App\Http\Controllers\Customer\LandingPageController as CustomerLandingPageController;
-use App\Http\Controllers\Customer\Auth\LoginController as CustomerLoginController;
-use App\Http\Controllers\Customer\Auth\RegisterController as CustomerRegisterController;
 
 /*
 |--------------------------------------------------------------------------
-| Customer Public Landing Page Routes
+| Frontend Entry
 |--------------------------------------------------------------------------
-| Saat ini customer baru punya landing page.
-| Login, register, logout, dan dashboard customer belum dibuat.
+| Landing page customer/provider akan ditangani React.
+| Laravel tetap memberi respons ringan sampai frontend React dipasang.
 */
 
-Route::get('/', [CustomerLandingPageController::class, 'index'])
-    ->name('home');
-
-Route::get('/customer', [CustomerLandingPageController::class, 'index'])
-    ->name('customer.landing');
-
-Route::get('/customer/landing', [CustomerLandingPageController::class, 'index'])
-    ->name('customer.landing.page');
-
-/*
-|--------------------------------------------------------------------------
-| Customer Auth Popup Routes
-|--------------------------------------------------------------------------
-*/
-
-Route::middleware('guest')->group(function () {
-    Route::get('/customer/login', function () {
-        return redirect()->route('home')->with('auth_modal', 'signin');
-    })->name('customer.login');
-
-    Route::get('/customer/signup', function () {
-        return redirect()->route('home')->with('auth_modal', 'signup');
-    })->name('customer.register');
-
-    Route::post('/customer/signin', [CustomerLoginController::class, 'signin'])
-        ->name('customer.signin');
-
-    Route::post('/customer/signup', [CustomerRegisterController::class, 'signup'])
-        ->name('customer.signup');
-});
-
-Route::post('/customer/logout', function () {
-    Auth::logout();
-
-    request()->session()->invalidate();
-    request()->session()->regenerateToken();
-
-    return redirect()->route('home');
-})->middleware('auth')->name('customer.logout');
-
-Route::get('/login', function () {
-    return redirect()->route('home')->with('auth_modal', 'signin');
-})->name('login');
+Route::get('/', function () {
+    return redirect()->route('admin.login');
+})->name('home');
 /*
 |--------------------------------------------------------------------------
 | Default Login Redirect
@@ -105,27 +58,94 @@ Route::get('/login', function () {
     return redirect()->route('admin.login');
 })->name('login');
 
+Route::middleware('auth')->group(function () {
+    Route::get('/notifications', [NotificationController::class, 'index'])
+        ->name('notifications.index');
+
+    Route::post('/notifications/read', [NotificationController::class, 'markAllRead'])
+        ->name('notifications.read-all');
+
+    Route::post('/notifications/{notification}/read', [NotificationController::class, 'markRead'])
+        ->name('notifications.read');
+});
+
 /*
 |--------------------------------------------------------------------------
-| Provider Public Routes
+| Customer Landing
 |--------------------------------------------------------------------------
-| /providers = halaman publik provider
-| /provider  = alias halaman publik provider
+| Landing page customer ditangani React dan bisa di-host terpisah.
 */
+$customerLanding = fn () => redirect()->away(config('services.frontend.customer_url'));
 
-Route::get('/providers', [ProviderLandingController::class, 'index'])
+Route::get('/customer', $customerLanding)
+    ->name('customer.landing');
+Route::get('/customers', $customerLanding)
+    ->name('customer.landing.alias');
+Route::get('/customer/landing', $customerLanding)
+    ->name('customer.landing.page');
+
+/*
+|--------------------------------------------------------------------------
+| Provider Session Auth
+|--------------------------------------------------------------------------
+| Landing page provider akan ditangani React.
+| Route ini tetap dipakai untuk membuat session Laravel sebelum masuk
+| ke dashboard Blade provider.
+*/
+$providerFrontendUrl = function (array $query = []) {
+    $url = rtrim((string) config('services.frontend.provider_url'), '/');
+
+    if ($query !== []) {
+        $url .= (str_contains($url, '?') ? '&' : '?') . http_build_query($query);
+    }
+
+    return $url;
+};
+
+$providerLanding = function () use ($providerFrontendUrl) {
+    if (Auth::guard('provider')->check() && Auth::guard('provider')->user()?->role === 'provider') {
+        return redirect()->to(route('provider.dashboard', [], false));
+    }
+
+    if (Auth::guard('provider_branch')->check() && Auth::guard('provider_branch')->user()?->role === 'provider') {
+        return redirect()->to(route('provider-branch.dashboard', [], false));
+    }
+
+    return redirect()->away($providerFrontendUrl());
+};
+
+Route::get('/provider', $providerLanding)
     ->name('provider.landing');
-
-Route::get('/provider', [ProviderLandingController::class, 'index'])
+Route::get('/providers', $providerLanding)
     ->name('provider.landing.alias');
+Route::get('/provider/landing', $providerLanding)
+    ->name('provider.landing.page');
 
-Route::get('/provider/landing', [ProviderLandingController::class, 'index'])
-    ->name('provider.landing.provider');
+Route::get('/provider/login', function () use ($providerFrontendUrl) {
+    if (Auth::guard('provider')->check() && Auth::guard('provider')->user()?->role === 'provider') {
+        return redirect()->to(route('provider.dashboard', [], false));
+    }
 
-Route::post('/provider/register', [ProviderLandingController::class, 'register'])
-    ->name('provider.register');
+    if (Auth::guard('provider_branch')->check() && Auth::guard('provider_branch')->user()?->role === 'provider') {
+        return redirect()->to(route('provider-branch.dashboard', [], false));
+    }
 
-Route::post('/provider/signin', [ProviderLandingController::class, 'signin'])
+    return redirect()->away($providerFrontendUrl(['login' => 'open']));
+})->name('provider.login');
+
+Route::get('/provider/register', function () use ($providerFrontendUrl) {
+    if (Auth::guard('provider')->check() && Auth::guard('provider')->user()?->role === 'provider') {
+        return redirect()->to(route('provider.dashboard', [], false));
+    }
+
+    if (Auth::guard('provider_branch')->check() && Auth::guard('provider_branch')->user()?->role === 'provider') {
+        return redirect()->to(route('provider-branch.dashboard', [], false));
+    }
+
+    return redirect()->away($providerFrontendUrl(['register' => 'open']));
+})->name('provider.register');
+
+Route::post('/provider/signin', [UnifiedLoginController::class, 'providerSignin'])
     ->name('provider.signin');
 
 /*
@@ -134,10 +154,16 @@ Route::post('/provider/signin', [ProviderLandingController::class, 'signin'])
 |--------------------------------------------------------------------------
 */
 
-Route::prefix('provider')
-    ->name('provider.')
-    ->middleware(['auth', 'prevent-back-history', 'provider.account.active'])
-    ->group(function () {
+$registerProviderDashboardRoutes = function () {
+        Route::get('/notifications', [NotificationController::class, 'index'])
+            ->name('notifications.index');
+
+        Route::post('/notifications/read', [NotificationController::class, 'markAllRead'])
+            ->name('notifications.read-all');
+
+        Route::post('/notifications/{notification}/read', [NotificationController::class, 'markRead'])
+            ->name('notifications.read');
+
         /*
         |--------------------------------------------------------------------------
         | Provider Dashboard
@@ -154,20 +180,47 @@ Route::prefix('provider')
         | Provider yang belum verified tetap bisa membuka profile.
         */
 
-        Route::get('/profile', [ProviderProfileController::class, 'show'])
-            ->name('profile');
+        Route::middleware(['provider.menu:profile'])->group(function () {
+            Route::get('/profile', [ProviderProfileController::class, 'show'])
+                ->name('profile');
 
-        Route::get('/profile/edit', [ProviderProfileController::class, 'edit'])
-            ->name('profile.edit');
+            Route::get('/profile/edit', [ProviderProfileController::class, 'edit'])
+                ->name('profile.edit');
 
-        Route::put('/profile', [ProviderProfileController::class, 'update'])
-            ->name('profile.update');
+            Route::put('/profile', [ProviderProfileController::class, 'update'])
+                ->name('profile.update');
 
-        Route::post('/profile/documents', [ProviderProfileController::class, 'updateDocuments'])
-            ->name('profile.documents.update');
+            Route::post('/profile/documents', [ProviderProfileController::class, 'updateDocuments'])
+                ->name('profile.documents.update');
 
-        Route::put('/profile/password', [ProviderProfileController::class, 'updatePassword'])
-            ->name('profile.password.update');
+            Route::put('/profile/password', [ProviderProfileController::class, 'updatePassword'])
+                ->name('profile.password.update');
+        });
+
+        Route::middleware(['provider.menu:chat'])->group(function () {
+            Route::get('/chat', [SupportChatController::class, 'providerIndex'])
+                ->name('chat.index');
+
+            Route::get('/chat/{thread}/messages', [SupportChatController::class, 'providerMessages'])
+                ->name('chat.messages.index');
+
+            Route::post('/chat/{thread}/messages', [SupportChatController::class, 'providerStore'])
+                ->name('chat.messages.store');
+
+            Route::post('/chat/{thread}/read', [SupportChatController::class, 'providerRead'])
+                ->name('chat.read');
+
+            Route::post('/chat/internal', [SupportChatController::class, 'providerInternalStart'])
+                ->name('chat.internal.start');
+        });
+
+        Route::middleware(['provider.menu:tickets'])->group(function () {
+            Route::get('/tickets', [SupportChatController::class, 'providerTicketsIndex'])
+                ->name('tickets.index');
+
+            Route::post('/tickets', [SupportChatController::class, 'providerTicketStore'])
+                ->name('tickets.store');
+        });
 
         /*
         |--------------------------------------------------------------------------
@@ -182,38 +235,40 @@ Route::prefix('provider')
             |--------------------------------------------------------------------------
             */
 
-            Route::get('/service', [ProviderServiceController::class, 'index'])
-                ->name('services.index');
+            Route::middleware(['provider.menu:services'])->group(function () {
+                Route::get('/service', [ProviderServiceController::class, 'index'])
+                    ->name('services.index');
 
-            Route::get('/service/create', [ProviderServiceController::class, 'create'])
-                ->name('services.create');
+                Route::get('/service/create', [ProviderServiceController::class, 'create'])
+                    ->name('services.create');
 
-            Route::post('/service/continue-information', [ProviderServiceController::class, 'continueInformation'])
-                ->name('services.continue.information');
+                Route::post('/service/continue-information', [ProviderServiceController::class, 'continueInformation'])
+                    ->name('services.continue.information');
 
-            Route::post('/service/continue-branch', [ProviderServiceController::class, 'continueBranch'])
-                ->name('services.continue.branch');
+                Route::post('/service/continue-branch', [ProviderServiceController::class, 'continueBranch'])
+                    ->name('services.continue.branch');
 
-            Route::post('/service/store', [ProviderServiceController::class, 'store'])
-                ->name('services.store');
+                Route::post('/service/store', [ProviderServiceController::class, 'store'])
+                    ->name('services.store');
 
-            Route::get('/service/{service}/edit', [ProviderServiceController::class, 'edit'])
-                ->name('services.edit');
+                Route::get('/service/{service}/edit', [ProviderServiceController::class, 'edit'])
+                    ->name('services.edit');
 
-            Route::put('/service/{service}', [ProviderServiceController::class, 'update'])
-                ->name('services.update');
+                Route::put('/service/{service}', [ProviderServiceController::class, 'update'])
+                    ->name('services.update');
 
-            Route::put('/service/{service}/branch', [ProviderServiceController::class, 'updateBranch'])
-                ->name('services.update.branch');
+                Route::put('/service/{service}/branch', [ProviderServiceController::class, 'updateBranch'])
+                    ->name('services.update.branch');
 
-            Route::put('/service/{service}/gallery', [ProviderServiceController::class, 'updateGallery'])
-                ->name('services.update.gallery');
+                Route::put('/service/{service}/gallery', [ProviderServiceController::class, 'updateGallery'])
+                    ->name('services.update.gallery');
 
-            Route::patch('/service/{service}/toggle-status', [ProviderServiceController::class, 'toggleStatus'])
-                ->name('services.toggle-status');
+                Route::patch('/service/{service}/toggle-status', [ProviderServiceController::class, 'toggleStatus'])
+                    ->name('services.toggle-status');
 
-            Route::delete('/service/{service}', [ProviderServiceController::class, 'destroy'])
-                ->name('services.destroy');
+                Route::delete('/service/{service}', [ProviderServiceController::class, 'destroy'])
+                    ->name('services.destroy');
+            });
 
             /*
             |--------------------------------------------------------------------------
@@ -221,17 +276,39 @@ Route::prefix('provider')
             |--------------------------------------------------------------------------
             */
 
-            Route::get('/staff-list', [ProviderStaffController::class, 'index'])
-                ->name('staffs.index');
+            Route::middleware(['provider.menu:staffs'])->group(function () {
+                Route::get('/staff-list', [ProviderStaffController::class, 'index'])
+                    ->name('staffs.index');
 
-            Route::post('/staff-list', [ProviderStaffController::class, 'store'])
-                ->name('staffs.store');
+                Route::post('/staff-list', [ProviderStaffController::class, 'store'])
+                    ->name('staffs.store');
 
-            Route::put('/staff-list/{staff}', [ProviderStaffController::class, 'update'])
-                ->name('staffs.update');
+                Route::put('/staff-list/{staff}', [ProviderStaffController::class, 'update'])
+                    ->name('staffs.update');
 
-            Route::delete('/staff-list/{staff}', [ProviderStaffController::class, 'destroy'])
-                ->name('staffs.destroy');
+                Route::delete('/staff-list/{staff}', [ProviderStaffController::class, 'destroy'])
+                    ->name('staffs.destroy');
+            });
+
+            /*
+            |--------------------------------------------------------------------------
+            | Provider Roles & Permissions
+            |--------------------------------------------------------------------------
+            */
+
+            Route::middleware(['provider.menu:roles_permissions'])->group(function () {
+                Route::get('/roles-permissions', [ProviderRolePermissionController::class, 'index'])
+                    ->name('roles-permissions.index');
+
+                Route::post('/roles-permissions', [ProviderRolePermissionController::class, 'store'])
+                    ->name('roles-permissions.store');
+
+                Route::put('/roles-permissions/{role}', [ProviderRolePermissionController::class, 'update'])
+                    ->name('roles-permissions.update');
+
+                Route::delete('/roles-permissions/{role}', [ProviderRolePermissionController::class, 'destroy'])
+                    ->name('roles-permissions.destroy');
+            });
 
             /*
             |--------------------------------------------------------------------------
@@ -239,29 +316,90 @@ Route::prefix('provider')
             |--------------------------------------------------------------------------
             */
 
-            Route::get('/branch', [BranchController::class, 'index'])
-                ->name('branch.index');
+            Route::middleware(['provider.menu:branch'])->group(function () {
+                Route::get('/branch', [BranchController::class, 'index'])
+                    ->name('branch.index');
 
-            Route::get('/add-branch', [BranchController::class, 'create'])
-                ->name('branch.create');
+                Route::get('/add-branch', [BranchController::class, 'create'])
+                    ->name('branch.create');
 
-            Route::post('/branch/continue', [BranchController::class, 'continue'])
-                ->name('branch.continue');
+                Route::post('/branch/continue', [BranchController::class, 'continue'])
+                    ->name('branch.continue');
 
-            Route::post('/branch', [BranchController::class, 'store'])
-                ->name('branch.store');
+                Route::post('/branch', [BranchController::class, 'store'])
+                    ->name('branch.store');
 
-            Route::get('/branch/{branch}/edit', [BranchController::class, 'edit'])
-                ->name('branch.edit');
+                Route::get('/branch/{branch}/edit', [BranchController::class, 'edit'])
+                    ->name('branch.edit');
 
-            Route::put('/branch/{branch}', [BranchController::class, 'update'])
-                ->name('branch.update');
+                Route::put('/branch/{branch}', [BranchController::class, 'update'])
+                    ->name('branch.update');
 
-            Route::put('/branch/{branch}/staff', [BranchController::class, 'updateStaff'])
-                ->name('branch.staff.update');
+                Route::put('/branch/{branch}/staff', [BranchController::class, 'updateStaff'])
+                    ->name('branch.staff.update');
 
-            Route::delete('/branch/{branch}', [BranchController::class, 'destroy'])
-                ->name('branch.destroy');
+                Route::delete('/branch/{branch}', [BranchController::class, 'destroy'])
+                    ->name('branch.destroy');
+            });
+
+            /*
+            |--------------------------------------------------------------------------
+            | Provider Booking Flow
+            |--------------------------------------------------------------------------
+            */
+
+            Route::middleware(['provider.menu:bookings'])->group(function () {
+                Route::get('/bookings', [ProviderBookingController::class, 'index'])
+                    ->name('bookings.index');
+
+                Route::post('/bookings/{booking}/check-in', [ProviderBookingController::class, 'checkIn'])
+                    ->name('bookings.check-in');
+                Route::post('/bookings/{booking}/start', [ProviderBookingController::class, 'start'])
+                    ->name('bookings.start');
+                Route::post('/bookings/{booking}/complete', [ProviderBookingController::class, 'complete'])
+                    ->name('bookings.complete');
+                Route::post('/bookings/{booking}/cancel', [ProviderBookingController::class, 'cancel'])
+                    ->name('bookings.cancel');
+                Route::post('/bookings/{booking}/no-show', [ProviderBookingController::class, 'noShow'])
+                    ->name('bookings.no-show');
+            });
+
+            Route::get('/calendar', [ProviderBookingController::class, 'calendar'])
+                ->middleware(['provider.menu:calendar'])
+                ->name('calendar.index');
+
+            Route::middleware(['provider.menu:queue'])->group(function () {
+                Route::get('/queue', [ProviderBookingController::class, 'queue'])
+                    ->name('queue.index');
+                Route::post('/queue/{booking}/call', [ProviderBookingController::class, 'call'])
+                    ->name('queue.call');
+            });
+
+            Route::middleware(['provider.menu:walk_in'])->group(function () {
+                Route::get('/walk-in', [ProviderBookingController::class, 'walkIn'])
+                    ->name('walk-in.index');
+                Route::post('/walk-in', [ProviderBookingController::class, 'storeWalkIn'])
+                    ->name('walk-in.store');
+            });
+
+            Route::middleware(['provider.menu:staff_skills'])->group(function () {
+                Route::get('/staff/skills', [ProviderBookingController::class, 'skills'])
+                    ->name('staff.skills');
+                Route::post('/staff/skills', [ProviderBookingController::class, 'updateSkills'])
+                    ->name('staff.skills.update');
+            });
+
+            Route::middleware(['provider.menu:staff_schedules'])->group(function () {
+                Route::get('/staff/schedules', [ProviderBookingController::class, 'schedules'])
+                    ->name('staff.schedules');
+                Route::post('/staff/schedules', [ProviderBookingController::class, 'updateSchedules'])
+                    ->name('staff.schedules.update');
+            });
+
+            Route::get('/payments', [ProviderBookingController::class, 'payments'])
+                ->middleware(['provider.menu:payments'])
+                ->name('payments.index');
+
         });
 
         /*
@@ -270,9 +408,19 @@ Route::prefix('provider')
         |--------------------------------------------------------------------------
         */
 
-        Route::post('/logout', [ProviderLandingController::class, 'logout'])
+        Route::post('/logout', [UnifiedLoginController::class, 'providerLogout'])
             ->name('logout');
-    });
+};
+
+Route::prefix('provider')
+    ->name('provider.')
+    ->middleware(['auth:provider', 'prevent-back-history', 'provider.account.active'])
+    ->group($registerProviderDashboardRoutes);
+
+Route::prefix('provider-branch')
+    ->name('provider-branch.')
+    ->middleware(['auth:provider_branch', 'prevent-back-history', 'provider.account.active'])
+    ->group($registerProviderDashboardRoutes);
 
 /*
 |--------------------------------------------------------------------------
@@ -289,11 +437,11 @@ Route::prefix('admin')
         |--------------------------------------------------------------------------
         */
 
-        Route::middleware('guest')->group(function () {
-            Route::get('/login', [LoginController::class, 'showLoginForm'])
+        Route::middleware('guest:admin')->group(function () {
+            Route::get('/login', [UnifiedLoginController::class, 'showLoginForm'])
                 ->name('login');
 
-            Route::post('/login', [LoginController::class, 'login'])
+            Route::post('/login', [UnifiedLoginController::class, 'login'])
                 ->name('login.post');
         });
 
@@ -303,8 +451,17 @@ Route::prefix('admin')
         |--------------------------------------------------------------------------
         */
 
-        Route::middleware(['auth', 'prevent-back-history'])->group(function () {
-            Route::post('/logout', [LoginController::class, 'logout'])
+        Route::middleware(['auth:admin', 'prevent-back-history'])->group(function () {
+            Route::get('/notifications', [NotificationController::class, 'index'])
+                ->name('notifications.index');
+
+            Route::post('/notifications/read', [NotificationController::class, 'markAllRead'])
+                ->name('notifications.read-all');
+
+            Route::post('/notifications/{notification}/read', [NotificationController::class, 'markRead'])
+                ->name('notifications.read');
+
+            Route::post('/logout', [UnifiedLoginController::class, 'logout'])
                 ->name('logout');
 
             Route::get('/dashboard', [DashboardController::class, 'index'])
@@ -321,6 +478,30 @@ Route::prefix('admin')
 
             Route::get('/calendar', [CalendarController::class, 'index'])
                 ->name('calendar.index');
+
+            Route::get('/chat', [SupportChatController::class, 'adminIndex'])
+                ->name('chat.index');
+
+            Route::get('/chat/{thread}/messages', [SupportChatController::class, 'adminMessages'])
+                ->name('chat.messages.index');
+
+            Route::post('/chat/{thread}/messages', [SupportChatController::class, 'adminStore'])
+                ->name('chat.messages.store');
+
+            Route::post('/chat/{thread}/read', [SupportChatController::class, 'adminRead'])
+                ->name('chat.read');
+
+            Route::post('/chat/{thread}/ticket/end', [SupportChatController::class, 'adminTicketEnd'])
+                ->name('chat.ticket.end');
+
+            Route::get('/tickets', [SupportChatController::class, 'adminTicketsIndex'])
+                ->name('tickets.index');
+
+            Route::post('/tickets/{thread}/approve', [SupportChatController::class, 'adminTicketApprove'])
+                ->name('tickets.approve');
+
+            Route::post('/tickets/{thread}/reject', [SupportChatController::class, 'adminTicketReject'])
+                ->name('tickets.reject');
 
             /*
             |--------------------------------------------------------------------------
@@ -357,30 +538,6 @@ Route::prefix('admin')
 
             Route::delete('/service/categories/{category}', [ServiceCategoryController::class, 'destroy'])
                 ->name('service-categories.destroy');
-
-            /*
-            |--------------------------------------------------------------------------
-            | Admin Service Sub Categories
-            |--------------------------------------------------------------------------
-            */
-
-            Route::get('/service/subcategories', [ServiceSubCategoryController::class, 'index'])
-                ->name('service-subcategories.index');
-
-            Route::post('/service/subcategories', [ServiceSubCategoryController::class, 'store'])
-                ->name('service-subcategories.store');
-
-            Route::put('/service/subcategories/{subCategory}', [ServiceSubCategoryController::class, 'update'])
-                ->name('service-subcategories.update');
-
-            Route::patch('/service/subcategories/{subCategory}/toggle-featured', [ServiceSubCategoryController::class, 'toggleFeatured'])
-                ->name('service-subcategories.toggle-featured');
-
-            Route::patch('/service/subcategories/{subCategory}/toggle-status', [ServiceSubCategoryController::class, 'toggleStatus'])
-                ->name('service-subcategories.toggle-status');
-
-            Route::delete('/service/subcategories/{subCategory}', [ServiceSubCategoryController::class, 'destroy'])
-                ->name('service-subcategories.destroy');
 
             /*
             |--------------------------------------------------------------------------

@@ -2,7 +2,9 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\ProviderProfile;
 use App\Models\User;
+use App\Support\ProviderMenuAccess;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -13,17 +15,17 @@ class EnsureProviderDocumentVerified
     public function handle(Request $request, Closure $next): Response
     {
         /** @var User|null $user */
-        $user = Auth::user();
+        $user = Auth::guard($request->routeIs('provider-branch.*') ? 'provider_branch' : 'provider')->user() ?: Auth::user();
 
         if (!$user) {
-            return redirect()->route('login');
+            return redirect()->route('provider.login');
         }
 
         if ($user->role !== 'provider') {
             return $next($request);
         }
 
-        $profile = $user->providerProfile()->first();
+        $profile = ProviderProfile::where('user_id', ProviderMenuAccess::providerOwnerId($user))->first();
 
         if (!$profile || $profile->document_status !== 'verified') {
             return redirect()

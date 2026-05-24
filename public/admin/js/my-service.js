@@ -2,9 +2,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const tabs = document.querySelectorAll('.service-tab');
     const contents = document.querySelectorAll('.service-tab-content');
 
-    const categorySelect = document.getElementById('categorySelect');
-    const subCategorySelect = document.getElementById('subCategorySelect');
-
     const addAdditionalBtn = document.getElementById('addAdditionalService');
     const additionalServicesBody = document.getElementById('additionalServicesBody');
 
@@ -76,30 +73,6 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
     });
-
-    if (categorySelect && subCategorySelect) {
-        categorySelect.addEventListener('change', function () {
-            const categoryId = categorySelect.value;
-            const options = subCategorySelect.querySelectorAll('option');
-
-            subCategorySelect.value = '';
-
-            options.forEach(function (option) {
-                if (!option.value) {
-                    option.hidden = false;
-                    return;
-                }
-
-                const optionCategoryId = option.getAttribute('data-category-id');
-
-                if (!categoryId || !optionCategoryId || optionCategoryId === categoryId) {
-                    option.hidden = false;
-                } else {
-                    option.hidden = true;
-                }
-            });
-        });
-    }
 
     document.querySelectorAll('[data-add-time]').forEach(function (button) {
         button.addEventListener('click', function () {

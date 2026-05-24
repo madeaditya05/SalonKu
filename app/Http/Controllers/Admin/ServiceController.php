@@ -39,7 +39,6 @@ class ServiceController extends Controller
                 $q->where('services.title', 'like', '%' . $search . '%')
                     ->orWhere('services.slug', 'like', '%' . $search . '%')
                     ->orWhere('services.category', 'like', '%' . $search . '%')
-                    ->orWhere('services.sub_category', 'like', '%' . $search . '%')
                     ->orWhere('services.code', 'like', '%' . $search . '%')
                     ->orWhere('services.status', 'like', '%' . $search . '%')
                     ->orWhere('providers.name', 'like', '%' . $search . '%')

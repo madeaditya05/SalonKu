@@ -1,5 +1,6 @@
 document.addEventListener('DOMContentLoaded', function () {
     initCountryStateCityAndPhoneCode();
+    initBranchCoordinates();
     initBranchImagePreview();
     initBranchHoliday();
     initBranchStaffMultiselect();
@@ -284,6 +285,55 @@ function initCountryStateCityAndPhoneCode() {
     loadCountries();
 }
 
+function initBranchCoordinates() {
+    const latitudeInput = document.getElementById('branchLatitudeInput');
+    const longitudeInput = document.getElementById('branchLongitudeInput');
+    const useCurrentLocationButton = document.getElementById('branchUseCurrentLocation');
+
+    if (!latitudeInput || !longitudeInput || !useCurrentLocationButton) {
+        return;
+    }
+
+    if (!navigator.geolocation) {
+        useCurrentLocationButton.disabled = true;
+        useCurrentLocationButton.textContent = 'Location Not Available';
+        return;
+    }
+
+    useCurrentLocationButton.addEventListener('click', function () {
+        const originalText = useCurrentLocationButton.textContent;
+
+        useCurrentLocationButton.disabled = true;
+        useCurrentLocationButton.textContent = 'Locating...';
+
+        navigator.geolocation.getCurrentPosition(
+            function (position) {
+                latitudeInput.value = position.coords.latitude.toFixed(7);
+                longitudeInput.value = position.coords.longitude.toFixed(7);
+                useCurrentLocationButton.textContent = 'Position Added';
+
+                setTimeout(function () {
+                    useCurrentLocationButton.disabled = false;
+                    useCurrentLocationButton.textContent = originalText;
+                }, 1600);
+            },
+            function () {
+                useCurrentLocationButton.disabled = false;
+                useCurrentLocationButton.textContent = 'Location Failed';
+
+                setTimeout(function () {
+                    useCurrentLocationButton.textContent = originalText;
+                }, 1600);
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 60000,
+            }
+        );
+    });
+}
+
 function initBranchImagePreview() {
     const branchImageInput = document.getElementById('branchImageInput');
     const branchImagePreview = document.getElementById('branchImagePreview');
@@ -341,7 +391,7 @@ function initBranchHoliday() {
 
             row.innerHTML = `
                 <input type="date" name="holidays[]">
-                <button type="button" class="remove-holiday-btn">×</button>
+                <button type="button" class="remove-holiday-btn">x</button>
             `;
 
             holidayWrapper.appendChild(row);
@@ -386,7 +436,7 @@ function initBranchStaffMultiselect() {
 
             const removeBtn = document.createElement('button');
             removeBtn.type = 'button';
-            removeBtn.textContent = '×';
+            removeBtn.textContent = 'x';
             removeBtn.dataset.removeStaffId = staffId;
 
             tag.appendChild(text);

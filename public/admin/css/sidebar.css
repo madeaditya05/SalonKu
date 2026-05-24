@@ -161,6 +161,11 @@
     display: block;
 }
 
+.admin-current-text {
+    min-width: 0;
+    flex: 1;
+}
+
 .admin-current-link strong {
     font-size: 13px;
     font-weight: 900;
@@ -227,6 +232,32 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+.admin-menu-badge {
+    min-width: 22px;
+    height: 22px;
+    border-radius: 999px;
+    background: #2563eb;
+    color: #ffffff;
+    padding: 0 7px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    font-size: 11px;
+    font-weight: 900;
+    line-height: 1;
+}
+
+.admin-menu-badge.is-hidden {
+    display: none;
+}
+
+.admin-current-link .admin-menu-badge {
+    margin-left: auto;
+    background: #ffffff;
+    color: #111827;
 }
 
 .admin-menu-arrow {
@@ -415,7 +446,7 @@ body.admin-sidebar-collapsed .admin-sidebar:not(.hover-expanded) .admin-submenu,
 body.admin-sidebar-collapsed .admin-sidebar:not(.hover-expanded) .admin-sidebar-search input,
 body.admin-sidebar-collapsed .admin-sidebar:not(.hover-expanded) #sidebarSearchClear,
 body.admin-sidebar-collapsed .admin-sidebar:not(.hover-expanded) .admin-current-open p,
-body.admin-sidebar-collapsed .admin-sidebar:not(.hover-expanded) .admin-current-link span:last-child,
+body.admin-sidebar-collapsed .admin-sidebar:not(.hover-expanded) .admin-current-text,
 body.admin-sidebar-collapsed .admin-sidebar:not(.hover-expanded) .admin-sidebar-avatar,
 body.admin-sidebar-collapsed .admin-sidebar:not(.hover-expanded) .admin-sidebar-user-info {
     opacity: 0;
@@ -577,7 +608,7 @@ body.admin-sidebar-collapsed .admin-sidebar:not(.hover-expanded) .admin-submenu,
 body.admin-sidebar-collapsed .admin-sidebar:not(.hover-expanded) .admin-sidebar-search input,
 body.admin-sidebar-collapsed .admin-sidebar:not(.hover-expanded) #sidebarSearchClear,
 body.admin-sidebar-collapsed .admin-sidebar:not(.hover-expanded) .admin-current-open p,
-body.admin-sidebar-collapsed .admin-sidebar:not(.hover-expanded) .admin-current-link span:last-child,
+body.admin-sidebar-collapsed .admin-sidebar:not(.hover-expanded) .admin-current-text,
 body.admin-sidebar-collapsed .admin-sidebar:not(.hover-expanded) .admin-sidebar-avatar,
 body.admin-sidebar-collapsed .admin-sidebar:not(.hover-expanded) .admin-sidebar-user-info {
     opacity: 0;
