@@ -3,10 +3,6 @@
 @section('title', 'Users - JasaKu')
 @section('page_title', 'Users')
 
-@push('styles')
-    <link rel="stylesheet" href="{{ asset('admin/css/users.css') }}">
-@endpush
-
 @section('content')
 @php
     $perPage = request('per_page', $perPage ?? 10);

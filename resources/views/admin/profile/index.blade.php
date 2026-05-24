@@ -1,5 +1,8 @@
 @extends('admin.layouts.app')
 
+@section('title', 'My Profile - JasaKu')
+@section('page_title', 'My Profile')
+
 @section('content')
 <section class="profile-page">
     <div class="page-header">

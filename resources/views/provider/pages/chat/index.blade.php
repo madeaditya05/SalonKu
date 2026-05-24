@@ -206,10 +206,12 @@
                     </a>
 
                     <div class="support-chat-person">
-                        <span class="support-avatar large">{{ $threadInitial($activeThread) }}</span>
+                        <span class="support-avatar large support-room-avatar is-active">
+                            <span>{{ $threadInitial($activeThread) }}</span>
+                        </span>
 
                         <div>
-                            <span class="support-identity-line">
+                            <span class="support-identity-line support-room-title-row">
                                 <strong>{{ $threadTitle($activeThread) }}</strong>
                                 @if ($activeIsAdmin)
                                     <span class="support-admin-chip">Admin</span>
@@ -220,14 +222,21 @@
                                         </svg>
                                     </span>
                                 @endif
+                                <span class="support-room-status is-active" role="img" title="Aktif" aria-label="Aktif"></span>
                             </span>
-                            <span>{{ $threadSubtitle($activeThread) }}</span>
+                            <span class="support-room-subtitle">
+                                <svg viewBox="0 0 24 24" fill="none">
+                                    <path d="M21 15a4 4 0 0 1-4 4H8l-5 4V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4v8Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                                    <path d="M8 9h8M8 13h5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                </svg>
+                                {{ $threadSubtitle($activeThread) }}
+                            </span>
                         </div>
                     </div>
 
                     <div class="support-chat-actions">
                         @if ($activeIsAdmin)
-                            <a href="{{ provider_route('provider.tickets.index') }}" title="Support Help">
+                            <a href="{{ provider_route('provider.tickets.index') }}" title="Support Help" aria-label="Buka support help">
                                 <svg viewBox="0 0 24 24" fill="none">
                                     <path d="M4 5h16v14H4z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
                                     <path d="M8 9h8M8 13h5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -288,6 +297,12 @@
                         </div>
                     @empty
                         <div class="support-chat-empty" data-chat-empty>
+                            <span class="support-empty-icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" fill="none">
+                                    <path d="M21 15a4 4 0 0 1-4 4H8l-5 4V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4v8Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                                    <path d="M8 9h8M8 13h5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                </svg>
+                            </span>
                             <strong>Belum ada pesan</strong>
                             <span>Tulis pesan pertama untuk memulai percakapan.</span>
                         </div>
@@ -321,24 +336,34 @@
                     </div>
 
                     <div class="support-compose-field">
-                        <textarea name="body" rows="1" placeholder="Type your message" maxlength="2000" data-chat-input></textarea>
+                        <textarea name="body" rows="1" placeholder="Tulis pesan..." maxlength="2000" data-chat-input></textarea>
 
                         <div class="support-file-preview is-hidden" data-chat-file-preview>
                             <span data-chat-file-name></span>
-                            <button type="button" title="Hapus gambar" data-chat-file-clear>&times;</button>
+                            <button type="button" title="Hapus gambar" aria-label="Hapus gambar" data-chat-file-clear>
+                                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                    <path d="M18 6 6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                </svg>
+                            </button>
                         </div>
                     </div>
 
-                    <button type="submit" title="Send">
+                    <button type="submit" title="Kirim pesan">
                         <svg viewBox="0 0 24 24" fill="none">
                             <path d="M22 2L11 13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                             <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                         </svg>
-                        <span>Send</span>
+                        <span>Kirim</span>
                     </button>
                 </form>
             @else
                 <div class="support-chat-empty full modern support-provider-empty">
+                    <span class="support-empty-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none">
+                            <path d="M21 15a4 4 0 0 1-4 4H8l-5 4V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4v8Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                            <path d="M8 9h8M8 13h5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                    </span>
                     <strong>Pilih Chat</strong>
                     <span>Pilih kontak internal di kiri, atau buka Support Help untuk bantuan admin.</span>
 

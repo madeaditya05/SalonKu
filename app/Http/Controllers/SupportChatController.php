@@ -61,8 +61,13 @@ class SupportChatController extends Controller
         });
 
         $requestedThreadId = (int) $request->query('thread');
+        $requestedTicketId = (int) $request->query('ticket');
         $listOnly = $request->boolean('list') || $activeTab === 'tickets';
-        $activeThread = $listOnly ? null : ($threads->firstWhere('id', $requestedThreadId) ?: $threads->first());
+        $requestedThread = $requestedThreadId > 0 ? $threads->firstWhere('id', $requestedThreadId) : null;
+        $activeThread = $listOnly ? null : $requestedThread;
+        $activeTicketThread = $activeTab === 'tickets' && $requestedTicketId > 0
+            ? $ticketThreads->firstWhere('id', $requestedTicketId)
+            : null;
         $activeThreadCanChat = $activeThread ? $this->threadChatApproved($activeThread) : false;
         $messages = collect();
 
@@ -82,6 +87,7 @@ class SupportChatController extends Controller
             'threads' => $threads,
             'ticketThreads' => $ticketThreads,
             'activeThread' => $activeThread,
+            'activeTicketThread' => $activeTicketThread,
             'activeThreadCanChat' => $activeThreadCanChat,
             'messages' => $messages,
             'search' => $search,
@@ -158,7 +164,8 @@ class SupportChatController extends Controller
 
         $requestedThreadId = (int) $request->query('thread');
         $listOnly = $request->boolean('list');
-        $activeThread = $listOnly ? null : ($threads->firstWhere('id', $requestedThreadId) ?: $threads->first());
+        $requestedThread = $requestedThreadId > 0 ? $threads->firstWhere('id', $requestedThreadId) : null;
+        $activeThread = $listOnly ? null : $requestedThread;
         $activeThreadCanChat = $activeThread ? $this->threadChatApproved($activeThread) : false;
         $messages = collect();
 
@@ -407,9 +414,17 @@ class SupportChatController extends Controller
             (int) $admin->id
         );
 
+        $message = 'Tiket disetujui. Provider sekarang bisa chat dengan admin.';
+
+        if ($request->input('return_to') === 'chat') {
+            return redirect()
+                ->route('admin.chat.index', ['tab' => 'tickets', 'ticket' => $thread->id])
+                ->with('success', $message);
+        }
+
         return redirect()
             ->route('admin.tickets.index', ['status' => 'approved', 'thread' => $thread->id])
-            ->with('success', 'Tiket disetujui. Provider sekarang bisa chat dengan admin.');
+            ->with('success', $message);
     }
 
     public function adminTicketReject(Request $request, ChatThread $thread): RedirectResponse
@@ -444,9 +459,17 @@ class SupportChatController extends Controller
             (int) $admin->id
         );
 
+        $message = 'Tiket chat ditolak.';
+
+        if ($request->input('return_to') === 'chat') {
+            return redirect()
+                ->route('admin.chat.index', ['tab' => 'tickets', 'ticket' => $thread->id])
+                ->with('success', $message);
+        }
+
         return redirect()
             ->route('admin.tickets.index', ['status' => 'rejected', 'thread' => $thread->id])
-            ->with('success', 'Tiket chat ditolak.');
+            ->with('success', $message);
     }
 
     public function adminTicketEnd(Request $request, ChatThread $thread): RedirectResponse

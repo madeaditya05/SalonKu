@@ -3,10 +3,6 @@
 @section('title', 'Providers - JasaKu')
 @section('page_title', 'Providers')
 
-@push('styles')
-    <link rel="stylesheet" href="{{ asset('admin/css/providers.css') }}">
-@endpush
-
 @section('content')
 @php
     $perPage = request('per_page', $perPage ?? 10);

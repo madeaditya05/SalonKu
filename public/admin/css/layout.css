@@ -1,9 +1,14 @@
 .admin-layout {
     width: 100%;
     height: 100vh;
+    height: 100dvh;
     min-height: 100vh;
+    min-height: 100dvh;
     display: flex;
-    background: var(--admin-bg);
+    background:
+        linear-gradient(135deg, rgba(37, 99, 235, .08), transparent 28%),
+        linear-gradient(315deg, rgba(15, 118, 110, .08), transparent 32%),
+        var(--admin-bg);
     overflow: hidden;
 }
 
@@ -11,10 +16,13 @@
     flex: 1;
     min-width: 0;
     height: 100vh;
+    height: 100dvh;
     min-height: 0;
     display: flex;
     flex-direction: column;
-    background: var(--admin-main-bg);
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, .72), rgba(248, 250, 252, .96)),
+        var(--admin-main-bg);
     overflow: hidden;
 }
 
@@ -22,10 +30,13 @@
     flex: 1 1 auto;
     min-height: 0;
     height: calc(100vh - 64px);
+    height: calc(100dvh - 64px);
     overflow-y: auto;
     overflow-x: hidden;
-    padding: 16px;
+    padding: clamp(12px, 1.6vw, 18px);
     background: var(--admin-main-bg);
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
 }
 
 .admin-main-content::-webkit-scrollbar {

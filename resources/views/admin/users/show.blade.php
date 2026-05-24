@@ -3,10 +3,6 @@
 @section('title', 'User Details - JasaKu')
 @section('page_title', 'User Details')
 
-@push('styles')
-    <link rel="stylesheet" href="{{ asset('admin/css/users.css') }}">
-@endpush
-
 @section('content')
 @php
     $profile = $customer->customerProfile;

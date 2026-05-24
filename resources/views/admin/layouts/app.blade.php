@@ -7,6 +7,7 @@
 
     <link rel="stylesheet" href="{{ asset('admin/css/admin-dashboard.css') }}">
     @stack('styles')
+    <link rel="stylesheet" href="{{ asset('admin/css/colorful-theme.css') }}">
 </head>
 <body class="admin-body">
 

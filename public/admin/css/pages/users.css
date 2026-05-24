@@ -77,7 +77,7 @@
 
 /* INDEX CARD */
 .users-card {
-    background: #ffffff;
+    background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
     border: 1px solid #e8e8e4;
     border-radius: 18px;
     padding: 16px 18px 14px;
@@ -147,8 +147,8 @@
 
 .entries-box select:focus,
 .users-search-input:focus-within {
-    border-color: #111827;
-    box-shadow: 0 0 0 3px rgba(17, 24, 39, 0.06);
+    border-color: var(--admin-primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.11);
 }
 
 /* TABLE */
@@ -204,8 +204,8 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    background: #f3f4f6;
-    color: #111827;
+    background: linear-gradient(135deg, var(--admin-primary), var(--admin-teal));
+    color: #ffffff;
     font-weight: 800;
     flex-shrink: 0;
     overflow: hidden;
@@ -278,7 +278,7 @@
 }
 
 .account-toggle.active {
-    background: #111827;
+    background: var(--admin-primary);
 }
 
 .account-toggle.active span {
@@ -319,9 +319,9 @@
 
 .user-action-btn:hover,
 .user-action-btn.danger:hover {
-    border-color: #111827;
-    color: #111827;
-    background: #f3f4f6;
+    border-color: #bfdbfe;
+    color: var(--admin-primary);
+    background: #eff6ff;
 }
 
 .user-action-btn svg {
@@ -379,8 +379,8 @@
 
 .users-pagination nav span[aria-current="page"] span,
 .users-pagination nav .active span {
-    background: #111827;
-    border-color: #111827;
+    background: var(--admin-primary);
+    border-color: var(--admin-primary);
     color: #ffffff;
 }
 
@@ -389,7 +389,7 @@
     min-height: 40px;
     border: 0;
     border-radius: 12px;
-    background: #111827;
+    background: linear-gradient(135deg, var(--admin-primary), var(--admin-teal));
     color: #ffffff;
     display: inline-flex;
     align-items: center;
@@ -406,7 +406,7 @@
 }
 
 .detail-back-btn:hover {
-    background: #030712;
+    background: linear-gradient(135deg, #1d4ed8, #0f766e);
     transform: translateY(-1px);
     box-shadow: 0 12px 24px rgba(15, 23, 42, 0.14);
 }
@@ -424,7 +424,7 @@
 
 .user-left-card,
 .detail-panel {
-    background: #ffffff;
+    background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
     border: 1px solid #e8e8e4;
     border-radius: 18px;
     box-shadow: 0 8px 18px rgba(15, 23, 42, 0.03);

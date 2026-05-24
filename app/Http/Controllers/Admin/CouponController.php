@@ -19,21 +19,74 @@ class CouponController extends Controller
             abort(403, 'Akses ditolak.');
         }
 
-        $tab = $request->get('tab', 'valid');
-        $search = $request->get('search');
+        $tab = $request->get('tab', 'all');
+        $search = trim((string) $request->get('search', ''));
+        $productType = $request->get('product_type', 'any');
+        $couponType = $request->get('coupon_type', 'all');
+        $date = $request->get('date');
         $perPage = (int) $request->get('per_page', 10);
+        $sortBy = $request->get('sort_by', 'created_at');
+        $sortDirection = strtolower((string) $request->get('sort_direction', 'desc'));
+
         $perPage = in_array($perPage, [10, 25, 50, 100], true) ? $perPage : 10;
 
-        $query = Coupon::query()->latest();
-
-        if ($tab === 'expired') {
-            $query->whereDate('end_date', '<', now()->toDateString());
-        } else {
-            $query->where('status', 'active')
-                ->whereDate('end_date', '>=', now()->toDateString());
+        if (! in_array($tab, ['all', 'valid', 'inactive', 'expired'], true)) {
+            $tab = 'all';
         }
 
-        if (! empty($search)) {
+        if (! in_array($productType, ['any', 'all', 'service', 'category'], true)) {
+            $productType = 'any';
+        }
+
+        if (! in_array($couponType, ['all', 'percentage', 'fixed'], true)) {
+            $couponType = 'all';
+        }
+
+        if (! in_array($sortDirection, ['asc', 'desc'], true)) {
+            $sortDirection = 'desc';
+        }
+
+        $sortMap = [
+            'code' => 'code',
+            'product_type' => 'product_type',
+            'coupon_type' => 'coupon_type',
+            'coupon_value' => 'coupon_value',
+            'used_count' => 'used_count',
+            'end_date' => 'end_date',
+            'status' => 'status',
+            'created_at' => 'created_at',
+        ];
+
+        if (! array_key_exists($sortBy, $sortMap)) {
+            $sortBy = 'created_at';
+        }
+
+        $today = now()->toDateString();
+        $query = Coupon::query();
+
+        if ($tab === 'expired') {
+            $query->whereDate('end_date', '<', $today);
+        } elseif ($tab === 'inactive') {
+            $query->where('status', 'inactive');
+        } elseif ($tab === 'valid') {
+            $query->where('status', 'active')
+                ->whereDate('end_date', '>=', $today);
+        }
+
+        if ($productType !== 'any') {
+            $query->where('product_type', $productType);
+        }
+
+        if ($couponType !== 'all') {
+            $query->where('coupon_type', $couponType);
+        }
+
+        if (! empty($date)) {
+            $query->whereDate('start_date', '<=', $date)
+                ->whereDate('end_date', '>=', $date);
+        }
+
+        if ($search !== '') {
             $query->where(function ($q) use ($search) {
                 $q->where('code', 'like', '%' . $search . '%')
                     ->orWhere('product_type', 'like', '%' . $search . '%')
@@ -42,13 +95,60 @@ class CouponController extends Controller
             });
         }
 
+        $query->orderBy($sortMap[$sortBy], $sortDirection);
+
+        if ($sortBy !== 'code') {
+            $query->orderBy('code');
+        }
+
         $coupons = $query->paginate($perPage)->withQueryString();
+        $summary = [
+            'total' => Coupon::query()->count(),
+            'valid' => Coupon::query()
+                ->where('status', 'active')
+                ->whereDate('end_date', '>=', $today)
+                ->count(),
+            'expired' => Coupon::query()
+                ->whereDate('end_date', '<', $today)
+                ->count(),
+            'redeemed' => (int) Coupon::query()->sum('used_count'),
+        ];
+        $filters = [
+            'tab' => $tab,
+            'product_type' => $productType,
+            'coupon_type' => $couponType,
+            'date' => $date,
+            'search' => $search,
+            'per_page' => $perPage,
+            'sort_by' => $sortBy,
+            'sort_direction' => $sortDirection,
+        ];
+        $tabs = [
+            'all' => 'All Coupon',
+            'valid' => 'Valid',
+            'inactive' => 'Inactive',
+            'expired' => 'Expired',
+        ];
+        $hasActiveFilters = $tab !== 'all'
+            || $search !== ''
+            || $productType !== 'any'
+            || $couponType !== 'all'
+            || ! empty($date)
+            || $perPage !== 10
+            || $sortBy !== 'created_at'
+            || $sortDirection !== 'desc';
 
         return view('admin.coupons.index', compact(
             'coupons',
+            'filters',
+            'hasActiveFilters',
+            'summary',
+            'tabs',
             'tab',
             'search',
-            'perPage'
+            'perPage',
+            'sortBy',
+            'sortDirection'
         ));
     }
 

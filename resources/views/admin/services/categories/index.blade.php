@@ -3,16 +3,76 @@
 @section('title', 'Category - JasaKu')
 @section('page_title', 'Category')
 
-@push('styles')
-    <link rel="stylesheet" href="{{ asset('admin/css/pages/service-categories.css') }}">
-@endpush
-
 @section('content')
 @php
     use Illuminate\Support\Str;
 
-    $perPage = request('per_page', $perPage ?? 10);
-    $search = request('search', $search ?? '');
+    $categoryCollection = $categories ?? collect();
+    $hasPaginator = is_object($categoryCollection)
+        && method_exists($categoryCollection, 'links')
+        && method_exists($categoryCollection, 'firstItem');
+
+    $firstItem = $hasPaginator ? ($categoryCollection->firstItem() ?? 0) : 0;
+    $lastItem = $hasPaginator ? ($categoryCollection->lastItem() ?? 0) : (is_countable($categoryCollection) ? count($categoryCollection) : 0);
+    $totalItem = $hasPaginator ? $categoryCollection->total() : (is_countable($categoryCollection) ? count($categoryCollection) : 0);
+
+    $filters = $filters ?? [
+        'status' => request('status', 'all'),
+        'featured' => request('featured', 'all'),
+        'search' => request('search', $search ?? ''),
+        'per_page' => request('per_page', $perPage ?? 10),
+        'sort_by' => request('sort_by', 'created_at'),
+        'sort_direction' => request('sort_direction', 'desc'),
+    ];
+
+    $tabs = $tabs ?? [
+        'all' => 'All Category',
+        'active' => 'Active',
+        'inactive' => 'Inactive',
+    ];
+
+    $featuredOptions = [
+        'all' => 'All Featured',
+        'yes' => 'Featured',
+        'no' => 'Not Featured',
+    ];
+
+    $currentStatus = $filters['status'] ?? 'all';
+    $sortBy = $sortBy ?? ($filters['sort_by'] ?? 'created_at');
+    $sortDirection = $sortDirection ?? ($filters['sort_direction'] ?? 'desc');
+
+    $summary = $summary ?? [
+        'total' => $totalItem,
+        'active' => 0,
+        'featured' => 0,
+        'services' => 0,
+    ];
+
+    $statusLabel = fn ($value) => match ($value) {
+        'active' => 'Active',
+        'inactive' => 'Inactive',
+        'yes' => 'Featured',
+        'no' => 'Not Featured',
+        default => ucwords(str_replace('_', ' ', (string) $value)),
+    };
+
+    $statusClass = fn ($value) => match ($value) {
+        'active', 'yes' => 'success',
+        'inactive', 'no' => 'danger',
+        default => 'neutral',
+    };
+
+    $formatDate = function ($value) {
+        if (empty($value)) {
+            return '-';
+        }
+
+        try {
+            return \Carbon\Carbon::parse($value)->format('d M Y');
+        } catch (\Throwable $exception) {
+            return '-';
+        }
+    };
 
     $assetUrl = function ($path) {
         if (!$path) {
@@ -31,205 +91,467 @@
 
         return asset('storage/' . $path);
     };
+
+    $cleanQuery = function (array $query) {
+        return collect($query)
+            ->reject(function ($value, $key) {
+                if ($value === null || $value === '') {
+                    return true;
+                }
+
+                if (in_array($key, ['status', 'featured'], true) && $value === 'all') {
+                    return true;
+                }
+
+                if ($key === 'sort_by' && $value === 'created_at') {
+                    return true;
+                }
+
+                if ($key === 'sort_direction' && $value === 'desc') {
+                    return true;
+                }
+
+                if ($key === 'per_page' && (int) $value === 10) {
+                    return true;
+                }
+
+                return false;
+            })
+            ->all();
+    };
+
+    $queryFor = fn (array $overrides = []) => $cleanQuery(array_merge($filters, $overrides));
+
+    $sortQueryFor = function (string $key) use ($queryFor, $sortBy, $sortDirection) {
+        $nextDirection = $sortBy === $key && $sortDirection === 'asc' ? 'desc' : 'asc';
+
+        return $queryFor([
+            'sort_by' => $key,
+            'sort_direction' => $nextDirection,
+        ]);
+    };
+
+    $sortIconClass = fn (string $key, string $direction) => $sortBy === $key && $sortDirection === $direction ? 'active' : '';
+
+    $categoryInitial = fn ($category) => strtoupper(substr((string) ($category->name ?: 'C'), 0, 1));
+    $categoryDescription = fn ($category, $limit = 110) => Str::limit(strip_tags((string) ($category->description ?: 'Category belum memiliki deskripsi.')), $limit);
+
+    $hasActiveFilters = $hasActiveFilters ?? (($filters['search'] ?? '') !== ''
+        || ($filters['status'] ?? 'all') !== 'all'
+        || ($filters['featured'] ?? 'all') !== 'all'
+        || (int) ($filters['per_page'] ?? 10) !== 10
+        || ($filters['sort_by'] ?? 'created_at') !== 'created_at'
+        || ($filters['sort_direction'] ?? 'desc') !== 'desc');
+
+    $hasMobileAdvancedFilters = (($filters['featured'] ?? 'all') !== 'all')
+        || ((int) ($filters['per_page'] ?? 10) !== 10);
 @endphp
 
-<section class="category-page">
-    <div class="category-page-header">
-        <div>
-            <h1>Category</h1>
-
-            <div class="category-breadcrumb">
-                <a href="{{ route('admin.dashboard') }}">Dashboard</a>
-                <span>›</span>
-                <a href="{{ route('admin.services.index') }}">Service</a>
-                <span>›</span>
-                <strong>Category</strong>
-            </div>
+<section class="admin-category-page admin-booking-page">
+    <div class="admin-booking-route admin-category-route">
+        <div class="admin-breadcrumb">
+            <a href="{{ route('admin.dashboard') }}">Dashboard</a>
+            <span>&rsaquo;</span>
+            <a href="{{ route('admin.services.index') }}">Services</a>
+            <span>&rsaquo;</span>
+            <strong>Category</strong>
         </div>
 
-        <button type="button" class="admin-dark-btn" data-modal-open="addCategoryModal">
+        <button type="button" class="admin-category-add-button admin-category-add-button-desktop" data-modal-open="addCategoryModal">
             <svg viewBox="0 0 24 24" fill="none">
-                <path d="M12 5V19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                <path d="M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                <path d="M12 5v14"></path>
+                <path d="M5 12h14"></path>
             </svg>
             Add Category
         </button>
     </div>
 
     @if (session('success'))
-        <div class="admin-alert success">
+        <div class="admin-booking-alert success">
             {{ session('success') }}
         </div>
     @endif
 
     @if (session('error'))
-        <div class="admin-alert error">
+        <div class="admin-booking-alert danger">
             {{ session('error') }}
         </div>
     @endif
 
     @if ($errors->any())
-        <div class="admin-alert error">
+        <div class="admin-booking-alert danger">
             {{ $errors->first() }}
         </div>
     @endif
 
-    <div class="category-card">
-        <div class="category-toolbar">
-            <form method="GET" action="{{ route('admin.service-categories.index') }}" class="entries-box">
-                @if ($search)
-                    <input type="hidden" name="search" value="{{ $search }}">
-                @endif
-
-                <span>Show</span>
-
-                <select name="per_page" onchange="this.form.submit()">
-                    <option value="10" {{ (int) $perPage === 10 ? 'selected' : '' }}>10</option>
-                    <option value="25" {{ (int) $perPage === 25 ? 'selected' : '' }}>25</option>
-                    <option value="50" {{ (int) $perPage === 50 ? 'selected' : '' }}>50</option>
-                    <option value="100" {{ (int) $perPage === 100 ? 'selected' : '' }}>100</option>
-                </select>
-
-                <span>entries</span>
-            </form>
-
-            <form method="GET" action="{{ route('admin.service-categories.index') }}" class="search-box">
-                <input type="hidden" name="per_page" value="{{ $perPage }}">
-
-                <div class="category-search-input">
-                    <svg viewBox="0 0 24 24" fill="none">
-                        <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/>
-                        <path d="M21 21L16.7 16.7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                    </svg>
-
-                    <input
-                        type="text"
-                        name="search"
-                        value="{{ $search ?? '' }}"
-                        placeholder="Search category"
-                    >
-                </div>
-            </form>
+    <div class="admin-booking-summary-grid">
+        <div class="admin-booking-summary-card pink">
+            <span>Total Category</span>
+            <strong>{{ number_format((int) $summary['total']) }}</strong>
+            <small>Semua kategori service</small>
         </div>
 
-        <div class="category-table-wrap">
-            <table class="category-table">
+        <div class="admin-booking-summary-card yellow">
+            <span>Active</span>
+            <strong>{{ number_format((int) $summary['active']) }}</strong>
+            <small>Kategori tampil di katalog</small>
+        </div>
+
+        <div class="admin-booking-summary-card blue">
+            <span>Featured</span>
+            <strong>{{ number_format((int) $summary['featured']) }}</strong>
+            <small>Prioritas di landing customer</small>
+        </div>
+
+        <div class="admin-booking-summary-card orange">
+            <span>Linked Services</span>
+            <strong>{{ number_format((int) $summary['services']) }}</strong>
+            <small>Service memakai kategori</small>
+        </div>
+    </div>
+
+    <div class="admin-booking-card category-card">
+        <div class="admin-booking-tabs">
+            @foreach ($tabs as $key => $label)
+                <a href="{{ route('admin.service-categories.index', $queryFor(['status' => $key])) }}"
+                   class="admin-booking-tab {{ ($currentStatus === $key || ($key === 'all' && empty($currentStatus))) ? 'active' : '' }}">
+                    {{ $label }}
+                </a>
+            @endforeach
+        </div>
+
+        <form method="GET" action="{{ route('admin.service-categories.index') }}" class="admin-booking-filter-panel compact {{ $hasMobileAdvancedFilters ? 'is-expanded' : '' }}">
+            @if (!empty($currentStatus) && $currentStatus !== 'all')
+                <input type="hidden" name="status" value="{{ $currentStatus }}">
+            @endif
+
+            <input type="hidden" name="sort_by" value="{{ $sortBy }}">
+            <input type="hidden" name="sort_direction" value="{{ $sortDirection }}">
+
+            <div class="admin-booking-filter-row" id="categoryFilterRow">
+                <label class="admin-booking-field search">
+                    <div class="admin-booking-search-box">
+                        <svg viewBox="0 0 24 24">
+                            <circle cx="11" cy="11" r="7"></circle>
+                            <path d="m21 21-4.3-4.3"></path>
+                        </svg>
+
+                        <input id="categorySearchInput"
+                               type="text"
+                               name="search"
+                               value="{{ $filters['search'] ?? '' }}"
+                               placeholder="Search category">
+                    </div>
+                </label>
+
+                <button type="submit" class="admin-booking-mobile-search-submit" aria-label="Search category">
+                    Cari
+                </button>
+
+                <button type="button"
+                        class="admin-booking-mobile-filter-toggle {{ $hasMobileAdvancedFilters ? 'active' : '' }}"
+                        aria-controls="categoryFilterRow"
+                        aria-expanded="{{ $hasMobileAdvancedFilters ? 'true' : 'false' }}">
+                    Filter
+                </button>
+
+                <label class="admin-booking-field mini">
+                    <select name="featured" aria-label="Featured status" title="Featured status">
+                        @foreach ($featuredOptions as $key => $label)
+                            <option value="{{ $key }}" {{ ($filters['featured'] ?? 'all') === $key ? 'selected' : '' }}>
+                                {{ $label }}
+                            </option>
+                        @endforeach
+                    </select>
+                </label>
+
+                <label class="admin-booking-field count">
+                    <select name="per_page" aria-label="Rows per page" title="Rows per page">
+                        <option value="10" {{ (int) ($filters['per_page'] ?? 10) === 10 ? 'selected' : '' }}>10</option>
+                        <option value="25" {{ (int) ($filters['per_page'] ?? 10) === 25 ? 'selected' : '' }}>25</option>
+                        <option value="50" {{ (int) ($filters['per_page'] ?? 10) === 50 ? 'selected' : '' }}>50</option>
+                        <option value="100" {{ (int) ($filters['per_page'] ?? 10) === 100 ? 'selected' : '' }}>100</option>
+                    </select>
+                </label>
+
+                <div class="admin-booking-filter-buttons">
+                    <button type="submit">Filter</button>
+                    @if ($hasActiveFilters)
+                        <a href="{{ route('admin.service-categories.index') }}">Reset</a>
+                    @endif
+                </div>
+            </div>
+
+            <div class="admin-booking-filter-meta">
+                <span class="admin-booking-filter-count">{{ number_format($totalItem) }} category</span>
+
+                @if (($filters['search'] ?? '') !== '')
+                    <span>Search: {{ $filters['search'] }}</span>
+                @endif
+
+                @if (($filters['status'] ?? 'all') !== 'all')
+                    <span>Status: {{ $statusLabel($filters['status']) }}</span>
+                @endif
+
+                @if (($filters['featured'] ?? 'all') !== 'all')
+                    <span>Featured: {{ $featuredOptions[$filters['featured']] ?? $statusLabel($filters['featured']) }}</span>
+                @endif
+            </div>
+        </form>
+
+        <div class="admin-category-add-row">
+            <button type="button" class="admin-category-add-button admin-category-add-button-mobile" data-modal-open="addCategoryModal">
+                <svg viewBox="0 0 24 24" fill="none">
+                    <path d="M12 5v14"></path>
+                    <path d="M5 12h14"></path>
+                </svg>
+                Add Category
+            </button>
+        </div>
+
+        <div class="admin-category-mobile-list admin-booking-mobile-list">
+            @forelse ($categoryCollection as $category)
+                @php
+                    $imageUrl = $assetUrl($category->image);
+                    $iconUrl = $assetUrl($category->icon);
+                    $status = $category->status ?? 'inactive';
+                    $isFeatured = (bool) $category->is_featured;
+                    $servicesCount = (int) ($category->services_count ?? 0);
+                @endphp
+
+                <article class="admin-category-mobile-card admin-booking-mobile-card">
+                    <header class="admin-category-mobile-head">
+                        <div class="admin-category-mobile-title">
+                            @if ($imageUrl)
+                                <img src="{{ $imageUrl }}" alt="{{ $category->name }}">
+                            @else
+                                <span>{{ $categoryInitial($category) }}</span>
+                            @endif
+
+                            <div>
+                                <strong>{{ $category->name }}</strong>
+                                <span>{{ $category->slug ?: 'No slug' }}</span>
+                            </div>
+                        </div>
+
+                        <b>{{ number_format($servicesCount) }} svc</b>
+                    </header>
+
+                    <div class="admin-category-mobile-main admin-booking-mobile-main">
+                        <div>
+                            <span>Status</span>
+                            <strong>{{ $statusLabel($status) }}</strong>
+                        </div>
+
+                        <div>
+                            <span>Featured</span>
+                            <strong>{{ $isFeatured ? 'Yes' : 'No' }}</strong>
+                        </div>
+                    </div>
+
+                    <p>{{ $categoryDescription($category, 120) }}</p>
+
+                    <footer class="admin-category-mobile-footer">
+                        <form action="{{ route('admin.service-categories.toggle-status', $category->id) }}" method="POST" class="inline-form">
+                            @csrf
+                            @method('PATCH')
+                            <button type="submit" class="status-pill status-{{ $status }}" title="Click to change status">
+                                <span></span>
+                                {{ $statusLabel($status) }}
+                            </button>
+                        </form>
+
+                        <form action="{{ route('admin.service-categories.toggle-featured', $category->id) }}" method="POST" class="toggle-form">
+                            @csrf
+                            @method('PATCH')
+                            <button type="submit" class="feature-switch {{ $isFeatured ? 'is-on' : '' }}" aria-label="Toggle featured">
+                                <span></span>
+                            </button>
+                        </form>
+
+                        <div class="category-actions">
+                            <button type="button" class="category-action-btn" title="Edit" data-modal-open="editCategoryModal{{ $category->id }}">
+                                <svg viewBox="0 0 24 24" fill="none">
+                                    <path d="M4 20h4L18 10l-4-4L4 16v4Z"></path>
+                                    <path d="m13 7 4 4"></path>
+                                </svg>
+                            </button>
+
+                            <button type="button" class="category-action-btn danger" title="Delete" data-modal-open="deleteCategoryModal{{ $category->id }}">
+                                <svg viewBox="0 0 24 24" fill="none">
+                                    <path d="M5 7h14"></path>
+                                    <path d="M9 7V5h6v2"></path>
+                                    <path d="m7 7 1 14h8l1-14"></path>
+                                    <path d="M10 11v6"></path>
+                                    <path d="M14 11v6"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </footer>
+                </article>
+            @empty
+                <div class="admin-category-mobile-empty admin-booking-mobile-empty">
+                    <strong>No category data found.</strong>
+                    <p>Coba ubah keyword, status, atau filter featured.</p>
+                </div>
+            @endforelse
+        </div>
+
+        <div class="admin-booking-table-wrap category-table-wrap">
+            <table class="admin-booking-table detailed category-table">
                 <thead>
                     <tr>
-                        <th class="number-column"># <span class="sort-icon">↕</span></th>
-                        <th>Categories <span class="sort-icon">↕</span></th>
-                        <th>Slug <span class="sort-icon">↕</span></th>
-                        <th>Status <span class="sort-icon">↕</span></th>
-                        <th>Featured <span class="sort-icon">↕</span></th>
+                        <th>
+                            <a href="{{ route('admin.service-categories.index', $sortQueryFor('name')) }}" class="admin-booking-sort {{ $sortBy === 'name' ? 'active' : '' }}">
+                                Category
+                                <span class="admin-booking-sort-icons" aria-hidden="true">
+                                    <span class="{{ $sortIconClass('name', 'asc') }}">&uarr;</span>
+                                    <span class="{{ $sortIconClass('name', 'desc') }}">&darr;</span>
+                                </span>
+                            </a>
+                        </th>
+                        <th>
+                            <a href="{{ route('admin.service-categories.index', $sortQueryFor('slug')) }}" class="admin-booking-sort {{ $sortBy === 'slug' ? 'active' : '' }}">
+                                Slug
+                                <span class="admin-booking-sort-icons" aria-hidden="true">
+                                    <span class="{{ $sortIconClass('slug', 'asc') }}">&uarr;</span>
+                                    <span class="{{ $sortIconClass('slug', 'desc') }}">&darr;</span>
+                                </span>
+                            </a>
+                        </th>
+                        <th>Description</th>
+                        <th>
+                            <a href="{{ route('admin.service-categories.index', $sortQueryFor('services_count')) }}" class="admin-booking-sort {{ $sortBy === 'services_count' ? 'active' : '' }}">
+                                Services
+                                <span class="admin-booking-sort-icons" aria-hidden="true">
+                                    <span class="{{ $sortIconClass('services_count', 'asc') }}">&uarr;</span>
+                                    <span class="{{ $sortIconClass('services_count', 'desc') }}">&darr;</span>
+                                </span>
+                            </a>
+                        </th>
+                        <th>
+                            <a href="{{ route('admin.service-categories.index', $sortQueryFor('status')) }}" class="admin-booking-sort {{ $sortBy === 'status' ? 'active' : '' }}">
+                                Status
+                                <span class="admin-booking-sort-icons" aria-hidden="true">
+                                    <span class="{{ $sortIconClass('status', 'asc') }}">&uarr;</span>
+                                    <span class="{{ $sortIconClass('status', 'desc') }}">&darr;</span>
+                                </span>
+                            </a>
+                        </th>
+                        <th>
+                            <a href="{{ route('admin.service-categories.index', $sortQueryFor('featured')) }}" class="admin-booking-sort {{ $sortBy === 'featured' ? 'active' : '' }}">
+                                Featured
+                                <span class="admin-booking-sort-icons" aria-hidden="true">
+                                    <span class="{{ $sortIconClass('featured', 'asc') }}">&uarr;</span>
+                                    <span class="{{ $sortIconClass('featured', 'desc') }}">&darr;</span>
+                                </span>
+                            </a>
+                        </th>
+                        <th>
+                            <a href="{{ route('admin.service-categories.index', $sortQueryFor('created_at')) }}" class="admin-booking-sort {{ $sortBy === 'created_at' ? 'active' : '' }}">
+                                Created
+                                <span class="admin-booking-sort-icons" aria-hidden="true">
+                                    <span class="{{ $sortIconClass('created_at', 'asc') }}">&uarr;</span>
+                                    <span class="{{ $sortIconClass('created_at', 'desc') }}">&darr;</span>
+                                </span>
+                            </a>
+                        </th>
                         <th>Action</th>
                     </tr>
                 </thead>
 
                 <tbody>
-                    @forelse ($categories as $category)
+                    @forelse ($categoryCollection as $category)
                         @php
                             $imageUrl = $assetUrl($category->image);
                             $iconUrl = $assetUrl($category->icon);
                             $status = $category->status ?? 'inactive';
                             $isFeatured = (bool) $category->is_featured;
+                            $servicesCount = (int) ($category->services_count ?? 0);
                         @endphp
 
                         <tr>
-                            <td>
-                                {{ $loop->iteration + ($categories->firstItem() - 1) }}
-                            </td>
-
                             <td>
                                 <div class="category-name-box">
                                     @if ($imageUrl)
                                         <img src="{{ $imageUrl }}" alt="{{ $category->name }}" class="category-thumb">
                                     @else
-                                        <div class="category-thumb-placeholder">
-                                            {{ strtoupper(substr($category->name ?? 'C', 0, 1)) }}
-                                        </div>
+                                        <span class="category-thumb-placeholder">{{ $categoryInitial($category) }}</span>
                                     @endif
 
                                     <div class="category-name-text">
                                         <strong>{{ $category->name }}</strong>
-
-                                        @if ($category->description)
-                                            <small>{{ Str::limit(strip_tags($category->description), 44) }}</small>
-                                        @else
-                                            <small>Service category</small>
-                                        @endif
+                                        <small>{{ $iconUrl ? 'Icon attached' : 'No icon uploaded' }}</small>
                                     </div>
                                 </div>
                             </td>
 
-                            <td>{{ $category->slug }}</td>
+                            <td>
+                                <div class="admin-booking-code-cell">
+                                    <strong>{{ $category->slug ?: '-' }}</strong>
+                                    <small>ID #{{ $category->id }}</small>
+                                </div>
+                            </td>
 
                             <td>
-                                <form
-                                    action="{{ route('admin.service-categories.toggle-status', $category->id) }}"
-                                    method="POST"
-                                    class="inline-form"
-                                >
+                                <p class="category-description-text">{{ $categoryDescription($category, 92) }}</p>
+                            </td>
+
+                            <td>
+                                <div class="admin-booking-total-cell">
+                                    <strong>{{ number_format($servicesCount) }}</strong>
+                                    <small>linked service</small>
+                                </div>
+                            </td>
+
+                            <td>
+                                <form action="{{ route('admin.service-categories.toggle-status', $category->id) }}" method="POST" class="inline-form">
                                     @csrf
                                     @method('PATCH')
-
-                                    <button
-                                        type="submit"
-                                        class="status-pill status-{{ $status }}"
-                                        title="Click to change status"
-                                    >
+                                    <button type="submit" class="status-pill status-{{ $status }}" title="Click to change status">
                                         <span></span>
-                                        {{ ucfirst($status) }}
+                                        {{ $statusLabel($status) }}
                                     </button>
                                 </form>
                             </td>
 
                             <td>
-                                <form
-                                    action="{{ route('admin.service-categories.toggle-featured', $category->id) }}"
-                                    method="POST"
-                                    class="toggle-form"
-                                >
+                                <form action="{{ route('admin.service-categories.toggle-featured', $category->id) }}" method="POST" class="toggle-form">
                                     @csrf
                                     @method('PATCH')
-
                                     <button
                                         type="submit"
                                         class="feature-switch {{ $isFeatured ? 'is-on' : '' }}"
                                         aria-label="Toggle featured"
-                                        title="{{ $isFeatured ? 'Featured aktif' : 'Featured nonaktif' }}"
-                                    >
+                                        title="{{ $isFeatured ? 'Featured aktif' : 'Featured nonaktif' }}">
                                         <span></span>
                                     </button>
                                 </form>
                             </td>
 
                             <td>
+                                <div class="admin-booking-timeline">
+                                    <span>{{ $formatDate($category->created_at) }}</span>
+                                    <small>{{ $category->created_at?->format('H:i') ?? '-' }}</small>
+                                </div>
+                            </td>
+
+                            <td>
                                 <div class="category-actions">
-                                    <button
-                                        type="button"
-                                        class="category-action-btn"
-                                        title="Edit"
-                                        data-modal-open="editCategoryModal{{ $category->id }}"
-                                    >
+                                    <button type="button" class="category-action-btn" title="Edit" data-modal-open="editCategoryModal{{ $category->id }}">
                                         <svg viewBox="0 0 24 24" fill="none">
-                                            <path d="M4 20H8L18 10L14 6L4 16V20Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
-                                            <path d="M13 7L17 11" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                            <path d="M4 20h4L18 10l-4-4L4 16v4Z"></path>
+                                            <path d="m13 7 4 4"></path>
                                         </svg>
                                     </button>
 
-                                    <button
-                                        type="button"
-                                        class="category-action-btn danger"
-                                        title="Delete"
-                                        data-modal-open="deleteCategoryModal{{ $category->id }}"
-                                    >
+                                    <button type="button" class="category-action-btn danger" title="Delete" data-modal-open="deleteCategoryModal{{ $category->id }}">
                                         <svg viewBox="0 0 24 24" fill="none">
-                                            <path d="M5 7H19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                                            <path d="M9 7V5H15V7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                                            <path d="M8 10V18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                                            <path d="M12 10V18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                                            <path d="M16 10V18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                                            <path d="M7 7L8 21H16L17 7" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                                            <path d="M5 7h14"></path>
+                                            <path d="M9 7V5h6v2"></path>
+                                            <path d="m7 7 1 14h8l1-14"></path>
+                                            <path d="M10 11v6"></path>
+                                            <path d="M14 11v6"></path>
                                         </svg>
                                     </button>
                                 </div>
@@ -237,8 +559,19 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="empty-state">
-                                Belum ada data category.
+                            <td colspan="8" class="admin-booking-empty">
+                                <div>
+                                    <span>
+                                        <svg viewBox="0 0 24 24">
+                                            <path d="M4 7h16"></path>
+                                            <path d="M4 12h16"></path>
+                                            <path d="M4 17h16"></path>
+                                        </svg>
+                                    </span>
+
+                                    <strong>No category data found.</strong>
+                                    <p>Coba ubah keyword, status, atau filter featured.</p>
+                                </div>
                             </td>
                         </tr>
                     @endforelse
@@ -246,29 +579,48 @@
             </table>
         </div>
 
-        <div class="table-footer">
-            <div class="table-info">
-                Showing {{ $categories->firstItem() ?? 0 }} to {{ $categories->lastItem() ?? 0 }} of {{ $categories->total() }} entries
-            </div>
+        <div class="admin-booking-footer category-footer">
+            <p class="admin-booking-showing">
+                <strong>{{ number_format($firstItem) }}-{{ number_format($lastItem) }}</strong>
+                <span>/ {{ number_format($totalItem) }}</span>
+            </p>
 
-            <div class="pagination-wrap category-pagination">
-                {{ $categories->links() }}
-            </div>
+            @if ($hasPaginator)
+                <div class="admin-booking-pagination category-pagination">
+                    @if ($categoryCollection->onFirstPage())
+                        <span class="disabled">&lsaquo;</span>
+                    @else
+                        <a href="{{ $categoryCollection->previousPageUrl() }}" aria-label="Previous page">&lsaquo;</a>
+                    @endif
+
+                    <span class="active">{{ $categoryCollection->currentPage() }}</span>
+
+                    @if ($categoryCollection->hasMorePages())
+                        <a href="{{ $categoryCollection->nextPageUrl() }}" aria-label="Next page">&rsaquo;</a>
+                    @else
+                        <span class="disabled">&rsaquo;</span>
+                    @endif
+                </div>
+            @else
+                <div class="admin-booking-pagination category-pagination static">
+                    <span class="active">1</span>
+                </div>
+            @endif
         </div>
     </div>
 </section>
 
 {{-- Add Category Modal --}}
-<div class="category-modal" id="addCategoryModal">
-    <div class="category-modal-dialog large">
+<div class="category-modal" id="addCategoryModal" aria-hidden="true">
+    <div class="category-modal-dialog large" role="dialog" aria-modal="true" aria-labelledby="addCategoryTitle">
         <div class="category-modal-header">
             <div>
-                <h3>Add Category</h3>
-                <p>Tambah data category service baru.</p>
+                <h3 id="addCategoryTitle">Add Category</h3>
+                <p>Tambah category service baru untuk katalog customer dan provider.</p>
             </div>
 
-            <button type="button" class="modal-close" data-modal-close>
-                ×
+            <button type="button" class="modal-close" data-modal-close aria-label="Close modal">
+                &times;
             </button>
         </div>
 
@@ -278,78 +630,126 @@
             <div class="category-modal-body">
                 <div class="form-grid two">
                     <div class="form-group">
-                        <label>Name <span>*</span></label>
-                        <input
-                            type="text"
-                            name="name"
-                            value="{{ old('name') }}"
-                            placeholder="Contoh: Salon"
-                            data-slug-source
-                            required
-                        >
+                        <label for="categoryName">Name <span>*</span></label>
+                        <input id="categoryName"
+                               type="text"
+                               name="name"
+                               value="{{ old('name') }}"
+                               placeholder="Contoh: Hair Treatment"
+                               data-slug-source
+                               required>
                     </div>
 
                     <div class="form-group">
-                        <label>Slug</label>
-                        <input
-                            type="text"
-                            name="slug"
-                            value="{{ old('slug') }}"
-                            placeholder="Kosongkan untuk otomatis"
-                            data-slug-target
-                        >
+                        <label for="categorySlug">Slug</label>
+                        <input id="categorySlug"
+                               type="text"
+                               name="slug"
+                               value="{{ old('slug') }}"
+                               placeholder="Otomatis jika kosong"
+                               data-slug-target>
                     </div>
                 </div>
 
-                <div class="form-grid two">
-                    <div class="form-group">
-                        <label>Image</label>
+                <div class="category-media-grid">
+                    <div class="category-media-card">
+                        <div class="category-media-head">
+                            <span class="category-media-icon">
+                                <svg viewBox="0 0 24 24" fill="none">
+                                    <rect x="3" y="5" width="18" height="14" rx="3"></rect>
+                                    <path d="m7 15 3-3 3 3 2-2 2 2"></path>
+                                    <circle cx="8" cy="9" r="1.5"></circle>
+                                </svg>
+                            </span>
+                            <div>
+                                <strong>Category Image</strong>
+                                <small>Thumbnail besar untuk daftar category dan katalog.</small>
+                            </div>
+                        </div>
 
-                        <label class="upload-field">
-                            <input type="file" name="image" accept="image/*" data-file-input>
-                            <img src="" alt="Preview" class="upload-preview">
+                        <label class="upload-field image-upload-field">
+                            <input type="file" name="image" accept="image/*" data-file-input data-upload-label="Image">
+                            <img src="" alt="Image preview" class="upload-preview">
 
-                            <span class="upload-icon">＋</span>
+                            <span class="upload-icon">
+                                <svg viewBox="0 0 24 24" fill="none">
+                                    <path d="M12 5v14"></path>
+                                    <path d="M5 12h14"></path>
+                                </svg>
+                            </span>
                             <strong>Upload Image</strong>
-                            <small>JPG, PNG, WEBP maksimal 2MB</small>
+                            <small>JPG, PNG, WEBP. Maksimal 2MB.</small>
+                            <em data-upload-meta>Belum ada file dipilih</em>
                         </label>
+
+                        <p class="upload-note">Rekomendasi rasio 4:3 atau 1:1 agar tidak terpotong di mobile.</p>
                     </div>
 
-                    <div class="form-group">
-                        <label>Icon</label>
+                    <div class="category-media-card">
+                        <div class="category-media-head">
+                            <span class="category-media-icon icon">
+                                <svg viewBox="0 0 24 24" fill="none">
+                                    <path d="M12 3 4 7l8 4 8-4-8-4Z"></path>
+                                    <path d="M4 12l8 4 8-4"></path>
+                                    <path d="M4 17l8 4 8-4"></path>
+                                </svg>
+                            </span>
+                            <div>
+                                <strong>Category Icon</strong>
+                                <small>Ikon kecil untuk quick access dan label visual.</small>
+                            </div>
+                        </div>
 
-                        <label class="upload-field">
-                            <input type="file" name="icon" accept="image/*" data-file-input>
-                            <img src="" alt="Preview" class="upload-preview">
+                        <label class="upload-field icon-upload-field">
+                            <input type="file" name="icon" accept="image/*,.svg" data-file-input data-upload-label="Icon">
+                            <img src="" alt="Icon preview" class="upload-preview">
 
-                            <span class="upload-icon">＋</span>
+                            <span class="upload-icon">
+                                <svg viewBox="0 0 24 24" fill="none">
+                                    <path d="M12 5v14"></path>
+                                    <path d="M5 12h14"></path>
+                                </svg>
+                            </span>
                             <strong>Upload Icon</strong>
-                            <small>JPG, PNG, SVG, WEBP maksimal 2MB</small>
+                            <small>SVG, PNG, JPG, WEBP. Maksimal 2MB.</small>
+                            <em data-upload-meta>Belum ada file dipilih</em>
                         </label>
+
+                        <p class="upload-note">Gunakan icon sederhana dengan background transparan jika memungkinkan.</p>
                     </div>
                 </div>
 
                 <div class="form-group">
-                    <label>Description</label>
-                    <textarea name="description" rows="4" placeholder="Deskripsi category">{{ old('description') }}</textarea>
+                    <label for="categoryDescription">Description</label>
+                    <textarea id="categoryDescription" name="description" rows="4" placeholder="Deskripsi singkat category">{{ old('description') }}</textarea>
                 </div>
 
-                <div class="switch-row">
-                    <span>Status Active</span>
+                <div class="switch-grid">
+                    <div class="switch-row">
+                        <span>
+                            Status Active
+                            <small>Kategori bisa tampil di katalog.</small>
+                        </span>
 
-                    <label class="form-switch">
-                        <input type="checkbox" name="status" value="active" checked>
-                        <span></span>
-                    </label>
-                </div>
+                        <label class="form-switch">
+                            <input type="hidden" name="status" value="inactive">
+                            <input type="checkbox" name="status" value="active" {{ old('status', 'active') === 'active' ? 'checked' : '' }}>
+                            <span></span>
+                        </label>
+                    </div>
 
-                <div class="switch-row">
-                    <span>Featured</span>
+                    <div class="switch-row">
+                        <span>
+                            Featured
+                            <small>Prioritaskan di area kategori pilihan.</small>
+                        </span>
 
-                    <label class="form-switch">
-                        <input type="checkbox" name="is_featured" value="1" checked>
-                        <span></span>
-                    </label>
+                        <label class="form-switch">
+                            <input type="hidden" name="is_featured" value="0">
+                            <input type="checkbox" name="is_featured" value="1" {{ old('is_featured', '1') === '1' ? 'checked' : '' }}>
+                            <span></span>
+                        </label>
+                    </div>
                 </div>
             </div>
 
@@ -366,23 +766,23 @@
     </div>
 </div>
 
-@foreach ($categories as $category)
+@foreach ($categoryCollection as $category)
     @php
         $imageUrl = $assetUrl($category->image);
         $iconUrl = $assetUrl($category->icon);
     @endphp
 
     {{-- Edit Category Modal --}}
-    <div class="category-modal" id="editCategoryModal{{ $category->id }}">
-        <div class="category-modal-dialog large">
+    <div class="category-modal" id="editCategoryModal{{ $category->id }}" aria-hidden="true">
+        <div class="category-modal-dialog large" role="dialog" aria-modal="true" aria-labelledby="editCategoryTitle{{ $category->id }}">
             <div class="category-modal-header">
                 <div>
-                    <h3>Edit Category</h3>
-                    <p>Ubah data category service.</p>
+                    <h3 id="editCategoryTitle{{ $category->id }}">Edit Category</h3>
+                    <p>Ubah nama, slug, media, status, dan featured category.</p>
                 </div>
 
-                <button type="button" class="modal-close" data-modal-close>
-                    ×
+                <button type="button" class="modal-close" data-modal-close aria-label="Close modal">
+                    &times;
                 </button>
             </div>
 
@@ -393,81 +793,135 @@
                 <div class="category-modal-body">
                     <div class="form-grid two">
                         <div class="form-group">
-                            <label>Name <span>*</span></label>
-                            <input type="text" name="name" value="{{ old('name', $category->name) }}" placeholder="Category name" required>
+                            <label for="categoryName{{ $category->id }}">Name <span>*</span></label>
+                            <input id="categoryName{{ $category->id }}" type="text" name="name" value="{{ old('name', $category->name) }}" placeholder="Category name" required>
                         </div>
 
                         <div class="form-group">
-                            <label>Slug</label>
-                            <input type="text" name="slug" value="{{ old('slug', $category->slug) }}" placeholder="category-slug">
+                            <label for="categorySlug{{ $category->id }}">Slug</label>
+                            <input id="categorySlug{{ $category->id }}" type="text" name="slug" value="{{ old('slug', $category->slug) }}" placeholder="category-slug">
                         </div>
                     </div>
 
-                    <div class="form-grid two">
-                        <div class="form-group">
-                            <label>Image</label>
+                    <div class="category-media-grid">
+                        <div class="category-media-card">
+                            <div class="category-media-head">
+                                <span class="category-media-icon">
+                                    <svg viewBox="0 0 24 24" fill="none">
+                                        <rect x="3" y="5" width="18" height="14" rx="3"></rect>
+                                        <path d="m7 15 3-3 3 3 2-2 2 2"></path>
+                                        <circle cx="8" cy="9" r="1.5"></circle>
+                                    </svg>
+                                </span>
+                                <div>
+                                    <strong>Category Image</strong>
+                                    <small>Ganti thumbnail besar kategori.</small>
+                                </div>
+                            </div>
 
-                            <div class="current-preview-box">
+                            <div class="current-preview-box media-current-preview {{ $imageUrl ? 'has-current' : 'is-empty' }}">
                                 @if ($imageUrl)
                                     <img src="{{ $imageUrl }}" alt="{{ $category->name }}">
+                                    <span>Current image</span>
                                 @else
-                                    No image
+                                    <strong>{{ $categoryInitial($category) }}</strong>
+                                    <span>No image</span>
                                 @endif
                             </div>
 
-                            <label class="upload-field">
-                                <input type="file" name="image" accept="image/*" data-file-input>
-                                <img src="" alt="Preview" class="upload-preview">
+                            <label class="upload-field image-upload-field">
+                                <input type="file" name="image" accept="image/*" data-file-input data-upload-label="Image">
+                                <img src="" alt="Image preview" class="upload-preview">
 
-                                <span class="upload-icon">＋</span>
+                                <span class="upload-icon">
+                                    <svg viewBox="0 0 24 24" fill="none">
+                                        <path d="M12 5v14"></path>
+                                        <path d="M5 12h14"></path>
+                                    </svg>
+                                </span>
                                 <strong>Change Image</strong>
-                                <small>Biarkan kosong jika tidak diganti</small>
+                                <small>Biarkan kosong jika tidak diganti.</small>
+                                <em data-upload-meta>Belum ada file baru</em>
                             </label>
+
+                            <p class="upload-note">File baru akan menggantikan image saat form disimpan.</p>
                         </div>
 
-                        <div class="form-group">
-                            <label>Icon</label>
+                        <div class="category-media-card">
+                            <div class="category-media-head">
+                                <span class="category-media-icon icon">
+                                    <svg viewBox="0 0 24 24" fill="none">
+                                        <path d="M12 3 4 7l8 4 8-4-8-4Z"></path>
+                                        <path d="M4 12l8 4 8-4"></path>
+                                        <path d="M4 17l8 4 8-4"></path>
+                                    </svg>
+                                </span>
+                                <div>
+                                    <strong>Category Icon</strong>
+                                    <small>Ganti icon kecil kategori.</small>
+                                </div>
+                            </div>
 
-                            <div class="current-preview-box">
+                            <div class="current-preview-box media-current-preview icon-current-preview {{ $iconUrl ? 'has-current' : 'is-empty' }}">
                                 @if ($iconUrl)
                                     <img src="{{ $iconUrl }}" alt="{{ $category->name }}">
+                                    <span>Current icon</span>
                                 @else
-                                    No icon
+                                    <strong>{{ $categoryInitial($category) }}</strong>
+                                    <span>No icon</span>
                                 @endif
                             </div>
 
-                            <label class="upload-field">
-                                <input type="file" name="icon" accept="image/*" data-file-input>
-                                <img src="" alt="Preview" class="upload-preview">
+                            <label class="upload-field icon-upload-field">
+                                <input type="file" name="icon" accept="image/*,.svg" data-file-input data-upload-label="Icon">
+                                <img src="" alt="Icon preview" class="upload-preview">
 
-                                <span class="upload-icon">＋</span>
+                                <span class="upload-icon">
+                                    <svg viewBox="0 0 24 24" fill="none">
+                                        <path d="M12 5v14"></path>
+                                        <path d="M5 12h14"></path>
+                                    </svg>
+                                </span>
                                 <strong>Change Icon</strong>
-                                <small>Biarkan kosong jika tidak diganti</small>
+                                <small>Biarkan kosong jika tidak diganti.</small>
+                                <em data-upload-meta>Belum ada file baru</em>
                             </label>
+
+                            <p class="upload-note">SVG disarankan untuk icon supaya tetap tajam.</p>
                         </div>
                     </div>
 
                     <div class="form-group">
-                        <label>Description</label>
-                        <textarea name="description" rows="4" placeholder="Deskripsi category">{{ old('description', $category->description) }}</textarea>
+                        <label for="categoryDescription{{ $category->id }}">Description</label>
+                        <textarea id="categoryDescription{{ $category->id }}" name="description" rows="4" placeholder="Deskripsi category">{{ old('description', $category->description) }}</textarea>
                     </div>
 
-                    <div class="switch-row">
-                        <span>Status Active</span>
+                    <div class="switch-grid">
+                        <div class="switch-row">
+                            <span>
+                                Status Active
+                                <small>Kategori bisa tampil di katalog.</small>
+                            </span>
 
-                        <label class="form-switch">
-                            <input type="checkbox" name="status" value="active" {{ $category->status === 'active' ? 'checked' : '' }}>
-                            <span></span>
-                        </label>
-                    </div>
+                            <label class="form-switch">
+                                <input type="hidden" name="status" value="inactive">
+                                <input type="checkbox" name="status" value="active" {{ old('status', $category->status) === 'active' ? 'checked' : '' }}>
+                                <span></span>
+                            </label>
+                        </div>
 
-                    <div class="switch-row">
-                        <span>Featured</span>
+                        <div class="switch-row">
+                            <span>
+                                Featured
+                                <small>Prioritaskan di area kategori pilihan.</small>
+                            </span>
 
-                        <label class="form-switch">
-                            <input type="checkbox" name="is_featured" value="1" {{ $category->is_featured ? 'checked' : '' }}>
-                            <span></span>
-                        </label>
+                            <label class="form-switch">
+                                <input type="hidden" name="is_featured" value="0">
+                                <input type="checkbox" name="is_featured" value="1" {{ old('is_featured', $category->is_featured ? '1' : '0') === '1' ? 'checked' : '' }}>
+                                <span></span>
+                            </label>
+                        </div>
                     </div>
                 </div>
 
@@ -485,24 +939,23 @@
     </div>
 
     {{-- Delete Category Modal --}}
-    <div class="category-modal" id="deleteCategoryModal{{ $category->id }}">
-        <div class="category-modal-dialog delete">
+    <div class="category-modal" id="deleteCategoryModal{{ $category->id }}" aria-hidden="true">
+        <div class="category-modal-dialog delete" role="dialog" aria-modal="true" aria-labelledby="deleteCategoryTitle{{ $category->id }}">
             <div class="delete-icon">
                 <svg viewBox="0 0 24 24" fill="none">
-                    <path d="M5 7H19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                    <path d="M9 7V5H15V7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                    <path d="M8 10V18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                    <path d="M12 10V18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                    <path d="M16 10V18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                    <path d="M7 7L8 21H16L17 7" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                    <path d="M5 7h14"></path>
+                    <path d="M9 7V5h6v2"></path>
+                    <path d="m7 7 1 14h8l1-14"></path>
+                    <path d="M10 11v6"></path>
+                    <path d="M14 11v6"></path>
                 </svg>
             </div>
 
-            <h3>Delete Category?</h3>
+            <h3 id="deleteCategoryTitle{{ $category->id }}">Delete Category?</h3>
 
             <p>
-                Category <strong>{{ $category->name }}</strong> akan dihapus.
-                Aksi ini tidak bisa dibatalkan.
+                Category <strong>{{ $category->name }}</strong> akan dihapus dari daftar.
+                Service yang sudah memakai kategori ini akan kehilangan relasi kategorinya.
             </p>
 
             <div class="delete-actions">
@@ -510,11 +963,11 @@
                     Cancel
                 </button>
 
-                <form action="{{ route('admin.service-categories.destroy', $category->id) }}" method="POST">
+                <form action="{{ route('admin.service-categories.destroy', $category->id) }}" method="POST" class="delete-category-form">
                     @csrf
                     @method('DELETE')
 
-                    <button type="button" class="delete-confirm-btn">
+                    <button type="submit" class="delete-confirm-btn">
                         Delete
                     </button>
                 </form>

@@ -43,6 +43,8 @@
         created_at: notification?.created_at || '',
     });
 
+    const isChatNotification = (notification) => String(notification?.type || '').startsWith('chat.');
+
     const setupNotificationRoot = (root) => {
         const config = parseConfig(root);
         const toggle = root.querySelector('[data-notification-toggle]');
@@ -234,7 +236,7 @@
         const addNotification = (rawNotification, nextUnreadCount) => {
             const notification = normalizeNotification(rawNotification);
 
-            if (notification.type === 'chat.message') {
+            if (isChatNotification(notification)) {
                 incrementSidebarChatBadge(notification);
                 setBadge(nextUnreadCount);
                 setSubtitle();

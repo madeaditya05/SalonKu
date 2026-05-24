@@ -21,6 +21,10 @@
     const emojiToggle = root.querySelector('[data-emoji-toggle]');
     const emojiPanel = root.querySelector('[data-emoji-panel]');
     const emojiButtons = root.querySelectorAll('[data-emoji]');
+    const endChatForms = root.querySelectorAll('[data-chat-end-form]');
+    const endChatDialog = root.querySelector('[data-chat-end-dialog]');
+    const endChatConfirm = root.querySelector('[data-chat-end-confirm]');
+    const endChatCancelButtons = root.querySelectorAll('[data-chat-end-cancel]');
 
     if (!configNode) {
         return;
@@ -34,6 +38,7 @@
     let latestMessageId = 0;
     let isPolling = false;
     let currentReadReceipts = config.readReceipts || {};
+    let pendingEndChatForm = null;
 
     const scrollToBottom = () => {
         if (messagesNode) {
@@ -387,8 +392,14 @@
             return;
         }
 
-        input.style.height = 'auto';
-        input.style.height = `${Math.min(input.scrollHeight, 120)}px`;
+        const minHeight = 38;
+        const maxHeight = 82;
+
+        input.style.height = `${minHeight}px`;
+
+        const nextHeight = Math.min(input.scrollHeight, maxHeight);
+        input.style.height = `${Math.max(minHeight, nextHeight)}px`;
+        input.style.overflowY = input.scrollHeight > maxHeight ? 'auto' : 'hidden';
     };
 
     const setEmojiPanelOpen = (isOpen) => {
@@ -420,6 +431,21 @@
         }
 
         refreshFilePreview();
+    };
+
+    const setEndChatDialogOpen = (isOpen, endForm = null) => {
+        if (!endChatDialog) {
+            return;
+        }
+
+        pendingEndChatForm = isOpen ? endForm : null;
+        endChatDialog.hidden = !isOpen;
+        endChatDialog.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
+        root.classList.toggle('is-confirming-end-chat', isOpen);
+
+        if (isOpen) {
+            window.setTimeout(() => endChatConfirm?.focus(), 0);
+        }
     };
 
     const insertEmoji = (emoji) => {
@@ -459,6 +485,50 @@
     if (fileClear) {
         fileClear.addEventListener('click', clearSelectedImage);
     }
+
+    endChatForms.forEach((endForm) => {
+        endForm.addEventListener('submit', (event) => {
+            if (endForm.dataset.chatEndConfirmed === 'true') {
+                return;
+            }
+
+            event.preventDefault();
+
+            if (!endChatDialog) {
+                if (window.confirm('Anda yakin ingin mengakhiri chat ini?')) {
+                    endForm.dataset.chatEndConfirmed = 'true';
+                    endForm.requestSubmit();
+                }
+
+                return;
+            }
+
+            setEndChatDialogOpen(true, endForm);
+        });
+    });
+
+    endChatCancelButtons.forEach((button) => {
+        button.addEventListener('click', () => setEndChatDialogOpen(false));
+    });
+
+    if (endChatConfirm) {
+        endChatConfirm.addEventListener('click', () => {
+            if (!pendingEndChatForm) {
+                setEndChatDialogOpen(false);
+                return;
+            }
+
+            endChatConfirm.disabled = true;
+            pendingEndChatForm.dataset.chatEndConfirmed = 'true';
+            pendingEndChatForm.requestSubmit();
+        });
+    }
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && endChatDialog && !endChatDialog.hidden) {
+            setEndChatDialogOpen(false);
+        }
+    });
 
     if (emojiToggle && emojiPanel) {
         emojiToggle.addEventListener('click', () => {

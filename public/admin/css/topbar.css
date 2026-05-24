@@ -2,7 +2,7 @@
     flex: 0 0 64px;
     height: 64px;
     min-height: 64px;
-    background: #ffffff;
+    background: linear-gradient(135deg, #ffffff 0%, #f5f9ff 72%, #eefdf9 100%);
     border-bottom: 1px solid var(--admin-border);
     display: flex;
     align-items: center;
@@ -17,6 +17,16 @@
     display: flex;
     align-items: center;
     gap: 12px;
+    min-width: 0;
+}
+
+.admin-topbar-left {
+    flex: 1 1 auto;
+}
+
+.admin-topbar-right {
+    flex: 0 1 auto;
+    justify-content: flex-end;
 }
 
 .admin-mobile-menu-btn,
@@ -25,7 +35,7 @@
 .admin-visit-btn {
     border: 1px solid var(--admin-border);
     background: #ffffff;
-    color: #111827;
+    color: var(--admin-dark);
     border-radius: 10px;
     cursor: pointer;
 }
@@ -45,10 +55,14 @@
 
 .admin-topbar h1 {
     margin: 0;
-    color: #111827;
+    min-width: 0;
+    color: var(--admin-heading);
     font-size: 18px;
     font-weight: 800;
     letter-spacing: -0.02em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .admin-help-btn,
@@ -61,11 +75,23 @@
     gap: 7px;
     font-size: 13px;
     font-weight: 700;
+    white-space: nowrap;
+    flex: 0 0 auto;
 }
 
 .admin-help-btn:hover,
 .admin-visit-btn:hover {
-    background: #f3f4f6;
+    border-color: #bfdbfe;
+    background: #eff6ff;
+    color: var(--admin-primary);
+}
+
+.admin-help-btn {
+    color: var(--admin-primary);
+}
+
+.admin-visit-btn {
+    color: var(--admin-teal);
 }
 
 .admin-topbar-icon {
@@ -87,7 +113,7 @@
     height: 17px;
     padding: 0 4px;
     border-radius: 999px;
-    background: #ef4444;
+    background: var(--admin-red);
     color: #ffffff;
     border: 2px solid #ffffff;
     font-size: 10px;
@@ -116,7 +142,7 @@
     width: 36px;
     height: 36px;
     border-radius: 999px;
-    background: #111827;
+    background: linear-gradient(135deg, var(--admin-primary), var(--admin-purple));
     color: #ffffff;
     display: inline-flex;
     align-items: center;
@@ -176,7 +202,7 @@
     width: 42px;
     height: 42px;
     border-radius: 999px;
-    background: #111827;
+    background: linear-gradient(135deg, var(--admin-primary), var(--admin-purple));
     color: #ffffff;
     display: inline-flex;
     align-items: center;
@@ -197,6 +223,10 @@
 .admin-profile-head strong,
 .admin-profile-head span {
     display: block;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .admin-profile-head strong {
@@ -231,5 +261,6 @@
 
 .admin-profile-menu a:hover,
 .admin-profile-menu button:hover {
-    background: #f3f4f6;
+    background: #eff6ff;
+    color: var(--admin-primary);
 }

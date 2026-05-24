@@ -7,7 +7,6 @@ use App\Models\Booking;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Schema;
 
 class CalendarController extends Controller
 {
@@ -18,11 +17,62 @@ class CalendarController extends Controller
         }
 
         $view = $request->get('view', 'month');
+        $view = in_array($view, ['month', 'week', 'day'], true) ? $view : 'month';
         $dateParam = $request->get('date');
+        $dayLabels = [
+            'Sun' => 'Min',
+            'Mon' => 'Sen',
+            'Tue' => 'Sel',
+            'Wed' => 'Rab',
+            'Thu' => 'Kam',
+            'Fri' => 'Jum',
+            'Sat' => 'Sab',
+        ];
+        $fullDayLabels = [
+            'Sun' => 'Minggu',
+            'Mon' => 'Senin',
+            'Tue' => 'Selasa',
+            'Wed' => 'Rabu',
+            'Thu' => 'Kamis',
+            'Fri' => 'Jumat',
+            'Sat' => 'Sabtu',
+        ];
+        $monthNames = [
+            1 => 'Januari',
+            2 => 'Februari',
+            3 => 'Maret',
+            4 => 'April',
+            5 => 'Mei',
+            6 => 'Juni',
+            7 => 'Juli',
+            8 => 'Agustus',
+            9 => 'September',
+            10 => 'Oktober',
+            11 => 'November',
+            12 => 'Desember',
+        ];
+        $shortMonthNames = [
+            1 => 'Jan',
+            2 => 'Feb',
+            3 => 'Mar',
+            4 => 'Apr',
+            5 => 'Mei',
+            6 => 'Jun',
+            7 => 'Jul',
+            8 => 'Agu',
+            9 => 'Sep',
+            10 => 'Okt',
+            11 => 'Nov',
+            12 => 'Des',
+        ];
 
-        $baseDate = $dateParam
-            ? Carbon::parse($dateParam)->startOfDay()
-            : now()->startOfDay();
+        try {
+            $baseDate = $dateParam
+                ? Carbon::parse($dateParam)->startOfDay()
+                : now()->startOfDay();
+        } catch (\Throwable) {
+            $baseDate = now()->startOfDay();
+        }
 
         // Navigation date
         $prevDate = $baseDate->copy();
@@ -56,6 +106,10 @@ class CalendarController extends Controller
                 $rangeStart->format('Y-m-d'),
                 $rangeEnd->format('Y-m-d'),
             ])
+            ->orderBy('booking_date')
+            ->orderBy('start_time')
+            ->orderBy('booking_time')
+            ->orderBy('id')
             ->get();
 
         $eventsByDate = $bookings->groupBy(function ($booking) {
@@ -94,10 +148,11 @@ class CalendarController extends Controller
             $weekStart = $baseDate->copy()->startOfWeek(Carbon::SUNDAY);
             for ($i = 0; $i < 7; $i++) {
                 $day = $weekStart->copy()->addDays($i);
+                $dayKey = $day->format('D');
                 $weekDays[] = [
                     'date' => $day,
-                    'label' => $day->format('D'),
-                    'label_full' => $day->format('D n/j'),
+                    'label' => $dayLabels[$dayKey] ?? $dayKey,
+                    'label_full' => ($dayLabels[$dayKey] ?? $dayKey) . ' ' . $day->format('j') . ' ' . $shortMonthNames[$day->month],
                     'is_today' => $day->isToday(),
                 ];
             }
@@ -106,38 +161,94 @@ class CalendarController extends Controller
         // Day data
         $dayData = null;
         if ($view === 'day') {
+            $dayKey = $baseDate->format('D');
             $dayData = [
                 'date' => $baseDate->copy(),
-                'label' => $baseDate->format('l'),
+                'label' => $fullDayLabels[$dayKey] ?? $baseDate->format('l'),
                 'is_today' => $baseDate->isToday(),
             ];
         }
 
-        // time labels 12am - 11pm
+        // Time labels, 00:00 - 23:00.
         $timeSlots = [];
         for ($hour = 0; $hour < 24; $hour++) {
-            $timeSlots[] = Carbon::createFromTime($hour, 0)->format('ga');
+            $timeSlots[] = [
+                'hour' => $hour,
+                'label' => Carbon::createFromTime($hour, 0)->format('H:i'),
+            ];
         }
 
         // Title
         if ($view === 'month') {
-            $calendarTitle = strtoupper($baseDate->format('F Y'));
+            $calendarTitle = strtoupper($monthNames[$baseDate->month] . ' ' . $baseDate->year);
         } elseif ($view === 'week') {
             $weekStart = $baseDate->copy()->startOfWeek(Carbon::SUNDAY);
             $weekEnd = $baseDate->copy()->endOfWeek(Carbon::SATURDAY);
 
             if ($weekStart->month === $weekEnd->month && $weekStart->year === $weekEnd->year) {
                 $calendarTitle = strtoupper(
-                    $weekStart->format('M j') . ' - ' . $weekEnd->format('j, Y')
+                    $weekStart->format('j') . ' - ' . $weekEnd->format('j') . ' ' . $monthNames[$weekStart->month] . ' ' . $weekStart->year
                 );
             } else {
                 $calendarTitle = strtoupper(
-                    $weekStart->format('M j') . ' - ' . $weekEnd->format('M j, Y')
+                    $weekStart->format('j') . ' ' . $shortMonthNames[$weekStart->month] . ' - ' . $weekEnd->format('j') . ' ' . $shortMonthNames[$weekEnd->month] . ' ' . $weekEnd->year
                 );
             }
         } else {
-            $calendarTitle = strtoupper($baseDate->format('F j, Y'));
+            $calendarTitle = strtoupper($dayData['label'] . ', ' . $baseDate->format('j') . ' ' . $monthNames[$baseDate->month] . ' ' . $baseDate->year);
         }
+
+        $calendarDays = [];
+
+        if ($view === 'month') {
+            $cursor = $baseDate->copy()->startOfMonth();
+            $monthEnd = $baseDate->copy()->endOfMonth();
+
+            while ($cursor->lte($monthEnd)) {
+                $dateKey = $cursor->format('Y-m-d');
+
+                $calendarDays[] = [
+                    'date' => $cursor->copy(),
+                    'label' => $dayLabels[$cursor->format('D')] ?? $cursor->format('D'),
+                    'day' => $cursor->format('j'),
+                    'count' => ($eventsByDate[$dateKey] ?? collect())->count(),
+                    'is_today' => $cursor->isToday(),
+                ];
+
+                $cursor->addDay();
+            }
+        } elseif ($view === 'week') {
+            foreach ($weekDays as $day) {
+                $dateKey = $day['date']->format('Y-m-d');
+
+                $calendarDays[] = [
+                    'date' => $day['date']->copy(),
+                    'label' => $day['label'],
+                    'day' => $day['date']->format('j'),
+                    'count' => ($eventsByDate[$dateKey] ?? collect())->count(),
+                    'is_today' => $day['is_today'],
+                ];
+            }
+        } else {
+            $dateKey = $dayData['date']->format('Y-m-d');
+
+                $calendarDays[] = [
+                    'date' => $dayData['date']->copy(),
+                    'label' => $dayLabels[$dayData['date']->format('D')] ?? $dayData['date']->format('D'),
+                    'day' => $dayData['date']->format('j'),
+                    'count' => ($eventsByDate[$dateKey] ?? collect())->count(),
+                    'is_today' => $dayData['is_today'],
+            ];
+        }
+
+        $calendarAgenda = $bookings
+            ->sortBy(function ($booking) {
+                $date = $booking->booking_date ? Carbon::parse($booking->booking_date)->format('Y-m-d') : '9999-12-31';
+                $time = $booking->start_time ?? $booking->booking_time ?? '23:59:59';
+
+                return $date . ' ' . $time . ' ' . str_pad((string) $booking->id, 10, '0', STR_PAD_LEFT);
+            })
+            ->values();
 
         return view('admin.calendar.index', compact(
             'view',
@@ -145,6 +256,8 @@ class CalendarController extends Controller
             'prevDate',
             'nextDate',
             'calendarTitle',
+            'calendarAgenda',
+            'calendarDays',
             'eventsByDate',
             'monthWeeks',
             'weekDays',

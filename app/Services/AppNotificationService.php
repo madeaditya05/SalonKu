@@ -64,7 +64,7 @@ class AppNotificationService
     {
         return AppNotification::query()
             ->where('user_id', $user->id)
-            ->where('type', '!=', 'chat.message')
+            ->visibleInNotificationCenter()
             ->whereNull('read_at')
             ->count();
     }

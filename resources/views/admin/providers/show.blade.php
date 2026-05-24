@@ -3,10 +3,6 @@
 @section('title', 'Provider Details - JasaKu')
 @section('page_title', 'Provider Details')
 
-@push('styles')
-    <link rel="stylesheet" href="{{ asset('admin/css/providers.css') }}">
-@endpush
-
 @section('content')
 @php
     $profile = $provider->providerProfile;

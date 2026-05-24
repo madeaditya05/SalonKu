@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Service;
 use App\Models\ServiceCategory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -18,29 +19,99 @@ class ServiceCategoryController extends Controller
             abort(403, 'Akses ditolak.');
         }
 
-        $search = $request->get('search');
+        $search = trim((string) $request->get('search', ''));
+        $status = $request->get('status', 'all');
+        $featured = $request->get('featured', 'all');
         $perPage = (int) $request->get('per_page', 10);
+        $sortBy = $request->get('sort_by', 'created_at');
+        $sortDirection = strtolower((string) $request->get('sort_direction', 'desc'));
 
         if (! in_array($perPage, [10, 25, 50, 100])) {
             $perPage = 10;
         }
 
-        $query = ServiceCategory::query()->orderBy('id', 'asc');
+        if (! in_array($status, ['all', 'active', 'inactive'], true)) {
+            $status = 'all';
+        }
 
-        if (! empty($search)) {
+        if (! in_array($featured, ['all', 'yes', 'no'], true)) {
+            $featured = 'all';
+        }
+
+        if (! in_array($sortDirection, ['asc', 'desc'], true)) {
+            $sortDirection = 'desc';
+        }
+
+        $sortMap = [
+            'name' => 'name',
+            'slug' => 'slug',
+            'status' => 'status',
+            'featured' => 'is_featured',
+            'services_count' => 'services_count',
+            'created_at' => 'created_at',
+        ];
+
+        if (! array_key_exists($sortBy, $sortMap)) {
+            $sortBy = 'created_at';
+        }
+
+        $query = ServiceCategory::query()
+            ->withCount('services')
+            ->when($status !== 'all', fn ($categoryQuery) => $categoryQuery->where('status', $status))
+            ->when($featured !== 'all', fn ($categoryQuery) => $categoryQuery->where('is_featured', $featured === 'yes'));
+
+        if ($search !== '') {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', '%' . $search . '%')
                     ->orWhere('slug', 'like', '%' . $search . '%')
+                    ->orWhere('description', 'like', '%' . $search . '%')
                     ->orWhere('status', 'like', '%' . $search . '%');
             });
         }
 
+        $query->orderBy($sortMap[$sortBy], $sortDirection);
+
+        if ($sortBy !== 'name') {
+            $query->orderBy('name');
+        }
+
         $categories = $query->paginate($perPage)->withQueryString();
+        $summary = [
+            'total' => ServiceCategory::query()->count(),
+            'active' => ServiceCategory::query()->where('status', 'active')->count(),
+            'featured' => ServiceCategory::query()->where('is_featured', true)->count(),
+            'services' => Service::query()->whereNotNull('category_id')->count(),
+        ];
+        $filters = [
+            'status' => $status,
+            'featured' => $featured,
+            'search' => $search,
+            'per_page' => $perPage,
+            'sort_by' => $sortBy,
+            'sort_direction' => $sortDirection,
+        ];
+        $tabs = [
+            'all' => 'All Category',
+            'active' => 'Active',
+            'inactive' => 'Inactive',
+        ];
+        $hasActiveFilters = $search !== ''
+            || $status !== 'all'
+            || $featured !== 'all'
+            || $perPage !== 10
+            || $sortBy !== 'created_at'
+            || $sortDirection !== 'desc';
 
         return view('admin.services.categories.index', compact(
             'categories',
+            'filters',
+            'hasActiveFilters',
             'search',
-            'perPage'
+            'perPage',
+            'sortBy',
+            'sortDirection',
+            'summary',
+            'tabs'
         ));
     }
 

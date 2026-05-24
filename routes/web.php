@@ -467,6 +467,10 @@ Route::prefix('admin')
             Route::get('/dashboard', [DashboardController::class, 'index'])
                 ->name('dashboard');
 
+            Route::get('/dashboard/export/{format}', [DashboardController::class, 'export'])
+                ->whereIn('format', ['pdf', 'csv', 'excel'])
+                ->name('dashboard.export');
+
             /*
             |--------------------------------------------------------------------------
             | Admin Bookings & Calendar

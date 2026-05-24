@@ -47,6 +47,11 @@ function initAdminSidebarToggle() {
 
     function openMobileSidebar() {
         sidebar.classList.add('show');
+        document.body.classList.add('admin-mobile-sidebar-open');
+
+        if (mobileToggle) {
+            mobileToggle.setAttribute('aria-expanded', 'true');
+        }
 
         if (overlay) {
             overlay.classList.add('show');
@@ -55,6 +60,11 @@ function initAdminSidebarToggle() {
 
     function closeMobileSidebar() {
         sidebar.classList.remove('show');
+        document.body.classList.remove('admin-mobile-sidebar-open');
+
+        if (mobileToggle) {
+            mobileToggle.setAttribute('aria-expanded', 'false');
+        }
 
         if (overlay) {
             overlay.classList.remove('show');
@@ -110,7 +120,7 @@ function initAdminSidebarToggle() {
         scrollArea.addEventListener('scroll', saveSidebarScroll);
     }
 
-    document.querySelectorAll('.admin-menu-item, .admin-submenu a, .admin-current-link').forEach(function (menuLink) {
+    sidebar.querySelectorAll('a.admin-menu-item, .admin-submenu a, .admin-current-link').forEach(function (menuLink) {
         menuLink.addEventListener('click', function () {
             saveSidebarScroll();
 
@@ -123,10 +133,21 @@ function initAdminSidebarToggle() {
     window.addEventListener('resize', function () {
         applySavedCollapsed();
         restoreSidebarScroll();
+
+        if (isDesktop()) {
+            closeMobileSidebar();
+        }
+    });
+
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') {
+            closeMobileSidebar();
+        }
     });
 
     applySavedCollapsed();
     restoreSidebarScroll();
+    closeMobileSidebar();
 }
 
 function initAdminSidebarSearch() {

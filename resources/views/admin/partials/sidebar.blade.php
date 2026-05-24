@@ -68,13 +68,6 @@
                     'icon' => '<svg viewBox="0 0 24 24"><path d="M21 15a4 4 0 0 1-4 4H7l-4 4V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"></path></svg>',
                 ],
                 [
-                    'label' => 'WhatsApp Chat',
-                    'url' => '#',
-                    'active' => false,
-                    'keywords' => 'whatsapp chat wa',
-                    'icon' => '<svg viewBox="0 0 24 24"><path d="M20 11.5a8 8 0 0 1-11.8 7L4 20l1.5-4.1A8 8 0 1 1 20 11.5z"></path><path d="M9 9c.5 3 2.5 5 6 6"></path></svg>',
-                ],
-                [
                     'label' => 'Chatbot',
                     'url' => '#',
                     'active' => false,
@@ -114,17 +107,10 @@
                 ],
                 [
                     'label' => 'Notification',
-                    'url' => '#',
-                    'active' => false,
+                    'url' => \Illuminate\Support\Facades\Route::has('admin.notifications.index') ? route('admin.notifications.index') : '#',
+                    'active' => request()->routeIs('admin.notifications.*'),
                     'keywords' => 'notification alert',
                     'icon' => '<svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>',
-                ],
-                [
-                    'label' => 'Addons',
-                    'url' => '#',
-                    'active' => false,
-                    'keywords' => 'addons extras',
-                    'icon' => '<svg viewBox="0 0 24 24"><path d="M12 2v20"></path><path d="M2 12h20"></path></svg>',
                 ],
                 [
                     'label' => 'Coupon',
@@ -314,7 +300,7 @@
             <span class="admin-brand-text">JasaKu.</span>
         </a>
 
-        <button class="admin-sidebar-toggle-btn" id="sidebarToggle" type="button">
+        <button class="admin-sidebar-toggle-btn" id="sidebarToggle" type="button" aria-label="Collapse admin sidebar">
             <svg viewBox="0 0 24 24">
                 <path d="M9 6h11"></path>
                 <path d="M9 12h11"></path>

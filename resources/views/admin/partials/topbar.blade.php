@@ -46,7 +46,7 @@
 
 <header class="admin-topbar">
     <div class="admin-topbar-left">
-        <button class="admin-mobile-menu-btn" id="mobileSidebarToggle" type="button">
+        <button class="admin-mobile-menu-btn" id="mobileSidebarToggle" type="button" aria-label="Open admin menu" aria-expanded="false" aria-controls="sidebar">
             <svg viewBox="0 0 24 24">
                 <path d="M4 7h16"></path>
                 <path d="M4 12h16"></path>
