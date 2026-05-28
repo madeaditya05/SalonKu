@@ -10,145 +10,386 @@
 
 @section('content')
 @php
+    use Illuminate\Support\Str;
+
     $isBranchAccount = $isBranchAccount ?? false;
+    $branchCollection = $branches ?? collect();
+    $totalBranches = $branchCollection->count();
+    $activeBranches = $branchCollection->where('status', 'active')->count();
+    $inactiveBranches = $branchCollection->where('status', 'inactive')->count();
+    $totalStaffs = $branchCollection->sum(fn ($branch) => (int) ($branch->staffs_count ?? optional($branch->staffs)->count() ?? 0));
+
+    $statusTabs = [
+        'all' => ['label' => 'All Branch', 'count' => $totalBranches],
+        'active' => ['label' => 'Active', 'count' => $activeBranches],
+        'inactive' => ['label' => 'Inactive', 'count' => $inactiveBranches],
+    ];
+
+    $statusClass = fn ($status) => ($status ?? 'active') === 'active' ? 'success' : 'danger';
+    $statusLabel = fn ($status) => ucfirst($status ?: 'active');
+    $branchInitial = fn ($branch) => strtoupper(substr((string) ($branch->branch_name ?: 'B'), 0, 1));
+    $formatTime = fn ($value) => $value ? substr((string) $value, 0, 5) : '-';
+
+    $locationText = function ($branch) {
+        return collect([
+            $branch->city_id ?? null,
+            $branch->state_id ?? null,
+            $branch->country_id ?? null,
+        ])->filter()->values()->implode(', ');
+    };
+
+    $phoneText = fn ($branch) => trim(($branch->phone_code ?? '') . ($branch->phone_number ?? '')) ?: '-';
+    $workingDayText = function ($branch) {
+        $days = collect($branch->working_days ?? [])->filter()->values();
+
+        if ($days->isEmpty()) {
+            return 'Working day -';
+        }
+
+        return $days->count() > 3
+            ? $days->take(3)->implode(', ') . ' +' . ($days->count() - 3)
+            : $days->implode(', ');
+    };
 @endphp
 
-<section class="provider-branch-page">
-    <div class="branch-index-header">
-        <div>
-            <h1>Branch</h1>
-
-            <div class="branch-breadcrumb">
-                <span>Dashboard</span>
-                <span>›</span>
-                <strong>Branch</strong>
-            </div>
+<section class="admin-category-page admin-booking-page provider-branch-category-page">
+    <div class="admin-booking-route admin-category-route provider-branch-route">
+        <div class="admin-breadcrumb">
+            <a href="{{ provider_route('provider.dashboard') }}">Dashboard</a>
+            <span>&rsaquo;</span>
+            <strong>Branch</strong>
         </div>
 
-        <div class="branch-header-actions">
-            <button type="button" class="branch-filter-btn">
-                <svg viewBox="0 0 24 24">
-                    <path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3"/>
-                    <path d="M1 14h6M9 8h6M17 16h6"/>
-                </svg>
-                Filter
-            </button>
-
-            @unless ($isBranchAccount)
-                <a href="{{ provider_route('provider.branch.create') }}" class="branch-add-btn">
-                    <svg viewBox="0 0 24 24">
-                        <path d="M12 5v14M5 12h14"/>
+        @unless ($isBranchAccount)
+            <div class="provider-branch-actions provider-branch-actions-desktop">
+                <a href="{{ provider_route('provider.branch.create') }}" class="admin-category-add-button">
+                    <svg viewBox="0 0 24 24" fill="none">
+                        <path d="M12 5v14"></path>
+                        <path d="M5 12h14"></path>
                     </svg>
                     Add Branch
                 </a>
-            @endunless
-        </div>
+            </div>
+        @endunless
     </div>
 
     @if (session('success'))
-        <div class="branch-alert success">
+        <div class="admin-booking-alert success">
             {{ session('success') }}
         </div>
     @endif
 
     @if (session('error'))
-        <div class="branch-alert error">
+        <div class="admin-booking-alert danger">
             {{ session('error') }}
         </div>
     @endif
 
-    <div class="branch-data-card">
-        <div class="branch-data-toolbar">
-            <div class="branch-length-control">
-                <span>Show</span>
+    <div class="admin-booking-summary-grid">
+        <div class="admin-booking-summary-card pink">
+            <span>Total Branch</span>
+            <strong>{{ number_format($totalBranches) }}</strong>
+            <small>{{ $isBranchAccount ? 'Akses dibatasi ke branch ini' : 'Semua cabang provider' }}</small>
+        </div>
 
-                <select id="branchEntriesSelect">
-                    <option value="10">10</option>
-                    <option value="25">25</option>
-                    <option value="50">50</option>
-                    <option value="100">100</option>
-                </select>
+        <div class="admin-booking-summary-card yellow">
+            <span>Active</span>
+            <strong>{{ number_format($activeBranches) }}</strong>
+            <small>Branch yang bisa menerima booking</small>
+        </div>
 
-                <span>entries</span>
+        <div class="admin-booking-summary-card blue">
+            <span>Total Staff</span>
+            <strong>{{ number_format($totalStaffs) }}</strong>
+            <small>Staff terhubung ke branch</small>
+        </div>
+
+        <div class="admin-booking-summary-card orange">
+            <span>Inactive</span>
+            <strong>{{ number_format($inactiveBranches) }}</strong>
+            <small>Branch nonaktif atau ditutup</small>
+        </div>
+    </div>
+
+    <div class="admin-booking-card category-card provider-branch-category-card">
+        <div class="admin-booking-tabs provider-branch-tabs">
+            @foreach ($statusTabs as $key => $tab)
+                <button
+                    type="button"
+                    class="admin-booking-tab {{ $key === 'all' ? 'active' : '' }}"
+                    data-branch-status-filter="{{ $key }}"
+                >
+                    {{ $tab['label'] }}
+                    <span>{{ number_format($tab['count']) }}</span>
+                </button>
+            @endforeach
+        </div>
+
+        <div class="admin-booking-filter-panel compact provider-branch-filter-panel">
+            <div class="admin-booking-filter-row provider-branch-filter-row">
+                <label class="admin-booking-field search">
+                    <div class="admin-booking-search-box">
+                        <svg viewBox="0 0 24 24">
+                            <circle cx="11" cy="11" r="7"></circle>
+                            <path d="m21 21-4.3-4.3"></path>
+                        </svg>
+
+                        <input type="text" id="branchSearchInput" placeholder="Search branch">
+                    </div>
+                </label>
+
+                <button type="button" class="admin-booking-mobile-search-submit" aria-label="Search branch">
+                    Cari
+                </button>
+
+                <button
+                    type="button"
+                    class="admin-booking-mobile-filter-toggle"
+                    aria-controls="branchFilterRow"
+                    aria-expanded="false"
+                >
+                    Filter
+                </button>
+
+                <label class="admin-booking-field count">
+                    <select id="branchEntriesSelect" aria-label="Rows per page" title="Rows per page">
+                        <option value="10">10</option>
+                        <option value="25">25</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                </label>
+
+                <div class="admin-booking-filter-buttons">
+                    <button type="button" id="branchResetFilter">Reset</button>
+                </div>
             </div>
 
-            <div class="branch-search-control">
-                <svg viewBox="0 0 24 24">
-                    <circle cx="11" cy="11" r="7"/>
-                    <path d="m21 21-4.3-4.3"/>
-                </svg>
-
-                <input type="text" id="branchSearchInput" placeholder="Search branch">
+            <div class="admin-booking-filter-meta">
+                <span class="admin-booking-filter-count">{{ number_format($totalBranches) }} branch</span>
+                <span>{{ number_format($activeBranches) }} active</span>
+                <span>{{ number_format($totalStaffs) }} staff</span>
             </div>
         </div>
 
-        <div class="branch-table-responsive">
-            <table class="branch-datatable" id="branchTable">
+        @unless ($isBranchAccount)
+            <div class="admin-category-add-row provider-branch-actions provider-branch-actions-mobile">
+                <a href="{{ provider_route('provider.branch.create') }}" class="admin-category-add-button">
+                    <svg viewBox="0 0 24 24" fill="none">
+                        <path d="M12 5v14"></path>
+                        <path d="M5 12h14"></path>
+                    </svg>
+                    Add Branch
+                </a>
+            </div>
+        @endunless
+
+        <div class="admin-category-mobile-list admin-booking-mobile-list provider-branch-mobile-list" id="branchMobileList">
+            @foreach ($branchCollection as $index => $branch)
+                @php
+                    $staffCount = (int) ($branch->staffs_count ?? optional($branch->staffs)->count() ?? 0);
+                    $status = $branch->status ?? 'active';
+                    $location = $locationText($branch);
+                    $phone = $phoneText($branch);
+                    $schedule = $formatTime($branch->working_start_hour) . ' - ' . $formatTime($branch->working_end_hour);
+                    $searchText = collect([
+                        $branch->branch_name,
+                        $branch->email,
+                        $phone,
+                        $branch->address,
+                        $location,
+                        $status,
+                    ])->filter()->implode(' ');
+                @endphp
+
+                <article
+                    class="admin-category-mobile-card admin-booking-mobile-card provider-branch-mobile-card"
+                    data-branch-card
+                    data-branch-id="{{ $branch->id }}"
+                    data-branch-status="{{ $status }}"
+                    data-branch-search="{{ Str::lower($searchText) }}"
+                >
+                    <header class="admin-category-mobile-head">
+                        <div class="admin-category-mobile-title">
+                            @if (! empty($branch->image_url))
+                                <img src="{{ $branch->image_url }}" alt="{{ $branch->branch_name }}">
+                            @else
+                                <span>{{ $branchInitial($branch) }}</span>
+                            @endif
+
+                            <div>
+                                <strong>{{ $branch->branch_name }}</strong>
+                                <span>{{ $branch->email ?? 'No email' }}</span>
+                            </div>
+                        </div>
+
+                        <b>{{ $staffCount }} staff</b>
+                    </header>
+
+                    <div class="admin-category-mobile-main admin-booking-mobile-main provider-branch-mobile-main">
+                        <div>
+                            <span>Phone</span>
+                            <strong>{{ $phone }}</strong>
+                        </div>
+
+                        <div>
+                            <span>Location</span>
+                            <strong>{{ Str::limit($location ?: '-', 28) }}</strong>
+                        </div>
+
+                        <div>
+                            <span>Hours</span>
+                            <strong>{{ $schedule }}</strong>
+                            <small>{{ $workingDayText($branch) }}</small>
+                        </div>
+
+                        <div>
+                            <span>Status</span>
+                            <strong>{{ $statusLabel($status) }}</strong>
+                        </div>
+                    </div>
+
+                    <p>{{ Str::limit($branch->address ?: 'No address', 120) }}</p>
+
+                    <footer class="admin-category-mobile-footer provider-branch-mobile-footer">
+                        <span class="admin-booking-status {{ $statusClass($status) }}">
+                            {{ $statusLabel($status) }}
+                        </span>
+
+                        <div class="category-actions provider-branch-action-icons">
+                            <a href="{{ provider_route('provider.branch.edit', $branch->id) }}" class="category-action-btn" title="Edit" aria-label="Edit {{ $branch->branch_name }}">
+                                <svg viewBox="0 0 24 24" fill="none">
+                                    <path d="M12 20h9"></path>
+                                    <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path>
+                                </svg>
+                            </a>
+
+                            @unless ($isBranchAccount)
+                                <button
+                                    type="button"
+                                    class="category-action-btn danger branch-delete-trigger"
+                                    title="Delete"
+                                    aria-label="Delete {{ $branch->branch_name }}"
+                                    data-delete-url="{{ provider_route('provider.branch.destroy', $branch->id) }}"
+                                >
+                                    <svg viewBox="0 0 24 24" fill="none">
+                                        <path d="M3 6h18"></path>
+                                        <path d="M8 6V4h8v2"></path>
+                                        <path d="M19 6l-1 14H6L5 6"></path>
+                                        <path d="M10 11v6"></path>
+                                        <path d="M14 11v6"></path>
+                                    </svg>
+                                </button>
+                            @endunless
+                        </div>
+                    </footer>
+                </article>
+            @endforeach
+
+            <div class="admin-category-mobile-empty admin-booking-mobile-empty provider-branch-mobile-empty" id="branchMobileEmpty" {{ $totalBranches > 0 ? 'hidden' : '' }}>
+                <strong>No branch available.</strong>
+                <p>Tambahkan branch baru atau ubah keyword pencarian.</p>
+            </div>
+        </div>
+
+        <div class="admin-booking-table-wrap category-table-wrap provider-branch-category-table-wrap">
+            <table class="admin-booking-table detailed category-table provider-branch-category-table" id="branchTable">
                 <thead>
                     <tr>
                         <th data-sort="number">
-                            <span>#</span>
-                            <span class="sort-icon">↕</span>
+                            <button type="button" class="admin-booking-sort provider-branch-sort-button">
+                                #
+                                <span class="admin-booking-sort-icons" aria-hidden="true">
+                                    <span>&uarr;</span>
+                                    <span>&darr;</span>
+                                </span>
+                            </button>
                         </th>
-
                         <th data-sort="text">
-                            <span>Branch Name</span>
-                            <span class="sort-icon">↕</span>
+                            <button type="button" class="admin-booking-sort provider-branch-sort-button">
+                                Branch
+                                <span class="admin-booking-sort-icons" aria-hidden="true">
+                                    <span>&uarr;</span>
+                                    <span>&darr;</span>
+                                </span>
+                            </button>
                         </th>
-
                         <th data-sort="text">
-                            <span>Phone</span>
-                            <span class="sort-icon">↕</span>
+                            <button type="button" class="admin-booking-sort provider-branch-sort-button">
+                                Contact
+                                <span class="admin-booking-sort-icons" aria-hidden="true">
+                                    <span>&uarr;</span>
+                                    <span>&darr;</span>
+                                </span>
+                            </button>
                         </th>
-
                         <th data-sort="text">
-                            <span>Location</span>
-                            <span class="sort-icon">↕</span>
+                            <button type="button" class="admin-booking-sort provider-branch-sort-button">
+                                Location
+                                <span class="admin-booking-sort-icons" aria-hidden="true">
+                                    <span>&uarr;</span>
+                                    <span>&darr;</span>
+                                </span>
+                            </button>
                         </th>
-
+                        <th data-sort="text">
+                            <button type="button" class="admin-booking-sort provider-branch-sort-button">
+                                Schedule
+                                <span class="admin-booking-sort-icons" aria-hidden="true">
+                                    <span>&uarr;</span>
+                                    <span>&darr;</span>
+                                </span>
+                            </button>
+                        </th>
                         <th data-sort="number">
-                            <span>Staffs</span>
-                            <span class="sort-icon">↕</span>
+                            <button type="button" class="admin-booking-sort provider-branch-sort-button">
+                                Staff
+                                <span class="admin-booking-sort-icons" aria-hidden="true">
+                                    <span>&uarr;</span>
+                                    <span>&darr;</span>
+                                </span>
+                            </button>
                         </th>
-
                         <th data-sort="text">
-                            <span>Status</span>
-                            <span class="sort-icon">↕</span>
+                            <button type="button" class="admin-booking-sort provider-branch-sort-button">
+                                Status
+                                <span class="admin-booking-sort-icons" aria-hidden="true">
+                                    <span>&uarr;</span>
+                                    <span>&darr;</span>
+                                </span>
+                            </button>
                         </th>
-
-                        <th>
-                            <span>Action</span>
-                        </th>
+                        <th>Action</th>
                     </tr>
                 </thead>
 
                 <tbody>
-                    @forelse ($branches as $index => $branch)
+                    @forelse ($branchCollection as $index => $branch)
                         @php
-                            $staffCount = $branch->staffs_count ?? optional($branch->staffs)->count() ?? 0;
-                            $branchInitial = strtoupper(substr($branch->branch_name ?? 'B', 0, 1));
-
-                            $locationParts = collect([
-                                $branch->city_id ?? null,
-                                $branch->state_id ?? null,
-                                $branch->country_id ?? null,
-                            ])->filter()->values()->implode(', ');
+                            $staffCount = (int) ($branch->staffs_count ?? optional($branch->staffs)->count() ?? 0);
+                            $status = $branch->status ?? 'active';
+                            $location = $locationText($branch);
+                            $phone = $phoneText($branch);
+                            $schedule = $formatTime($branch->working_start_hour) . ' - ' . $formatTime($branch->working_end_hour);
                         @endphp
 
-                        <tr>
-                            <td>{{ $index + 1 }}</td>
+                        <tr data-branch-id="{{ $branch->id }}" data-branch-status="{{ $status }}">
+                            <td>
+                                <div class="admin-booking-code-cell">
+                                    <strong>{{ $index + 1 }}</strong>
+                                    <small>ID #{{ $branch->id }}</small>
+                                </div>
+                            </td>
 
                             <td>
-                                <div class="branch-name-cell">
-                                    <div class="branch-avatar">
-                                        @if (!empty($branch->image_url))
-                                            <img src="{{ $branch->image_url }}" alt="{{ $branch->branch_name }}">
-                                        @else
-                                            {{ $branchInitial }}
-                                        @endif
-                                    </div>
+                                <div class="category-name-box provider-branch-name-box">
+                                    @if (! empty($branch->image_url))
+                                        <img class="category-thumb" src="{{ $branch->image_url }}" alt="{{ $branch->branch_name }}">
+                                    @else
+                                        <span class="category-thumb-placeholder">{{ $branchInitial($branch) }}</span>
+                                    @endif
 
-                                    <div>
+                                    <div class="category-name-text">
                                         <strong>{{ $branch->branch_name }}</strong>
                                         <small>{{ $branch->email ?? 'No email' }}</small>
                                     </div>
@@ -156,49 +397,61 @@
                             </td>
 
                             <td>
-                                {{ $branch->phone_code ?? '' }}{{ $branch->phone_number ?? '-' }}
-                            </td>
-
-                            <td>
-                                <div class="branch-location-cell">
-                                    <strong>{{ $locationParts ?: '-' }}</strong>
-                                    <small>{{ $branch->address ?? '-' }}</small>
+                                <div class="admin-booking-date">
+                                    <strong>{{ $phone }}</strong>
+                                    <small>{{ $branch->email ?? 'No email' }}</small>
                                 </div>
                             </td>
 
                             <td>
-                                <span class="branch-count-badge">
-                                    {{ $staffCount }}
+                                <div class="admin-booking-date provider-branch-location-stack">
+                                    <strong>{{ $location ?: '-' }}</strong>
+                                    <small>{{ Str::limit($branch->address ?: '-', 64) }}</small>
+                                </div>
+                            </td>
+
+                            <td>
+                                <div class="admin-booking-date provider-branch-schedule-stack">
+                                    <strong>{{ $schedule }}</strong>
+                                    <small>{{ $workingDayText($branch) }}</small>
+                                </div>
+                            </td>
+
+                            <td>
+                                <span class="admin-booking-status info">
+                                    {{ number_format($staffCount) }}
                                 </span>
                             </td>
 
                             <td>
-                                <span class="branch-status-badge {{ $branch->status ?? 'active' }}">
-                                    {{ ucfirst($branch->status ?? 'active') }}
+                                <span class="admin-booking-status {{ $statusClass($status) }}">
+                                    {{ $statusLabel($status) }}
                                 </span>
                             </td>
 
                             <td>
-                                <div class="branch-action-group">
-                                    <a href="{{ provider_route('provider.branch.edit', $branch->id) }}" class="branch-icon-btn edit" title="Edit">
-                                        <svg viewBox="0 0 24 24">
-                                            <path d="M12 20h9"/>
-                                            <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>
+                                <div class="category-actions provider-branch-action-icons provider-branch-row-actions">
+                                    <a href="{{ provider_route('provider.branch.edit', $branch->id) }}" class="category-action-btn" title="Edit" aria-label="Edit {{ $branch->branch_name }}">
+                                        <svg viewBox="0 0 24 24" fill="none">
+                                            <path d="M12 20h9"></path>
+                                            <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path>
                                         </svg>
                                     </a>
 
                                     @unless ($isBranchAccount)
                                         <button
                                             type="button"
-                                            class="branch-icon-btn delete branch-delete-trigger"
+                                            class="category-action-btn danger branch-delete-trigger"
                                             title="Delete"
+                                            aria-label="Delete {{ $branch->branch_name }}"
                                             data-delete-url="{{ provider_route('provider.branch.destroy', $branch->id) }}"
                                         >
-                                            <svg viewBox="0 0 24 24">
-                                                <path d="M3 6h18"/>
-                                                <path d="M8 6V4h8v2"/>
-                                                <path d="M19 6l-1 14H6L5 6"/>
-                                                <path d="M10 11v6M14 11v6"/>
+                                            <svg viewBox="0 0 24 24" fill="none">
+                                                <path d="M3 6h18"></path>
+                                                <path d="M8 6V4h8v2"></path>
+                                                <path d="M19 6l-1 14H6L5 6"></path>
+                                                <path d="M10 11v6"></path>
+                                                <path d="M14 11v6"></path>
                                             </svg>
                                         </button>
                                     @endunless
@@ -207,19 +460,35 @@
                         </tr>
                     @empty
                         <tr class="branch-empty-row">
-                            <td colspan="7">No branch available</td>
+                            <td colspan="8" class="admin-booking-empty">
+                                <div>
+                                    <span>
+                                        <svg viewBox="0 0 24 24">
+                                            <path d="M4 21V5a2 2 0 0 1 2-2h10v18"></path>
+                                            <path d="M16 8h2a2 2 0 0 1 2 2v11"></path>
+                                            <path d="M8 7h4"></path>
+                                            <path d="M8 11h4"></path>
+                                            <path d="M8 15h4"></path>
+                                        </svg>
+                                    </span>
+
+                                    <strong>No branch available.</strong>
+                                    <p>Tambahkan branch baru untuk mulai mengatur lokasi provider.</p>
+                                </div>
+                            </td>
                         </tr>
                     @endforelse
                 </tbody>
             </table>
         </div>
 
-        <div class="branch-data-footer">
-            <div class="branch-info-text" id="branchInfoText">
-                Showing 0 to 0 of 0 entries
-            </div>
+        <div class="admin-booking-footer category-footer provider-branch-footer">
+            <p class="admin-booking-showing branch-info-text" id="branchInfoText">
+                <strong>0-0</strong>
+                <span>/ 0</span>
+            </p>
 
-            <div class="branch-pagination" id="branchPagination">
+            <div class="admin-booking-pagination category-pagination branch-pagination" id="branchPagination">
                 <button type="button" data-page="first">First</button>
                 <button type="button" data-page="previous">Previous</button>
                 <button type="button" class="active" data-page="1">1</button>
@@ -233,18 +502,19 @@
 <div class="branch-delete-modal-overlay" id="branchDeleteModal">
     <div class="branch-delete-modal">
         <div class="branch-delete-icon">
-            <svg viewBox="0 0 24 24">
-                <path d="M3 6h18"/>
-                <path d="M8 6V4h8v2"/>
-                <path d="M19 6l-1 14H6L5 6"/>
-                <path d="M10 11v6M14 11v6"/>
+            <svg viewBox="0 0 24 24" fill="none">
+                <path d="M3 6h18"></path>
+                <path d="M8 6V4h8v2"></path>
+                <path d="M19 6l-1 14H6L5 6"></path>
+                <path d="M10 11v6"></path>
+                <path d="M14 11v6"></path>
             </svg>
         </div>
 
-        <h2>Confirm Deletion</h2>
+        <h2>Delete Branch?</h2>
 
         <p>
-            Are you sure you want to delete this branch? This action cannot be undone.
+            Branch ini akan dihapus dan staff yang terhubung akan dilepas dari branch tersebut.
         </p>
 
         <div class="branch-delete-modal-actions">
@@ -257,7 +527,7 @@
                 @method('DELETE')
 
                 <button type="submit" class="branch-modal-delete">
-                    Yes, Delete
+                    Delete
                 </button>
             </form>
         </div>

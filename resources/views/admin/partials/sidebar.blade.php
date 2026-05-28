@@ -2,6 +2,7 @@
     $authUser = auth()->user();
     $adminName = $authUser->name ?? 'Demo Admin';
     $adminEmail = $authUser->email ?? 'admin@mail.com';
+    $adminProfile = $authUser?->adminProfile;
 
     $parts = collect(explode(' ', trim($adminName)))->filter()->values();
 
@@ -9,7 +10,7 @@
         ? strtoupper(substr($parts[0], 0, 1) . substr($parts[1], 0, 1))
         : strtoupper(substr($adminName, 0, 1));
 
-    $image = $authUser->image ?? null;
+    $image = $adminProfile->avatar ?? ($authUser->image ?? null);
     $imageUrl = null;
 
     if (!empty($image)) {

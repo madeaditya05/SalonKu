@@ -13,6 +13,7 @@ use App\Support\ProviderMenuAccess;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -113,37 +114,113 @@ class SupportChatController extends Controller
         $status = (string) $request->query('status', 'pending');
         $allowedStatuses = ['pending', 'approved', 'rejected', 'closed', 'all'];
         $status = in_array($status, $allowedStatuses, true) ? $status : 'pending';
-        $providerIds = $this->providerOwners($search)->pluck('id');
+        $perPage = (int) $request->query('per_page', 10);
+        $perPage = in_array($perPage, [10, 25, 50, 100], true) ? $perPage : 10;
+        $sortBy = (string) $request->query('sort_by', 'requested_at');
+        $sortDirection = strtolower((string) $request->query('sort_direction', 'desc')) === 'asc' ? 'asc' : 'desc';
+        $allowedSorts = ['requested_at', 'reviewed_at', 'last_message_at', 'status', 'subject', 'requester', 'provider'];
+        $sortBy = in_array($sortBy, $allowedSorts, true) ? $sortBy : 'requested_at';
 
-        $threads = ChatThread::query()
-            ->with(['provider.providerProfile', 'providerUser.providerBranch', 'ticketReviewer', 'lastMessage.sender'])
-            ->whereIn('provider_id', $providerIds)
+        $baseQuery = ChatThread::query()
+            ->with([
+                'provider.providerProfile',
+                'providerUser.providerBranch',
+                'providerUser.providerRole',
+                'ticketReviewer',
+                'opener.providerBranch',
+                'closer',
+                'lastMessage.sender',
+            ])
             ->where('conversation_type', self::TYPE_PROVIDER_ADMIN)
             ->whereIn('ticket_status', ['pending', 'approved', 'rejected', 'closed'])
-            ->when($status !== 'all', fn ($query) => $query->where('ticket_status', $status))
-            ->get()
-            ->sortByDesc(fn (ChatThread $thread) => optional(
-                $thread->ticket_requested_at ?: $thread->ticket_reviewed_at ?: $thread->last_message_at ?: $thread->updated_at
-            )->timestamp ?: 0)
-            ->values();
+            ->when($search !== '', function ($query) use ($search) {
+                $query->where(function ($searchQuery) use ($search) {
+                    $searchQuery
+                        ->where('ticket_subject', 'like', "%{$search}%")
+                        ->orWhere('ticket_body', 'like', "%{$search}%")
+                        ->orWhere('ticket_rejection_reason', 'like', "%{$search}%")
+                        ->orWhereHas('provider', function ($providerQuery) use ($search) {
+                            $providerQuery
+                                ->where('name', 'like', "%{$search}%")
+                                ->orWhere('email', 'like', "%{$search}%")
+                                ->orWhere('username', 'like', "%{$search}%")
+                                ->orWhereHas('providerProfile', function ($profileQuery) use ($search) {
+                                    $profileQuery
+                                        ->where('phone_number', 'like', "%{$search}%")
+                                        ->orWhere('category', 'like', "%{$search}%");
+                                });
+                        })
+                        ->orWhereHas('providerUser', function ($requesterQuery) use ($search) {
+                            $requesterQuery
+                                ->where('name', 'like', "%{$search}%")
+                                ->orWhere('email', 'like', "%{$search}%")
+                                ->orWhere('username', 'like', "%{$search}%")
+                                ->orWhereHas('providerBranch', function ($branchQuery) use ($search) {
+                                    $branchQuery->where('branch_name', 'like', "%{$search}%");
+                                })
+                                ->orWhereHas('providerRole', function ($roleQuery) use ($search) {
+                                    $roleQuery->where('role_name', 'like', "%{$search}%");
+                                });
+                        })
+                        ->orWhereHas('ticketReviewer', function ($reviewerQuery) use ($search) {
+                            $reviewerQuery
+                                ->where('name', 'like', "%{$search}%")
+                                ->orWhere('email', 'like', "%{$search}%");
+                        });
+                });
+            });
 
-        $requestedThreadId = (int) $request->query('thread');
-        $activeThread = $threads->firstWhere('id', $requestedThreadId) ?: $threads->first();
-
-        $statusCounts = ChatThread::query()
-            ->whereIn('provider_id', $providerIds)
-            ->where('conversation_type', self::TYPE_PROVIDER_ADMIN)
-            ->whereIn('ticket_status', ['pending', 'approved', 'rejected', 'closed'])
+        $statusCounts = (clone $baseQuery)
             ->select('ticket_status', DB::raw('count(*) as aggregate'))
             ->groupBy('ticket_status')
             ->pluck('aggregate', 'ticket_status');
+
+        $allThreads = (clone $baseQuery)
+            ->when($status !== 'all', fn ($query) => $query->where('ticket_status', $status))
+            ->get()
+            ->sortBy(function (ChatThread $thread) use ($sortBy) {
+                return match ($sortBy) {
+                    'reviewed_at' => optional($thread->ticket_reviewed_at)->timestamp ?: 0,
+                    'last_message_at' => optional($thread->last_message_at)->timestamp ?: 0,
+                    'status' => $thread->ticket_status ?: '',
+                    'subject' => Str::lower($thread->ticket_subject ?: ''),
+                    'requester' => Str::lower(($thread->providerUser ?: $thread->provider)?->name ?: ''),
+                    'provider' => Str::lower($thread->provider?->name ?: ''),
+                    default => optional($thread->ticket_requested_at ?: $thread->created_at)->timestamp ?: 0,
+                };
+            }, SORT_REGULAR, $sortDirection === 'desc')
+            ->values();
+
+        $requestedThreadId = (int) $request->query('thread');
+        $page = max(1, (int) $request->query('page', 1));
+        $threads = new LengthAwarePaginator(
+            $allThreads->forPage($page, $perPage)->values(),
+            $allThreads->count(),
+            $perPage,
+            $page,
+            [
+                'path' => $request->url(),
+                'query' => $request->query(),
+            ]
+        );
+        $activeThread = $allThreads->firstWhere('id', $requestedThreadId) ?: $threads->getCollection()->first();
+        $summary = [
+            'total' => (int) $statusCounts->sum(),
+            'pending' => (int) ($statusCounts['pending'] ?? 0),
+            'approved' => (int) ($statusCounts['approved'] ?? 0),
+            'completed' => (int) ($statusCounts['rejected'] ?? 0) + (int) ($statusCounts['closed'] ?? 0),
+        ];
 
         return view('admin.tickets.index', [
             'threads' => $threads,
             'activeThread' => $activeThread,
             'search' => $search,
             'status' => $status,
+            'perPage' => $perPage,
+            'sortBy' => $sortBy,
+            'sortDirection' => $sortDirection,
             'statusCounts' => $statusCounts,
+            'summary' => $summary,
         ]);
     }
 

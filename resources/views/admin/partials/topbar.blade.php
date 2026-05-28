@@ -2,6 +2,7 @@
     $authUser = auth()->user();
     $adminName = $authUser->name ?? 'Demo Admin';
     $adminEmail = $authUser->email ?? 'admin@mail.com';
+    $adminProfile = $authUser?->adminProfile;
 
     $parts = collect(explode(' ', trim($adminName)))->filter()->values();
 
@@ -9,7 +10,7 @@
         ? strtoupper(substr($parts[0], 0, 1) . substr($parts[1], 0, 1))
         : strtoupper(substr($adminName, 0, 1));
 
-    $image = $authUser->image ?? null;
+    $image = $adminProfile->avatar ?? ($authUser->image ?? null);
     $imageUrl = null;
 
     if (!empty($image)) {
@@ -58,17 +59,17 @@
     </div>
 
     <div class="admin-topbar-right">
-        <a href="javascript:void(0)" class="admin-help-btn">
+        <a href="javascript:void(0)" class="admin-help-btn" title="Need help" aria-label="Need help">
             <svg viewBox="0 0 24 24">
                 <circle cx="12" cy="12" r="9"></circle>
                 <path d="M9.09 9a3 3 0 1 1 5.82 1c0 2-3 2-3 4"></path>
                 <path d="M12 17h.01"></path>
             </svg>
-            Need help
+            <span class="admin-topbar-action-label">Need help</span>
         </a>
 
         <div class="notification-shell" data-notification-root>
-            <button class="admin-topbar-icon notification-btn" type="button" data-notification-toggle aria-expanded="false" title="Notifications">
+            <button class="admin-topbar-icon notification-btn" type="button" data-notification-toggle aria-expanded="false" title="Notifications" aria-label="Notifications">
                 <svg viewBox="0 0 24 24">
                     <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path>
                     <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
@@ -94,18 +95,18 @@
             </script>
         </div>
 
-        <a href="{{ url('/') }}" class="admin-visit-btn">
+        <a href="{{ url('/') }}" class="admin-visit-btn" title="Visit Website" aria-label="Visit Website">
             <svg viewBox="0 0 24 24">
                 <circle cx="12" cy="12" r="9"></circle>
                 <path d="M3 12h18"></path>
                 <path d="M12 3a14 14 0 0 1 0 18"></path>
                 <path d="M12 3a14 14 0 0 0 0 18"></path>
             </svg>
-            Visit Website
+            <span class="admin-topbar-action-label">Visit Website</span>
         </a>
 
         <div class="admin-profile-dropdown" id="profileDropdown">
-            <button class="admin-profile-btn" id="profileToggle" type="button">
+            <button class="admin-profile-btn" id="profileToggle" type="button" title="Admin profile" aria-label="Admin profile">
                 <span class="admin-profile-avatar">
                     @if ($imageUrl)
                         <img src="{{ $imageUrl }}" alt="{{ $adminName }}">

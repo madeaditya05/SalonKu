@@ -4,6 +4,7 @@ document.addEventListener('DOMContentLoaded', function () {
     initAdminSubmenus();
     initAdminProfileDropdown();
     initAdminDashboardTabs();
+    initAdminDeleteConfirm();
 });
 
 function initAdminSidebarToggle() {
@@ -306,5 +307,154 @@ function initAdminDashboardTabs() {
 
             tab.classList.add('active');
         });
+    });
+}
+
+function initAdminDeleteConfirm() {
+    const modal = document.getElementById('adminDeleteConfirmModal');
+    const title = document.getElementById('adminDeleteConfirmTitle');
+    const item = document.getElementById('adminDeleteConfirmItem');
+    const message = document.getElementById('adminDeleteConfirmMessage');
+    const confirmButton = modal ? modal.querySelector('[data-admin-delete-confirm]') : null;
+    let pendingForm = null;
+    let previousFocus = null;
+
+    function isDeleteForm(form) {
+        if (!form) {
+            return false;
+        }
+
+        if (form.hasAttribute('data-delete-form') || form.hasAttribute('data-admin-delete-form')) {
+            return true;
+        }
+
+        if ((form.getAttribute('method') || '').toUpperCase() === 'DELETE') {
+            return true;
+        }
+
+        const methodInput = form.querySelector('input[name="_method"]');
+
+        return methodInput && methodInput.value.toUpperCase() === 'DELETE';
+    }
+
+    function shouldSkipForm(form) {
+        if (!form) {
+            return true;
+        }
+
+        if (form.dataset.deleteConfirmed === 'true' || form.dataset.adminDeleteSkip === 'true') {
+            return true;
+        }
+
+        return Boolean(form.closest('.category-modal') && !form.hasAttribute('data-delete-form') && !form.hasAttribute('data-admin-delete-form'));
+    }
+
+    function submitPendingForm() {
+        if (!pendingForm) {
+            return;
+        }
+
+        pendingForm.dataset.deleteConfirmed = 'true';
+
+        if (confirmButton) {
+            confirmButton.disabled = true;
+            confirmButton.textContent = pendingForm.dataset.deleteLoadingLabel || 'Menghapus...';
+        }
+
+        HTMLFormElement.prototype.submit.call(pendingForm);
+    }
+
+    function openModal(form) {
+        if (!form) {
+            return;
+        }
+
+        if (!modal || !confirmButton) {
+            if (confirm(form.dataset.deleteFallbackMessage || 'Yakin ingin menghapus data ini?')) {
+                form.dataset.deleteConfirmed = 'true';
+                HTMLFormElement.prototype.submit.call(form);
+            }
+
+            return;
+        }
+
+        pendingForm = form;
+        previousFocus = document.activeElement;
+
+        if (title) {
+            title.textContent = form.dataset.deleteTitle || 'Hapus Data?';
+        }
+
+        if (item) {
+            item.textContent = form.dataset.deleteItem || form.dataset.deleteName || 'data ini';
+        }
+
+        if (message) {
+            message.textContent = form.dataset.deleteMessage || 'Data yang dipilih akan dihapus dari sistem.';
+        }
+
+        confirmButton.disabled = false;
+        confirmButton.textContent = form.dataset.deleteConfirmLabel || 'Hapus';
+        modal.classList.add('show');
+        modal.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('modal-open');
+        confirmButton.focus();
+    }
+
+    function closeModal() {
+        if (!modal) {
+            return;
+        }
+
+        modal.classList.remove('show');
+        modal.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('modal-open');
+        pendingForm = null;
+
+        if (previousFocus && typeof previousFocus.focus === 'function') {
+            previousFocus.focus();
+        }
+    }
+
+    document.addEventListener('submit', function (event) {
+        const form = event.target;
+
+        if (!(form instanceof HTMLFormElement) || !isDeleteForm(form) || shouldSkipForm(form)) {
+            return;
+        }
+
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        openModal(form);
+    }, true);
+
+    document.addEventListener('click', function (event) {
+        const target = event.target instanceof Element ? event.target : null;
+
+        if (!target) {
+            return;
+        }
+
+        if (target.closest('[data-admin-delete-cancel]')) {
+            event.preventDefault();
+            closeModal();
+            return;
+        }
+
+        if (target.closest('[data-admin-delete-confirm]')) {
+            event.preventDefault();
+            submitPendingForm();
+            return;
+        }
+
+        if (modal && target === modal) {
+            closeModal();
+        }
+    });
+
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape' && modal && modal.classList.contains('show')) {
+            closeModal();
+        }
     });
 }

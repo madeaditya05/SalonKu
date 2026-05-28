@@ -437,10 +437,10 @@
     }
 @endphp
 
-<aside class="provider-sidebar" id="providerSidebar">
-    <div class="sidebar-brand-row">
-        <a href="{{ provider_route('provider.dashboard') }}" class="sidebar-brand">
-            <span class="brand-mark">
+<aside class="provider-sidebar admin-sidebar" id="providerSidebar">
+    <div class="sidebar-brand-row admin-sidebar-header">
+        <a href="{{ provider_route('provider.dashboard') }}" class="sidebar-brand admin-sidebar-brand">
+            <span class="brand-mark admin-brand-icon">
                 <svg viewBox="0 0 24 24">
                     <path d="M4 4h16v16H4z"/>
                     <path d="M7 7h7l3 3v7H10l-3-3V7z"/>
@@ -448,17 +448,17 @@
                 </svg>
             </span>
 
-            <span class="brand-name">JasaKu.</span>
+            <span class="brand-name admin-brand-text">JasaKu.</span>
         </a>
 
-        <button class="sidebar-collapse-btn" id="sidebarToggle" type="button" title="Hide sidebar">
+        <button class="sidebar-collapse-btn admin-sidebar-toggle-btn" id="sidebarToggle" type="button" title="Hide sidebar">
             <svg viewBox="0 0 24 24">
                 <path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01"/>
             </svg>
         </button>
     </div>
 
-    <div class="sidebar-search" id="providerSidebarSearchBox">
+    <div class="sidebar-search admin-sidebar-search" id="providerSidebarSearchBox">
         <svg viewBox="0 0 24 24">
             <circle cx="11" cy="11" r="7"/>
             <path d="m21 21-4.3-4.3"/>
@@ -476,30 +476,30 @@
         </button>
     </div>
 
-    <div class="sidebar-current-wrap" id="providerSidebarCurrent">
+    <div class="sidebar-current-wrap admin-current-open" id="providerSidebarCurrent">
         <p class="sidebar-current-label">Currently Open</p>
 
         <a href="{{ $currentItem['url'] ?? provider_route('provider.dashboard') }}"
-           class="sidebar-current-menu {{ ($currentItem['locked'] ?? false) && !$isDocumentVerified ? 'sidebar-locked' : '' }}">
-            <span class="sidebar-icon">
+           class="sidebar-current-menu admin-current-link {{ ($currentItem['locked'] ?? false) && !$isDocumentVerified ? 'sidebar-locked' : '' }}">
+            <span class="sidebar-icon admin-menu-icon">
                 {!! $currentItem['icon'] !!}
             </span>
 
-            <span class="sidebar-current-text">
+            <span class="sidebar-current-text admin-current-text">
                 <strong>{{ $currentItem['label'] }}</strong>
                 <small>{{ $currentItem['subtitle'] ?? 'Current menu' }}</small>
             </span>
 
             @if (array_key_exists('badge', $currentItem))
-                <b class="sidebar-chat-badge {{ $chatUnreadCount > 0 ? '' : 'is-hidden' }}" data-sidebar-chat-badge>{{ $chatUnreadLabel }}</b>
+                <b class="sidebar-chat-badge admin-menu-badge {{ $chatUnreadCount > 0 ? '' : 'is-hidden' }}" data-sidebar-chat-badge>{{ $chatUnreadLabel }}</b>
             @endif
         </a>
     </div>
 
-    <div class="sidebar-menu-scroll" id="providerSidebarMenuScroll">
-        <nav class="sidebar-nav" id="providerSidebarNav">
+    <div class="sidebar-menu-scroll admin-sidebar-scroll" id="providerSidebarMenuScroll">
+        <nav class="sidebar-nav admin-sidebar-menu" id="providerSidebarNav">
             @foreach ($sidebarSections as $section)
-                <p class="sidebar-section-label" data-sidebar-section>{{ $section['title'] }}</p>
+                <p class="sidebar-section-label admin-menu-title" data-sidebar-section>{{ $section['title'] }}</p>
 
                 @foreach ($section['items'] as $item)
                     @php
@@ -511,26 +511,27 @@
 
                     @if ($itemType === 'group')
                         <div
-                            class="sidebar-group sidebar-menu-item {{ $groupActive ? 'open' : '' }}"
+                            class="sidebar-group admin-menu-group sidebar-menu-item admin-menu-search-item {{ $groupActive ? 'open' : '' }}"
                             data-menu-keywords="{{ $item['keywords'] ?? $item['label'] }}"
+                            data-keywords="{{ $item['keywords'] ?? $item['label'] }}"
                         >
                             <button
                                 type="button"
-                                class="sidebar-link sidebar-parent {{ $groupActive ? 'active' : '' }} {{ $itemLocked ? $lockedClass : '' }}"
+                                class="sidebar-link admin-menu-item sidebar-parent admin-menu-parent {{ $groupActive ? 'active' : '' }} {{ $itemLocked ? $lockedClass : '' }}"
                                 data-submenu-toggle
                             >
-                                <span class="sidebar-icon">
+                                <span class="sidebar-icon admin-menu-icon">
                                     {!! $item['icon'] !!}
                                 </span>
 
-                                <span class="sidebar-text">{{ $item['label'] }}</span>
+                                <span class="sidebar-text admin-menu-label">{{ $item['label'] }}</span>
                                 @if (array_key_exists('badge', $item))
-                                    <b class="sidebar-chat-badge {{ $chatUnreadCount > 0 ? '' : 'is-hidden' }}" data-sidebar-chat-badge>{{ $chatUnreadLabel }}</b>
+                                    <b class="sidebar-chat-badge admin-menu-badge {{ $chatUnreadCount > 0 ? '' : 'is-hidden' }}" data-sidebar-chat-badge>{{ $chatUnreadLabel }}</b>
                                 @endif
                                 <span class="sidebar-arrow">›</span>
                             </button>
 
-                            <div class="sidebar-submenu">
+                            <div class="sidebar-submenu admin-submenu">
                                 @foreach (($item['children'] ?? []) as $child)
                                     @php
                                         $childPatterns = $child['active'] ?? [];
@@ -543,6 +544,7 @@
                                         class="{{ $childActive ? 'active' : '' }} {{ $childLocked ? 'sidebar-locked' : '' }}"
                                         data-submenu-item
                                         data-menu-keywords="{{ $child['keywords'] ?? $child['label'] }}"
+                                        data-keywords="{{ $child['keywords'] ?? $child['label'] }}"
                                     >
                                         {{ $child['label'] }}
                                     </a>
@@ -552,30 +554,31 @@
                     @else
                         <a
                             href="{{ $item['url'] }}"
-                            class="sidebar-link sidebar-menu-item {{ $itemActive ? 'active' : '' }} {{ $itemLocked ? $lockedClass : '' }}"
+                            class="sidebar-link admin-menu-item sidebar-menu-item admin-menu-search-item {{ $itemActive ? 'active' : '' }} {{ $itemLocked ? $lockedClass : '' }}"
                             data-menu-keywords="{{ $item['keywords'] ?? $item['label'] }}"
+                            data-keywords="{{ $item['keywords'] ?? $item['label'] }}"
                         >
-                            <span class="sidebar-icon">
+                            <span class="sidebar-icon admin-menu-icon">
                                 {!! $item['icon'] !!}
                             </span>
 
-                            <span class="sidebar-text">{{ $item['label'] }}</span>
+                            <span class="sidebar-text admin-menu-label">{{ $item['label'] }}</span>
                             @if (array_key_exists('badge', $item))
-                                <b class="sidebar-chat-badge {{ $chatUnreadCount > 0 ? '' : 'is-hidden' }}" data-sidebar-chat-badge>{{ $chatUnreadLabel }}</b>
+                                <b class="sidebar-chat-badge admin-menu-badge {{ $chatUnreadCount > 0 ? '' : 'is-hidden' }}" data-sidebar-chat-badge>{{ $chatUnreadLabel }}</b>
                             @endif
                         </a>
                     @endif
                 @endforeach
             @endforeach
 
-            <div class="sidebar-search-empty" id="providerSidebarSearchEmpty">
+            <div class="sidebar-search-empty admin-menu-empty" id="providerSidebarSearchEmpty">
                 <strong>No menu found</strong>
                 <span>Coba keyword lain.</span>
             </div>
         </nav>
     </div>
 
-    <div class="sidebar-bottom">
+    <div class="sidebar-bottom admin-sidebar-footer">
         @if (!$isDocumentVerified)
             <div class="sidebar-warning-card">
                 <div class="warning-icon">
@@ -594,8 +597,8 @@
             </div>
         @endif
 
-        <div class="sidebar-user-card">
-            <div class="sidebar-user-avatar">
+        <div class="sidebar-user-card admin-sidebar-user">
+            <div class="sidebar-user-avatar admin-sidebar-avatar">
                 @if ($profileImageUrl)
                     <img src="{{ $profileImageUrl }}" alt="{{ $userName }}">
                 @else
@@ -603,7 +606,7 @@
                 @endif
             </div>
 
-            <div class="sidebar-user-info">
+            <div class="sidebar-user-info admin-sidebar-user-info">
                 <strong>{{ $userName }}</strong>
                 <span>{{ $userEmail }}</span>
             </div>

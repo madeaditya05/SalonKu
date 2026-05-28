@@ -270,7 +270,7 @@ const sourceEnglishToIndonesian = {
     'Light mode': 'Mode terang',
     'Dark mode': 'Mode gelap',
     'System mode': 'Mode sistem',
-    'Could not connect to the Laravel API. Make sure the backend is running at http://127.0.0.1:8000.': 'Tidak bisa terhubung ke API Laravel. Pastikan backend berjalan di http://127.0.0.1:8000.',
+    'Could not connect to the Laravel API. Make sure the backend is running and reachable from this device.': 'Tidak bisa terhubung ke API Laravel. Pastikan backend berjalan dan bisa diakses dari perangkat ini.',
     'Booking Support': 'Bantuan Booking',
     'Book trusted salons, compare services, choose staff, and manage every visit from one customer account.': 'Booking salon terpercaya, bandingkan layanan, pilih staff, dan kelola setiap kunjungan dari satu akun customer.',
     'Active salon branches': 'Branch salon aktif',
@@ -485,6 +485,7 @@ const dynamicTranslations = {
         [/^Branch ini berlokasi di (.+) dengan jam operasional (.+)\.$/i, (match) => `This branch is located in ${match[1]} with operating hours ${match[2]}.`],
         [/^(.+) layanan aktif dari katalog salon$/i, (match) => `${match[1]} active services from the salon catalog`],
         [/^Voucher aktif\. Kamu hemat (.+) untuk booking ini\.$/i, (match) => `Voucher active. You saved ${match[1]} on this booking.`],
+        [/^Tidak bisa terhubung ke API Laravel\. Pastikan backend berjalan di (.+)\.$/i, (match) => `Could not connect to the Laravel API. Make sure the backend is running at ${match[1]}.`],
     ],
     id: [
         [/^Current location - (.+)$/i, (match) => `Lokasi saat ini - ${match[1]}`],
@@ -512,6 +513,7 @@ const dynamicTranslations = {
         [/^This branch is located in (.+) with operating hours (.+)\.$/i, (match) => `Branch ini berlokasi di ${match[1]} dengan jam operasional ${match[2]}.`],
         [/^(.+) active services from the salon catalog$/i, (match) => `${match[1]} layanan aktif dari katalog salon`],
         [/^Voucher active\. You saved (.+) on this booking\.$/i, (match) => `Voucher aktif. Kamu hemat ${match[1]} untuk booking ini.`],
+        [/^Could not connect to the Laravel API\. Make sure the backend is running at (.+)\.$/i, (match) => `Tidak bisa terhubung ke API Laravel. Pastikan backend berjalan di ${match[1]}.`],
     ],
 };
 

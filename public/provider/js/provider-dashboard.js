@@ -6,6 +6,7 @@ document.addEventListener('DOMContentLoaded', function () {
     initProviderDashboardTabs();
     initProviderDashboardTableSearch();
     initAnalyticsDashboardTooltips();
+    initProviderAdminFilterPanels();
 });
 
 function initProviderSidebar() {
@@ -24,6 +25,21 @@ function initProviderSidebar() {
 
     function isDesktop() {
         return window.innerWidth > 992;
+    }
+
+    function setCollapsedClasses(value) {
+        document.body.classList.toggle('sidebar-collapsed', value);
+        document.body.classList.toggle('admin-sidebar-collapsed', value);
+    }
+
+    function removeCollapsedClasses() {
+        document.body.classList.remove('sidebar-collapsed');
+        document.body.classList.remove('admin-sidebar-collapsed');
+    }
+
+    function hasCollapsedClass() {
+        return document.body.classList.contains('sidebar-collapsed')
+            || document.body.classList.contains('admin-sidebar-collapsed');
     }
 
     function openMobileSidebar() {
@@ -68,12 +84,12 @@ function initProviderSidebar() {
 
     function setCollapsed(isCollapsed) {
         if (!isDesktop()) {
-            document.body.classList.remove('sidebar-collapsed');
+            removeCollapsedClasses();
             sidebar.classList.remove('hover-expanded');
             return;
         }
 
-        document.body.classList.toggle('sidebar-collapsed', isCollapsed);
+        setCollapsedClasses(isCollapsed);
         sidebar.classList.remove('hover-expanded');
 
         try {
@@ -85,7 +101,7 @@ function initProviderSidebar() {
 
     function loadCollapsedState() {
         if (!isDesktop()) {
-            document.body.classList.remove('sidebar-collapsed');
+            removeCollapsedClasses();
             sidebar.classList.remove('hover-expanded');
             return;
         }
@@ -98,7 +114,7 @@ function initProviderSidebar() {
             saved = '0';
         }
 
-        document.body.classList.toggle('sidebar-collapsed', saved === '1');
+        setCollapsedClasses(saved === '1');
     }
 
     if (mobileSidebarToggle) {
@@ -116,13 +132,13 @@ function initProviderSidebar() {
                 return;
             }
 
-            const nextCollapsed = !document.body.classList.contains('sidebar-collapsed');
+            const nextCollapsed = !hasCollapsedClass();
             setCollapsed(nextCollapsed);
         });
     }
 
     sidebar.addEventListener('mouseenter', function () {
-        if (document.body.classList.contains('sidebar-collapsed') && isDesktop()) {
+        if (hasCollapsedClass() && isDesktop()) {
             sidebar.classList.add('hover-expanded');
         }
     });
@@ -135,7 +151,13 @@ function initProviderSidebar() {
         menuScroll.addEventListener('scroll', saveSidebarScroll);
 
         sidebar.querySelectorAll('a.sidebar-link, .sidebar-current-menu, .sidebar-submenu a').forEach(function (link) {
-            link.addEventListener('click', saveSidebarScroll);
+            link.addEventListener('click', function () {
+                saveSidebarScroll();
+
+                if (!isDesktop()) {
+                    closeMobileSidebar();
+                }
+            });
         });
 
         window.addEventListener('beforeunload', saveSidebarScroll);
@@ -144,6 +166,16 @@ function initProviderSidebar() {
     window.addEventListener('resize', function () {
         loadCollapsedState();
         restoreSidebarScroll();
+
+        if (isDesktop()) {
+            closeMobileSidebar();
+        }
+    });
+
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') {
+            closeMobileSidebar();
+        }
     });
 
     loadCollapsedState();
@@ -288,6 +320,12 @@ function initProviderProfileDropdown() {
             profileMenu.classList.remove('show');
         }
     });
+
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') {
+            profileMenu.classList.remove('show');
+        }
+    });
 }
 
 function initProviderDashboardTabs() {
@@ -384,5 +422,23 @@ function initAnalyticsDashboardTooltips() {
         });
 
         target.addEventListener('blur', hideTooltip);
+    });
+}
+
+function initProviderAdminFilterPanels() {
+    document.querySelectorAll('.admin-booking-mobile-filter-toggle').forEach(function (button) {
+        const panel = button.closest('.admin-booking-filter-panel');
+
+        if (!panel) {
+            return;
+        }
+
+        button.addEventListener('click', function () {
+            const expanded = !panel.classList.contains('is-expanded');
+
+            panel.classList.toggle('is-expanded', expanded);
+            button.classList.toggle('active', expanded);
+            button.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+        });
     });
 }

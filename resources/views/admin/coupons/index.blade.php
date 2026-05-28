@@ -431,11 +431,14 @@
 
                             <form action="{{ route('admin.coupons.destroy', $coupon->id) }}"
                                   method="POST"
-                                  onsubmit="return confirm('Yakin ingin menghapus coupon ini?')">
+                                  data-delete-form
+                                  data-delete-title="Hapus Coupon?"
+                                  data-delete-item="{{ $coupon->code }}"
+                                  data-delete-message="Coupon ini akan dihapus dari daftar promo dan tidak bisa dipakai lagi.">
                                 @csrf
                                 @method('DELETE')
 
-                                <button type="submit" class="admin-coupon-action danger" title="Delete">
+                                <button type="submit" class="admin-coupon-action danger" title="Delete" aria-label="Hapus coupon {{ $coupon->code }}">
                                     <svg viewBox="0 0 24 24">
                                         <path d="M3 6h18"></path>
                                         <path d="M8 6V4h8v2"></path>
@@ -606,11 +609,14 @@
 
                                     <form action="{{ route('admin.coupons.destroy', $coupon->id) }}"
                                           method="POST"
-                                          onsubmit="return confirm('Yakin ingin menghapus coupon ini?')">
+                                          data-delete-form
+                                          data-delete-title="Hapus Coupon?"
+                                          data-delete-item="{{ $coupon->code }}"
+                                          data-delete-message="Coupon ini akan dihapus dari daftar promo dan tidak bisa dipakai lagi.">
                                         @csrf
                                         @method('DELETE')
 
-                                        <button type="submit" class="admin-coupon-action danger" title="Delete">
+                                        <button type="submit" class="admin-coupon-action danger" title="Delete" aria-label="Hapus coupon {{ $coupon->code }}">
                                             <svg viewBox="0 0 24 24">
                                                 <path d="M3 6h18"></path>
                                                 <path d="M8 6V4h8v2"></path>

@@ -8,8 +8,41 @@ function normalizeUrl(url) {
     return String(url || '').replace(/\/$/, '');
 }
 
-const backendUrl = normalizeUrl(import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000');
-const apiBaseUrl = normalizeUrl(import.meta.env.VITE_API_BASE_URL || `${backendUrl}/api`);
+function currentHostname() {
+    return window.location.hostname || '127.0.0.1';
+}
+
+const loopbackHosts = new Set(['127.0.0.1', 'localhost', '::1']);
+
+function isLoopbackHost(hostname) {
+    return loopbackHosts.has(String(hostname || '').toLowerCase());
+}
+
+function localizeLoopbackUrl(url) {
+    const normalized = normalizeUrl(url);
+
+    try {
+        const parsed = new URL(normalized);
+        const hostname = currentHostname();
+
+        if (!isLoopbackHost(hostname) && isLoopbackHost(parsed.hostname)) {
+            parsed.hostname = hostname;
+        }
+
+        return normalizeUrl(parsed.toString());
+    } catch {
+        return normalized;
+    }
+}
+
+function localBackendUrl() {
+    const hostname = currentHostname();
+
+    return `http://${hostname}:8000`;
+}
+
+const backendUrl = localizeLoopbackUrl(import.meta.env.VITE_BACKEND_URL || localBackendUrl());
+const apiBaseUrl = localizeLoopbackUrl(import.meta.env.VITE_API_BASE_URL || `${backendUrl}/api`);
 const providerLoginPath = import.meta.env.VITE_PROVIDER_LOGIN_PATH || '/provider/signin';
 const providerDashboardPath = import.meta.env.VITE_PROVIDER_DASHBOARD_PATH || '/provider/dashboard';
 const query = new URLSearchParams(window.location.search);

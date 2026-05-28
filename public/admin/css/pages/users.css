@@ -660,3 +660,455 @@
         border-radius: 16px;
     }
 }
+
+/* MODERN PEOPLE INDEX */
+.admin-people-page {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.admin-people-page .admin-booking-summary-card strong {
+    word-break: break-word;
+}
+
+.admin-people-card {
+    padding: 16px;
+}
+
+.admin-people-page .admin-booking-filter-row {
+    grid-template-columns: minmax(240px, 1.25fr) minmax(160px, .68fr) minmax(78px, .32fr) auto;
+}
+
+.admin-people-page .admin-booking-filter-panel {
+    margin-top: 12px;
+}
+
+.admin-people-page .admin-booking-filter-buttons {
+    justify-content: flex-end;
+}
+
+.admin-people-detail-route {
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    min-height: 38px;
+}
+
+.admin-people-detail-route > div:first-child h1 {
+    display: none;
+}
+
+.admin-people-detail-route .user-breadcrumb,
+.admin-people-detail-route .provider-breadcrumb {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 0;
+    color: #64748b;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.admin-people-detail-route .user-breadcrumb a,
+.admin-people-detail-route .provider-breadcrumb a {
+    color: #64748b;
+    text-decoration: none;
+}
+
+.admin-people-detail-route .user-breadcrumb a:hover,
+.admin-people-detail-route .provider-breadcrumb a:hover,
+.admin-people-detail-route .user-breadcrumb strong,
+.admin-people-detail-route .provider-breadcrumb strong {
+    color: #111827;
+}
+
+.admin-people-detail-route .admin-breadcrumb span,
+.admin-people-detail-route .user-breadcrumb span,
+.admin-people-detail-route .provider-breadcrumb span {
+    color: #cbd5e1;
+    font-size: 0;
+}
+
+.admin-people-detail-route .admin-breadcrumb span::before,
+.admin-people-detail-route .user-breadcrumb span::before,
+.admin-people-detail-route .provider-breadcrumb span::before {
+    content: "\203A";
+    font-size: 13px;
+}
+
+.admin-people-page .provider-mobile-list,
+.admin-people-page .user-mobile-list {
+    display: none;
+}
+
+.admin-people-page .providers-table-wrap,
+.admin-people-page .users-table-wrap {
+    margin-top: 10px;
+}
+
+.admin-people-page .providers-table,
+.admin-people-page .users-table {
+    border-collapse: separate;
+    border-spacing: 0;
+    table-layout: fixed;
+}
+
+.admin-people-page .providers-table {
+    min-width: 1260px;
+}
+
+.admin-people-page .users-table {
+    min-width: 1060px;
+}
+
+.admin-people-page .providers-table th,
+.admin-people-page .users-table th {
+    height: 48px;
+    padding: 11px 12px;
+    color: #475569;
+    background: #f9fafb;
+    border-top: 0;
+    border-left: 0;
+    border-right: 1px solid var(--admin-border);
+    border-bottom: 1px solid var(--admin-border);
+    text-align: center;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.admin-people-page .providers-table td,
+.admin-people-page .users-table td {
+    height: auto;
+    padding: 11px 12px;
+    border-top: 0;
+    border-left: 0;
+    border-right: 1px solid var(--admin-border);
+    border-bottom: 1px solid var(--admin-border);
+    color: #374151;
+    font-size: 13px;
+    line-height: 1.35;
+    vertical-align: middle;
+}
+
+.admin-people-page .providers-table th:last-child,
+.admin-people-page .providers-table td:last-child,
+.admin-people-page .users-table th:last-child,
+.admin-people-page .users-table td:last-child {
+    border-right: 0;
+}
+
+.admin-people-page .providers-table th:nth-child(1),
+.admin-people-page .providers-table td:nth-child(1) {
+    width: 250px;
+}
+
+.admin-people-page .providers-table th:nth-child(2),
+.admin-people-page .providers-table td:nth-child(2) {
+    width: 230px;
+}
+
+.admin-people-page .providers-table th:nth-child(3),
+.admin-people-page .providers-table td:nth-child(3) {
+    width: 170px;
+}
+
+.admin-people-page .providers-table th:nth-child(4),
+.admin-people-page .providers-table td:nth-child(4),
+.admin-people-page .providers-table th:nth-child(5),
+.admin-people-page .providers-table td:nth-child(5) {
+    width: 120px;
+    text-align: center;
+}
+
+.admin-people-page .providers-table th:nth-child(6),
+.admin-people-page .providers-table td:nth-child(6) {
+    width: 160px;
+    text-align: center;
+}
+
+.admin-people-page .providers-table th:nth-child(7),
+.admin-people-page .providers-table td:nth-child(7) {
+    width: 132px;
+}
+
+.admin-people-page .providers-table th:nth-child(8),
+.admin-people-page .providers-table td:nth-child(8) {
+    width: 106px;
+    text-align: center;
+}
+
+.admin-people-page .users-table th:nth-child(1),
+.admin-people-page .users-table td:nth-child(1) {
+    width: 250px;
+}
+
+.admin-people-page .users-table th:nth-child(2),
+.admin-people-page .users-table td:nth-child(2) {
+    width: 250px;
+}
+
+.admin-people-page .users-table th:nth-child(3),
+.admin-people-page .users-table td:nth-child(3) {
+    width: 160px;
+}
+
+.admin-people-page .users-table th:nth-child(4),
+.admin-people-page .users-table td:nth-child(4),
+.admin-people-page .users-table th:nth-child(5),
+.admin-people-page .users-table td:nth-child(5) {
+    width: 124px;
+    text-align: center;
+}
+
+.admin-people-page .users-table th:nth-child(6),
+.admin-people-page .users-table td:nth-child(6) {
+    width: 132px;
+}
+
+.admin-people-page .users-table th:nth-child(7),
+.admin-people-page .users-table td:nth-child(7) {
+    width: 106px;
+    text-align: center;
+}
+
+.admin-people-page .provider-name-box,
+.admin-people-page .user-name-box {
+    width: 100%;
+    min-width: 0;
+    gap: 10px;
+}
+
+.admin-people-page .provider-avatar,
+.admin-people-page .user-avatar,
+.admin-people-page .admin-people-mobile-title > span {
+    width: 34px;
+    height: 34px;
+    border-radius: 999px;
+    overflow: hidden;
+    flex: 0 0 auto;
+    font-size: 12px;
+}
+
+.admin-people-page .provider-avatar img,
+.admin-people-page .user-avatar img,
+.admin-people-page .admin-people-mobile-title img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.admin-people-page .provider-name-text,
+.admin-people-page .user-name-text {
+    min-width: 0;
+}
+
+.admin-people-page .provider-name-text strong,
+.admin-people-page .provider-name-text small,
+.admin-people-page .user-name-text strong,
+.admin-people-page .user-name-text small {
+    display: block;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.admin-people-page .provider-name-text strong,
+.admin-people-page .user-name-text strong,
+.admin-people-stack strong {
+    color: #111827;
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.admin-people-page .provider-name-text small,
+.admin-people-page .user-name-text small,
+.admin-people-stack small {
+    margin-top: 3px;
+    color: #64748b;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.admin-people-stack {
+    width: 100%;
+    min-width: 0;
+    display: grid;
+    gap: 4px;
+    overflow: hidden;
+}
+
+.admin-people-stack.center {
+    justify-items: center;
+    text-align: center;
+}
+
+.admin-people-stack strong,
+.admin-people-stack small {
+    display: block;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.admin-people-page .account-toggle-form,
+.admin-people-page .provider-actions,
+.admin-people-page .user-actions {
+    justify-content: center;
+}
+
+.admin-people-page .provider-actions,
+.admin-people-page .user-actions {
+    gap: 7px;
+}
+
+.admin-people-page .provider-action-btn,
+.admin-people-page .user-action-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
+}
+
+.admin-people-page .provider-action-btn.danger:hover,
+.admin-people-page .user-action-btn.danger:hover {
+    border-color: #fecaca;
+    background: #fef2f2;
+    color: #dc2626;
+}
+
+.admin-people-page .provider-action-btn svg,
+.admin-people-page .user-action-btn svg {
+    width: 17px;
+    height: 17px;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.admin-people-page .document-status-select {
+    width: 100%;
+    max-width: 136px;
+    height: 32px;
+    border-radius: 999px;
+    padding: 0 10px;
+    font-size: 11px;
+    font-weight: 800;
+}
+
+.admin-people-mobile-title {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+}
+
+.admin-people-mobile-title div {
+    min-width: 0;
+}
+
+.admin-people-mobile-title strong,
+.admin-people-mobile-title span:not(.provider-avatar):not(.user-avatar) {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.admin-people-mobile-footer {
+    justify-content: space-between;
+}
+
+.admin-people-mobile-footer .provider-actions,
+.admin-people-mobile-footer .user-actions {
+    margin-left: auto;
+}
+
+@media (max-width: 992px) {
+    .admin-people-page .admin-booking-filter-row {
+        grid-template-columns: minmax(220px, 1fr) minmax(144px, .7fr) minmax(78px, .34fr) auto;
+    }
+}
+
+@media (max-width: 768px) {
+    .admin-people-card {
+        padding: 12px;
+        border-radius: 16px;
+    }
+}
+
+@media (max-width: 640px) {
+    .admin-people-page {
+        gap: 8px;
+    }
+
+    .admin-people-page .admin-booking-summary-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+    }
+
+    .admin-people-page .admin-booking-summary-card {
+        min-height: 92px;
+        border-radius: 12px;
+        padding: 10px;
+    }
+
+    .admin-people-page .admin-booking-summary-card strong {
+        margin-top: 8px;
+        font-size: 17px;
+        line-height: 1.2;
+    }
+
+    .admin-people-page .admin-booking-tabs {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .admin-people-page .admin-booking-filter-row {
+        grid-template-columns: minmax(0, 1fr) 42px 58px;
+    }
+
+    .admin-people-page .admin-booking-filter-panel.is-expanded .admin-booking-filter-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .admin-people-page .admin-booking-filter-panel.is-expanded .admin-booking-field.search {
+        grid-column: 1 / -1;
+    }
+
+    .admin-people-page .admin-booking-filter-panel.is-expanded .admin-booking-mobile-search-submit {
+        grid-column: 1;
+    }
+
+    .admin-people-page .admin-booking-filter-panel.is-expanded .admin-booking-mobile-filter-toggle {
+        grid-column: 2;
+    }
+
+    .admin-people-page .provider-mobile-list,
+    .admin-people-page .user-mobile-list {
+        display: grid;
+        gap: 7px;
+        margin-top: 8px;
+    }
+
+    .admin-people-page .admin-people-mobile-title > span,
+    .admin-people-page .provider-avatar,
+    .admin-people-page .user-avatar {
+        width: 30px;
+        height: 30px;
+        font-size: 11px;
+    }
+
+    .admin-people-mobile-footer .provider-action-btn,
+    .admin-people-mobile-footer .user-action-btn {
+        width: 28px;
+        height: 28px;
+        border-radius: 8px;
+    }
+}

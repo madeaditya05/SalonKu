@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Models\ProviderProfile;
 use App\Models\User;
+use App\Support\FrontendUrl;
 use App\Support\ProviderMenuAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -184,6 +185,6 @@ class UnifiedLoginController extends Controller
 
     private function providerFrontendUrl(): string
     {
-        return rtrim((string) config('services.frontend.provider_url'), '/');
+        return FrontendUrl::provider(request());
     }
 }

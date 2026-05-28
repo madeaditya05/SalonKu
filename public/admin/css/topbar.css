@@ -38,6 +38,7 @@
     color: var(--admin-dark);
     border-radius: 10px;
     cursor: pointer;
+    transition: background .18s ease, border-color .18s ease, color .18s ease, box-shadow .18s ease;
 }
 
 .admin-mobile-menu-btn {
@@ -46,11 +47,16 @@
     display: none;
     align-items: center;
     justify-content: center;
+    flex: 0 0 38px;
 }
 
-.admin-mobile-menu-btn svg {
+.admin-mobile-menu-btn svg,
+.admin-topbar-icon svg,
+.admin-help-btn svg,
+.admin-visit-btn svg {
     width: 18px;
     height: 18px;
+    flex: 0 0 auto;
 }
 
 .admin-topbar h1 {
@@ -67,7 +73,8 @@
 
 .admin-help-btn,
 .admin-visit-btn {
-    height: 36px;
+    height: 38px;
+    min-width: 38px;
     padding: 0 13px;
     text-decoration: none;
     display: inline-flex;
@@ -79,8 +86,19 @@
     flex: 0 0 auto;
 }
 
+.admin-topbar-action-label {
+    display: inline-flex;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 .admin-help-btn:hover,
-.admin-visit-btn:hover {
+.admin-visit-btn:hover,
+.admin-mobile-menu-btn:hover,
+.admin-topbar-icon:hover,
+.admin-profile-btn:hover {
     border-color: #bfdbfe;
     background: #eff6ff;
     color: var(--admin-primary);
@@ -95,8 +113,9 @@
 }
 
 .admin-topbar-icon {
-    width: 36px;
-    height: 36px;
+    width: 38px;
+    height: 38px;
+    min-width: 38px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -128,14 +147,17 @@
 }
 
 .admin-profile-btn {
-    height: 36px;
-    border: none;
+    height: 38px;
+    min-width: 38px;
+    border: 1px solid transparent;
+    border-radius: 999px;
     background: transparent;
     display: inline-flex;
     align-items: center;
     gap: 6px;
     cursor: pointer;
-    padding: 0;
+    padding: 0 4px 0 0;
+    transition: background .18s ease, border-color .18s ease, color .18s ease, box-shadow .18s ease;
 }
 
 .admin-profile-avatar {
@@ -164,6 +186,7 @@
     width: 14px;
     height: 14px;
     color: #9ca3af;
+    flex: 0 0 auto;
 }
 
 .admin-profile-menu {

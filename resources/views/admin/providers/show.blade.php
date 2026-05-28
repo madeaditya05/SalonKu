@@ -21,20 +21,15 @@
     $profileImage = $profile->image ?? null;
 @endphp
 
-<section class="provider-detail-page">
-    <div class="provider-detail-header">
-        <div>
-            <h1>Provider Details</h1>
-
-            <div class="provider-breadcrumb">
+<section class="provider-detail-page admin-booking-page admin-people-detail-page">
+    <div class="admin-booking-route admin-people-detail-route">
+        <div class="admin-breadcrumb">
                 <a href="{{ route('admin.dashboard') }}">Dashboard</a>
                 <span>›</span>
                 <a href="{{ route('admin.providers.index') }}">Providers</a>
                 <span>›</span>
                 <strong>Provider Details</strong>
             </div>
-        </div>
-
         <a href="{{ route('admin.providers.index') }}" class="detail-back-btn">
             <svg viewBox="0 0 24 24" fill="none">
                 <path d="M15 6L9 12L15 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -44,19 +39,19 @@
     </div>
 
     @if (session('success'))
-        <div class="admin-alert success">
+        <div class="admin-booking-alert success">
             {{ session('success') }}
         </div>
     @endif
 
     @if (session('error'))
-        <div class="admin-alert error">
+        <div class="admin-booking-alert danger">
             {{ session('error') }}
         </div>
     @endif
 
     @if ($errors->any())
-        <div class="admin-alert error">
+        <div class="admin-booking-alert danger">
             {{ $errors->first() }}
         </div>
     @endif

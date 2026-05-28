@@ -17,6 +17,7 @@ use App\Http\Controllers\Admin\ServiceCategoryController;
 use App\Http\Controllers\Admin\CouponController;
 use App\Http\Controllers\Admin\ProviderController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Admin\ProfileController as AdminProfileController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\SupportChatController;
 
@@ -33,6 +34,7 @@ use App\Http\Controllers\Provider\BranchController;
 use App\Http\Controllers\Provider\BookingController as ProviderBookingController;
 use App\Http\Controllers\Provider\ProfileController as ProviderProfileController;
 use App\Http\Controllers\Provider\RolePermissionController as ProviderRolePermissionController;
+use App\Support\FrontendUrl;
 use Illuminate\Support\Facades\Auth;
 
 /*
@@ -75,7 +77,7 @@ Route::middleware('auth')->group(function () {
 |--------------------------------------------------------------------------
 | Landing page customer ditangani React dan bisa di-host terpisah.
 */
-$customerLanding = fn () => redirect()->away(config('services.frontend.customer_url'));
+$customerLanding = fn () => redirect()->away(FrontendUrl::customer(request()));
 
 Route::get('/customer', $customerLanding)
     ->name('customer.landing');
@@ -93,7 +95,7 @@ Route::get('/customer/landing', $customerLanding)
 | ke dashboard Blade provider.
 */
 $providerFrontendUrl = function (array $query = []) {
-    $url = rtrim((string) config('services.frontend.provider_url'), '/');
+    $url = FrontendUrl::provider(request());
 
     if ($query !== []) {
         $url .= (str_contains($url, '?') ? '&' : '?') . http_build_query($query);
@@ -617,8 +619,13 @@ Route::prefix('admin')
             |--------------------------------------------------------------------------
             */
 
-            Route::get('/profile', function () {
-                return view('admin.profile.index');
-            })->name('profile');
+            Route::get('/profile', [AdminProfileController::class, 'show'])
+                ->name('profile');
+
+            Route::patch('/profile', [AdminProfileController::class, 'update'])
+                ->name('profile.update');
+
+            Route::put('/profile/password', [AdminProfileController::class, 'updatePassword'])
+                ->name('profile.password.update');
         });
     });

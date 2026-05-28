@@ -519,6 +519,11 @@ function initBranchTable() {
     const entriesSelect = document.getElementById('branchEntriesSelect');
     const infoText = document.getElementById('branchInfoText');
     const pagination = document.getElementById('branchPagination');
+    const statusTabs = document.querySelectorAll('[data-branch-status-filter]');
+    const resetButton = document.getElementById('branchResetFilter');
+    const mobileSearchSubmit = document.querySelector('.provider-branch-filter-panel .admin-booking-mobile-search-submit');
+    const mobileList = document.getElementById('branchMobileList');
+    const mobileEmpty = document.getElementById('branchMobileEmpty');
 
     if (!table || !searchInput || !entriesSelect || !infoText || !pagination) {
         return;
@@ -528,10 +533,123 @@ function initBranchTable() {
     const allRows = Array.from(tbody.querySelectorAll('tr')).filter(function (row) {
         return !row.classList.contains('branch-empty-row');
     });
+    const mobileCards = mobileList ? Array.from(mobileList.querySelectorAll('[data-branch-card]')) : [];
+    const mobileCardMap = new Map(mobileCards.map(function (card) {
+        return [card.dataset.branchId, card];
+    }));
 
     let currentPage = 1;
     let perPage = parseInt(entriesSelect.value, 10) || 10;
     let filteredRows = allRows;
+    let currentStatus = 'all';
+    let sortState = {
+        index: null,
+        asc: true,
+    };
+
+    function rowMatchesFilters(row, keyword) {
+        const status = row.dataset.branchStatus || 'active';
+        const statusMatches = currentStatus === 'all' || status === currentStatus;
+        const keywordMatches = !keyword || row.innerText.toLowerCase().includes(keyword);
+
+        return statusMatches && keywordMatches;
+    }
+
+    function emptyMarkup(message) {
+        return `
+            <div>
+                <span>
+                    <svg viewBox="0 0 24 24">
+                        <path d="M4 21V5a2 2 0 0 1 2-2h10v18"></path>
+                        <path d="M16 8h2a2 2 0 0 1 2 2v11"></path>
+                        <path d="M8 7h4"></path>
+                        <path d="M8 11h4"></path>
+                        <path d="M8 15h4"></path>
+                    </svg>
+                </span>
+                <strong>No branch available.</strong>
+                <p>${message}</p>
+            </div>
+        `;
+    }
+
+    function renderMobileCards(visibleRows) {
+        if (!mobileList) {
+            return;
+        }
+
+        mobileCards.forEach(function (card) {
+            card.hidden = true;
+        });
+
+        if (visibleRows.length === 0) {
+            if (mobileEmpty) {
+                mobileEmpty.hidden = false;
+            }
+
+            return;
+        }
+
+        if (mobileEmpty) {
+            mobileEmpty.hidden = true;
+        }
+
+        const fragment = document.createDocumentFragment();
+
+        visibleRows.forEach(function (row) {
+            const card = mobileCardMap.get(row.dataset.branchId);
+
+            if (!card) {
+                return;
+            }
+
+            card.hidden = false;
+            fragment.appendChild(card);
+        });
+
+        if (mobileEmpty) {
+            mobileList.insertBefore(fragment, mobileEmpty);
+        } else {
+            mobileList.appendChild(fragment);
+        }
+    }
+
+    function renderInfo(first, last, totalRows) {
+        infoText.innerHTML = `<strong>${first}-${last}</strong><span>/ ${totalRows}</span>`;
+    }
+
+    function syncStatusTabs() {
+        statusTabs.forEach(function (tab) {
+            const isActive = (tab.dataset.branchStatusFilter || 'all') === currentStatus;
+
+            tab.classList.toggle('active', isActive);
+        });
+    }
+
+    function syncSortIcons(activeTh, asc) {
+        table.querySelectorAll('.admin-booking-sort').forEach(function (button) {
+            button.classList.remove('active');
+
+            button.querySelectorAll('.admin-booking-sort-icons span').forEach(function (icon) {
+                icon.classList.remove('active');
+            });
+        });
+
+        if (!activeTh) {
+            return;
+        }
+
+        const button = activeTh.querySelector('.admin-booking-sort');
+        const icons = button ? button.querySelectorAll('.admin-booking-sort-icons span') : [];
+
+        if (button) {
+            button.classList.add('active');
+        }
+
+        if (icons.length >= 2) {
+            icons[asc ? 0 : 1].classList.add('active');
+        }
+    }
 
     function render() {
         perPage = parseInt(entriesSelect.value, 10) || 10;
@@ -539,7 +657,7 @@ function initBranchTable() {
         const keyword = searchInput.value.trim().toLowerCase();
 
         filteredRows = allRows.filter(function (row) {
-            return row.innerText.toLowerCase().includes(keyword);
+            return rowMatchesFilters(row, keyword);
         });
 
         const totalRows = filteredRows.length;
@@ -560,22 +678,29 @@ function initBranchTable() {
 
             const emptyCell = document.createElement('td');
             emptyCell.colSpan = table.querySelectorAll('thead th').length;
-            emptyCell.textContent = 'No branch available';
+            emptyCell.className = 'admin-booking-empty';
+            emptyCell.innerHTML = emptyMarkup('Ubah keyword pencarian atau tab status branch.');
 
             emptyRow.appendChild(emptyCell);
             tbody.appendChild(emptyRow);
+            renderMobileCards([]);
         } else {
-            filteredRows.slice(startIndex, endIndex).forEach(function (row) {
+            const visibleRows = filteredRows.slice(startIndex, endIndex);
+
+            visibleRows.forEach(function (row) {
                 tbody.appendChild(row);
             });
+
+            renderMobileCards(visibleRows);
         }
 
         const first = totalRows === 0 ? 0 : startIndex + 1;
         const last = Math.min(endIndex, totalRows);
 
-        infoText.textContent = `Showing ${first} to ${last} of ${totalRows} entries`;
+        renderInfo(first, last, totalRows);
 
         renderPagination(totalPages);
+        syncStatusTabs();
     }
 
     function renderPagination(totalPages) {
@@ -640,34 +765,66 @@ function initBranchTable() {
         render();
     });
 
+    if (mobileSearchSubmit) {
+        mobileSearchSubmit.addEventListener('click', function () {
+            currentPage = 1;
+            render();
+        });
+    }
+
     entriesSelect.addEventListener('change', function () {
         currentPage = 1;
         render();
     });
 
-    table.querySelectorAll('thead th[data-sort]').forEach(function (th, index) {
-        let asc = true;
+    statusTabs.forEach(function (tab) {
+        tab.addEventListener('click', function () {
+            currentStatus = tab.dataset.branchStatusFilter || 'all';
+            currentPage = 1;
+            render();
+        });
+    });
 
+    if (resetButton) {
+        resetButton.addEventListener('click', function () {
+            searchInput.value = '';
+            entriesSelect.value = '10';
+            currentStatus = 'all';
+            currentPage = 1;
+            render();
+        });
+    }
+
+    table.querySelectorAll('thead th[data-sort]').forEach(function (th, index) {
         th.addEventListener('click', function () {
             const type = th.dataset.sort;
+            const nextAsc = sortState.index === index ? !sortState.asc : true;
+
+            sortState = {
+                index: index,
+                asc: nextAsc,
+            };
 
             allRows.sort(function (a, b) {
                 const aText = a.children[index] ? a.children[index].innerText.trim().toLowerCase() : '';
                 const bText = b.children[index] ? b.children[index].innerText.trim().toLowerCase() : '';
 
                 if (type === 'number') {
-                    return asc
-                        ? parseFloat(aText || 0) - parseFloat(bText || 0)
-                        : parseFloat(bText || 0) - parseFloat(aText || 0);
+                    const aNumber = parseFloat((aText.match(/-?\d+(\.\d+)?/) || ['0'])[0]);
+                    const bNumber = parseFloat((bText.match(/-?\d+(\.\d+)?/) || ['0'])[0]);
+
+                    return nextAsc
+                        ? aNumber - bNumber
+                        : bNumber - aNumber;
                 }
 
-                return asc
+                return nextAsc
                     ? aText.localeCompare(bText)
                     : bText.localeCompare(aText);
             });
 
-            asc = !asc;
             currentPage = 1;
+            syncSortIcons(th, nextAsc);
             render();
         });
     });

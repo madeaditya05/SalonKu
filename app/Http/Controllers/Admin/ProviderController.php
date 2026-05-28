@@ -16,15 +16,28 @@ class ProviderController extends Controller
         $perPage = (int) $request->get('per_page', 10);
         $allowedPerPage = [10, 25, 50, 100];
 
-        if (!in_array($perPage, $allowedPerPage)) {
+        if (! in_array($perPage, $allowedPerPage, true)) {
             $perPage = 10;
         }
 
-        $search = $request->get('search');
+        $search = trim((string) $request->get('search', ''));
+        $status = $request->get('status', 'all');
+        $documentStatus = $request->get('document_status', 'all');
 
-        $providers = User::where('role', 'provider')
+        if (! in_array($status, ['all', 'active', 'inactive'], true)) {
+            $status = 'all';
+        }
+
+        if (! in_array($documentStatus, ['all', 'pending', 'submitted', 'verified', 'rejected'], true)) {
+            $documentStatus = 'all';
+        }
+
+        $baseQuery = User::query()
+            ->where('role', 'provider')
             ->whereNull('provider_id')
-            ->whereNull('provider_role_id')
+            ->whereNull('provider_role_id');
+
+        $providers = (clone $baseQuery)
             ->with([
                 'providerProfile',
                 'branchAccounts' => function ($query) {
@@ -39,7 +52,41 @@ class ProviderController extends Controller
                 },
             ])
             ->withCount('branchAccounts')
-            ->when($search, function ($query) use ($search) {
+            ->when($status !== 'all', function ($query) use ($status) {
+                $query->where(function ($statusQuery) use ($status) {
+                    if ($status === 'active') {
+                        $statusQuery->whereHas('providerProfile', function ($profileQuery) {
+                            $profileQuery->where('status', 'active');
+                        });
+
+                        return;
+                    }
+
+                    $statusQuery
+                        ->whereDoesntHave('providerProfile')
+                        ->orWhereHas('providerProfile', function ($profileQuery) {
+                            $profileQuery->where('status', 'inactive');
+                        });
+                });
+            })
+            ->when($documentStatus !== 'all', function ($query) use ($documentStatus) {
+                $query->where(function ($documentQuery) use ($documentStatus) {
+                    if ($documentStatus === 'pending') {
+                        $documentQuery
+                            ->whereDoesntHave('providerProfile')
+                            ->orWhereHas('providerProfile', function ($profileQuery) {
+                                $profileQuery->where('document_status', 'pending');
+                            });
+
+                        return;
+                    }
+
+                    $documentQuery->whereHas('providerProfile', function ($profileQuery) use ($documentStatus) {
+                        $profileQuery->where('document_status', $documentStatus);
+                    });
+                });
+            })
+            ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('name', 'like', '%' . $search . '%')
                         ->orWhere('email', 'like', '%' . $search . '%')
@@ -66,7 +113,51 @@ class ProviderController extends Controller
             ->paginate($perPage)
             ->withQueryString();
 
-        return view('admin.providers.index', compact('providers', 'perPage', 'search'));
+        $summary = [
+            'total' => (clone $baseQuery)->count(),
+            'active' => (clone $baseQuery)
+                ->whereHas('providerProfile', function ($query) {
+                    $query->where('status', 'active');
+                })
+                ->count(),
+            'verified' => (clone $baseQuery)
+                ->whereHas('providerProfile', function ($query) {
+                    $query->where('document_status', 'verified');
+                })
+                ->count(),
+            'branches' => User::query()
+                ->where('role', 'provider')
+                ->whereNotNull('provider_id')
+                ->count(),
+        ];
+
+        $filters = [
+            'status' => $status,
+            'document_status' => $documentStatus,
+            'search' => $search,
+            'per_page' => $perPage,
+        ];
+
+        $tabs = [
+            'all' => 'All Providers',
+            'active' => 'Active',
+            'inactive' => 'Inactive',
+        ];
+
+        $hasActiveFilters = $status !== 'all'
+            || $documentStatus !== 'all'
+            || $search !== ''
+            || $perPage !== 10;
+
+        return view('admin.providers.index', compact(
+            'providers',
+            'perPage',
+            'search',
+            'filters',
+            'tabs',
+            'summary',
+            'hasActiveFilters'
+        ));
     }
 
     public function show(User $user)
