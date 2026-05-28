@@ -9,236 +9,719 @@
 @endpush
 
 @section('content')
-<section class="provider-service-page">
-    <div class="service-index-header">
-        <div>
-            <h1>My Service</h1>
+@php
+    use Illuminate\Support\Str;
 
-            <div class="service-breadcrumb">
-                <span>Dashboard</span>
-                <span>›</span>
-                <strong>My Service</strong>
-            </div>
+    $serviceCollection = $services ?? collect();
+    $hasPaginator = is_object($serviceCollection)
+        && method_exists($serviceCollection, 'links')
+        && method_exists($serviceCollection, 'firstItem');
+
+    $firstItem = $hasPaginator ? ($serviceCollection->firstItem() ?? 0) : 0;
+    $lastItem = $hasPaginator ? ($serviceCollection->lastItem() ?? 0) : (is_countable($serviceCollection) ? count($serviceCollection) : 0);
+    $totalItem = $hasPaginator ? $serviceCollection->total() : (is_countable($serviceCollection) ? count($serviceCollection) : 0);
+
+    $filters = $filters ?? [
+        'status' => request('status', 'all'),
+        'search' => request('search', $search ?? ''),
+        'per_page' => request('per_page', $perPage ?? 10),
+        'document_status' => request('document_status', 'all'),
+        'price_type' => request('price_type', 'all'),
+        'sort_by' => request('sort_by', 'created_at'),
+        'sort_direction' => request('sort_direction', 'desc'),
+    ];
+
+    $tabs = $tabs ?? [
+        'all' => 'All Services',
+        'active' => 'Active',
+        'inactive' => 'Inactive',
+    ];
+
+    $documentStatuses = [
+        'all' => 'All Documents',
+        'verified' => 'Verified',
+        'submitted' => 'Submitted',
+        'pending' => 'Pending',
+        'rejected' => 'Rejected',
+    ];
+
+    $priceTypes = [
+        'all' => 'All Prices',
+        'fixed' => 'Fixed',
+        'hourly' => 'Hourly',
+    ];
+
+    $currentStatus = $filters['status'] ?? 'all';
+    $sortBy = $sortBy ?? ($filters['sort_by'] ?? 'created_at');
+    $sortDirection = $sortDirection ?? ($filters['sort_direction'] ?? 'desc');
+
+    $statusLabels = [
+        'active' => 'Active',
+        'inactive' => 'Inactive',
+        'verified' => 'Verified',
+        'submitted' => 'Submitted',
+        'pending' => 'Pending',
+        'rejected' => 'Rejected',
+        'fixed' => 'Fixed',
+        'hourly' => 'Hourly',
+        'scheduled' => 'Scheduled',
+        'queue' => 'Queue',
+    ];
+
+    $statusLabel = fn ($value) => $statusLabels[$value ?: 'pending'] ?? ucwords(str_replace('_', ' ', $value ?: 'pending'));
+
+    $statusClass = function ($value) {
+        return match ($value) {
+            'active', 'verified' => 'success',
+            'pending', 'submitted' => 'warning',
+            'fixed', 'hourly', 'scheduled', 'queue' => 'info',
+            'inactive', 'rejected' => 'danger',
+            default => 'neutral',
+        };
+    };
+
+    $statusPillClass = fn ($value) => in_array($value, ['active', 'inactive'], true) ? $value : 'inactive';
+    $formatMoney = fn ($value) => 'Rp' . number_format((float) ($value ?? 0), 0, ',', '.');
+
+    $formatDate = function ($value) {
+        if (empty($value)) {
+            return '-';
+        }
+
+        try {
+            return \Carbon\Carbon::parse($value)->format('d M Y');
+        } catch (\Throwable $exception) {
+            return '-';
+        }
+    };
+
+    $formatDuration = function ($service) {
+        $minimum = (int) ($service->minimum_duration ?? 0);
+        $estimated = (int) ($service->estimated_duration ?? 0);
+        $maximum = (int) ($service->maximum_duration ?? 0);
+
+        if ($minimum > 0 && $maximum > 0 && $minimum !== $maximum) {
+            return "{$minimum}-{$maximum} min";
+        }
+
+        if ($estimated > 0) {
+            return "{$estimated} min";
+        }
+
+        if ($minimum > 0) {
+            return "{$minimum} min";
+        }
+
+        return 'Duration -';
+    };
+
+    $branchSummary = function ($service) {
+        $branchIds = collect($service->branch_ids ?? [])->filter()->values();
+
+        if ($branchIds->isEmpty()) {
+            return 'All branches';
+        }
+
+        return $branchIds->count() . ' branch' . ($branchIds->count() > 1 ? 'es' : '');
+    };
+
+    $assetUrl = function ($path) {
+        if (!$path) {
+            return null;
+        }
+
+        $path = ltrim($path, '/');
+
+        if (Str::startsWith($path, ['http://', 'https://'])) {
+            return $path;
+        }
+
+        if (Str::startsWith($path, 'storage/')) {
+            return asset($path);
+        }
+
+        return asset('storage/' . $path);
+    };
+
+    $serviceInitial = fn ($service) => strtoupper(substr((string) ($service->title ?: 'S'), 0, 1));
+    $serviceDescription = fn ($service, $limit = 110) => Str::limit(strip_tags((string) ($service->description ?: 'Service belum memiliki deskripsi.')), $limit);
+
+    $cleanQuery = function (array $query) {
+        return collect($query)
+            ->reject(function ($value, $key) {
+                if ($value === null || $value === '') {
+                    return true;
+                }
+
+                if (in_array($key, ['status', 'document_status', 'price_type'], true) && $value === 'all') {
+                    return true;
+                }
+
+                if ($key === 'sort_by' && $value === 'created_at') {
+                    return true;
+                }
+
+                if ($key === 'sort_direction' && $value === 'desc') {
+                    return true;
+                }
+
+                if ($key === 'per_page' && (int) $value === 10) {
+                    return true;
+                }
+
+                return false;
+            })
+            ->all();
+    };
+
+    $queryFor = fn (array $overrides = []) => $cleanQuery(array_merge($filters, $overrides));
+    $sortQueryFor = function (string $key) use ($queryFor, $sortBy, $sortDirection) {
+        $nextDirection = $sortBy === $key && $sortDirection === 'asc' ? 'desc' : 'asc';
+
+        return $queryFor([
+            'sort_by' => $key,
+            'sort_direction' => $nextDirection,
+        ]);
+    };
+    $sortIconClass = fn (string $key, string $direction) => $sortBy === $key && $sortDirection === $direction ? 'active' : '';
+
+    $summary = $summary ?? [
+        'total' => $totalItem,
+        'active' => 0,
+        'verified' => 0,
+        'revenue' => 0,
+    ];
+
+    $hasMobileAdvancedFilters = (($filters['document_status'] ?? 'all') !== 'all')
+        || (($filters['price_type'] ?? 'all') !== 'all')
+        || ((int) ($filters['per_page'] ?? 10) !== 10);
+@endphp
+
+<section class="admin-category-page admin-booking-page provider-my-service-category-page">
+    <div class="admin-booking-route admin-category-route provider-service-route">
+        <div class="admin-breadcrumb">
+            <a href="{{ provider_route('provider.dashboard') }}">Dashboard</a>
+            <span>&rsaquo;</span>
+            <strong>My Service</strong>
         </div>
 
-        <div class="service-header-actions">
-            <button type="button" class="service-filter-btn">
-                <svg viewBox="0 0 24 24">
-                    <path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3"/>
-                    <path d="M1 14h6M9 8h6M17 16h6"/>
-                </svg>
-                Filter
-            </button>
-
-            <a href="{{ provider_route('provider.services.create') }}" class="service-add-btn">
-                <svg viewBox="0 0 24 24">
-                    <path d="M12 5v14M5 12h14"/>
-                </svg>
-                Add Service
-            </a>
-        </div>
+        <a href="{{ provider_route('provider.services.create') }}" class="admin-category-add-button admin-category-add-button-desktop">
+            <svg viewBox="0 0 24 24" fill="none">
+                <path d="M12 5v14"></path>
+                <path d="M5 12h14"></path>
+            </svg>
+            Add Service
+        </a>
     </div>
 
     @if (session('success'))
-        <div class="service-alert success">
+        <div class="admin-booking-alert success">
             {{ session('success') }}
         </div>
     @endif
 
     @if (session('error'))
-        <div class="service-alert error">
+        <div class="admin-booking-alert danger">
             {{ session('error') }}
         </div>
     @endif
 
-    <div class="service-data-card">
-        <div class="service-data-toolbar">
-            <div class="service-length-control">
-                <span>Show</span>
+    @if ($errors->any())
+        <div class="admin-booking-alert danger">
+            {{ $errors->first() }}
+        </div>
+    @endif
 
-                <select id="serviceEntriesSelect">
-                    <option value="10">10</option>
-                    <option value="25">25</option>
-                    <option value="50">50</option>
-                    <option value="100">100</option>
-                </select>
-
-                <span>entries</span>
-            </div>
-
-            <div class="service-search-control">
-                <svg viewBox="0 0 24 24">
-                    <circle cx="11" cy="11" r="7"/>
-                    <path d="m21 21-4.3-4.3"/>
-                </svg>
-
-                <input type="text" id="serviceSearchInput" placeholder="Search service">
-            </div>
+    <div class="admin-booking-summary-grid">
+        <div class="admin-booking-summary-card pink">
+            <span>Total Service</span>
+            <strong>{{ number_format((int) $summary['total']) }}</strong>
+            <small>Semua layanan provider</small>
         </div>
 
-        <div class="service-table-responsive">
-            <table class="service-datatable" id="serviceTable">
+        <div class="admin-booking-summary-card yellow">
+            <span>Active</span>
+            <strong>{{ number_format((int) $summary['active']) }}</strong>
+            <small>Layanan tampil di katalog</small>
+        </div>
+
+        <div class="admin-booking-summary-card blue">
+            <span>Verified</span>
+            <strong>{{ number_format((int) $summary['verified']) }}</strong>
+            <small>Dokumen provider valid</small>
+        </div>
+
+        <div class="admin-booking-summary-card orange">
+            <span>Service Value</span>
+            <strong>{{ $formatMoney($summary['revenue']) }}</strong>
+            <small>Total nominal layanan</small>
+        </div>
+    </div>
+
+    <div class="admin-booking-card category-card provider-service-category-card">
+        <div class="admin-booking-tabs">
+            @foreach ($tabs as $key => $label)
+                <a href="{{ provider_route('provider.services.index', $queryFor(['status' => $key])) }}"
+                   class="admin-booking-tab {{ ($currentStatus === $key || ($key === 'all' && empty($currentStatus))) ? 'active' : '' }}">
+                    {{ $label }}
+                </a>
+            @endforeach
+        </div>
+
+        <form method="GET" action="{{ provider_route('provider.services.index') }}" class="admin-booking-filter-panel compact {{ $hasMobileAdvancedFilters ? 'is-expanded' : '' }}">
+            @if (! empty($currentStatus) && $currentStatus !== 'all')
+                <input type="hidden" name="status" value="{{ $currentStatus }}">
+            @endif
+
+            <input type="hidden" name="sort_by" value="{{ $sortBy }}">
+            <input type="hidden" name="sort_direction" value="{{ $sortDirection }}">
+
+            <div class="admin-booking-filter-row provider-service-category-filter-row" id="serviceFilterRow">
+                <label class="admin-booking-field search">
+                    <div class="admin-booking-search-box">
+                        <svg viewBox="0 0 24 24">
+                            <circle cx="11" cy="11" r="7"></circle>
+                            <path d="m21 21-4.3-4.3"></path>
+                        </svg>
+
+                        <input id="serviceSearchInput"
+                               type="text"
+                               name="search"
+                               value="{{ $filters['search'] ?? '' }}"
+                               placeholder="Search service">
+                    </div>
+                </label>
+
+                <button type="submit" class="admin-booking-mobile-search-submit" aria-label="Search service">
+                    Cari
+                </button>
+
+                <button type="button"
+                        class="admin-booking-mobile-filter-toggle {{ $hasMobileAdvancedFilters ? 'active' : '' }}"
+                        aria-controls="serviceFilterRow"
+                        aria-expanded="{{ $hasMobileAdvancedFilters ? 'true' : 'false' }}">
+                    Filter
+                </button>
+
+                <label class="admin-booking-field mini">
+                    <select name="document_status" aria-label="Document status" title="Document status">
+                        @foreach ($documentStatuses as $key => $label)
+                            <option value="{{ $key }}" {{ ($filters['document_status'] ?? 'all') === $key ? 'selected' : '' }}>
+                                {{ $label }}
+                            </option>
+                        @endforeach
+                    </select>
+                </label>
+
+                <label class="admin-booking-field mini">
+                    <select name="price_type" aria-label="Price type" title="Price type">
+                        @foreach ($priceTypes as $key => $label)
+                            <option value="{{ $key }}" {{ ($filters['price_type'] ?? 'all') === $key ? 'selected' : '' }}>
+                                {{ $label }}
+                            </option>
+                        @endforeach
+                    </select>
+                </label>
+
+                <label class="admin-booking-field count">
+                    <select name="per_page" aria-label="Rows per page" title="Rows per page">
+                        <option value="10" {{ (int) ($filters['per_page'] ?? 10) === 10 ? 'selected' : '' }}>10</option>
+                        <option value="25" {{ (int) ($filters['per_page'] ?? 10) === 25 ? 'selected' : '' }}>25</option>
+                        <option value="50" {{ (int) ($filters['per_page'] ?? 10) === 50 ? 'selected' : '' }}>50</option>
+                        <option value="100" {{ (int) ($filters['per_page'] ?? 10) === 100 ? 'selected' : '' }}>100</option>
+                    </select>
+                </label>
+
+                <div class="admin-booking-filter-buttons">
+                    <button type="submit">Filter</button>
+                    @if ($hasActiveFilters ?? false)
+                        <a href="{{ provider_route('provider.services.index') }}">Reset</a>
+                    @endif
+                </div>
+            </div>
+
+            <div class="admin-booking-filter-meta">
+                <span class="admin-booking-filter-count">{{ number_format($totalItem) }} service</span>
+
+                @if (($filters['search'] ?? '') !== '')
+                    <span>Search: {{ $filters['search'] }}</span>
+                @endif
+
+                @if (($filters['status'] ?? 'all') !== 'all')
+                    <span>Status: {{ $statusLabel($filters['status']) }}</span>
+                @endif
+
+                @if (($filters['document_status'] ?? 'all') !== 'all')
+                    <span>Docs: {{ $documentStatuses[$filters['document_status']] ?? $statusLabel($filters['document_status']) }}</span>
+                @endif
+
+                @if (($filters['price_type'] ?? 'all') !== 'all')
+                    <span>Price: {{ $priceTypes[$filters['price_type']] ?? $statusLabel($filters['price_type']) }}</span>
+                @endif
+            </div>
+        </form>
+
+        <div class="admin-category-add-row">
+            <a href="{{ provider_route('provider.services.create') }}" class="admin-category-add-button admin-category-add-button-mobile">
+                <svg viewBox="0 0 24 24" fill="none">
+                    <path d="M12 5v14"></path>
+                    <path d="M5 12h14"></path>
+                </svg>
+                Add Service
+            </a>
+        </div>
+
+        <div class="admin-category-mobile-list admin-booking-mobile-list">
+            @forelse ($serviceCollection as $service)
+                @php
+                    $imageUrl = $assetUrl($service->gallery_image);
+                    $serviceStatus = $service->status ?? 'inactive';
+                    $documentStatus = $service->provider_document_status ?? 'pending';
+                    $priceTypeValue = $service->price_type ?: 'fixed';
+                    $enabledModes = collect([
+                        $service->is_scheduled_enabled ? 'Scheduled' : null,
+                        $service->is_queue_enabled ? 'Queue' : null,
+                    ])->filter()->values();
+                @endphp
+
+                <article class="admin-category-mobile-card admin-booking-mobile-card provider-service-mobile-card">
+                    <header class="admin-category-mobile-head">
+                        <div class="admin-category-mobile-title">
+                            @if ($imageUrl)
+                                <img src="{{ $imageUrl }}" alt="{{ $service->title }}">
+                            @else
+                                <span>{{ $serviceInitial($service) }}</span>
+                            @endif
+
+                            <div>
+                                <strong>{{ $service->title ?? '-' }}</strong>
+                                <span>{{ $service->code ?: 'No code' }}</span>
+                            </div>
+                        </div>
+
+                        <b>{{ $formatMoney($service->price ?? 0) }}</b>
+                    </header>
+
+                    <div class="admin-category-mobile-main admin-booking-mobile-main provider-service-mobile-main">
+                        <div>
+                            <span>Category</span>
+                            <strong>{{ $service->category ?: '-' }}</strong>
+                        </div>
+
+                        <div>
+                            <span>Duration</span>
+                            <strong>{{ $formatDuration($service) }}</strong>
+                        </div>
+
+                        <div>
+                            <span>Type</span>
+                            <strong>{{ $statusLabel($priceTypeValue) }}</strong>
+                            <small>{{ $enabledModes->isNotEmpty() ? $enabledModes->join(' / ') : 'Unavailable' }}</small>
+                        </div>
+
+                        <div>
+                            <span>Branches</span>
+                            <strong>{{ $branchSummary($service) }}</strong>
+                        </div>
+                    </div>
+
+                    <p>{{ $serviceDescription($service, 120) }}</p>
+
+                    <footer class="admin-category-mobile-footer provider-service-mobile-footer">
+                        <form action="{{ provider_route('provider.services.toggle-status', $service->id) }}" method="POST" class="inline-form provider-service-status-form">
+                            @csrf
+                            @method('PATCH')
+                            <button type="submit" class="status-pill status-{{ $statusPillClass($serviceStatus) }}" title="Click to change status">
+                                <span></span>
+                                {{ $statusLabel($serviceStatus) }}
+                            </button>
+                        </form>
+
+                        <span class="admin-booking-status {{ $statusClass($documentStatus) }}">
+                            {{ $statusLabel($documentStatus) }}
+                        </span>
+
+                        <div class="category-actions">
+                            <a href="{{ provider_route('provider.services.edit', $service->id) }}" class="category-action-btn" title="Edit" aria-label="Edit {{ $service->title }}">
+                                <svg viewBox="0 0 24 24" fill="none">
+                                    <path d="M4 20h4L18 10l-4-4L4 16v4Z"></path>
+                                    <path d="m13 7 4 4"></path>
+                                </svg>
+                            </a>
+
+                            <button type="button"
+                                    class="category-action-btn danger"
+                                    title="Delete"
+                                    aria-label="Delete {{ $service->title }}"
+                                    data-service-delete-url="{{ provider_route('provider.services.destroy', $service->id) }}">
+                                <svg viewBox="0 0 24 24" fill="none">
+                                    <path d="M5 7h14"></path>
+                                    <path d="M9 7V5h6v2"></path>
+                                    <path d="m7 7 1 14h8l1-14"></path>
+                                    <path d="M10 11v6"></path>
+                                    <path d="M14 11v6"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </footer>
+                </article>
+            @empty
+                <div class="admin-category-mobile-empty admin-booking-mobile-empty">
+                    <strong>No service data found.</strong>
+                    <p>Coba ubah keyword, status, document, atau price type.</p>
+                </div>
+            @endforelse
+        </div>
+
+        <div class="admin-booking-table-wrap category-table-wrap provider-service-category-table-wrap">
+            <table class="admin-booking-table detailed category-table provider-service-category-table">
                 <thead>
                     <tr>
-                        <th data-sort="number">
-                            <span>#</span>
-                            <span class="sort-icon">↕</span>
-                        </th>
-
-                        <th data-sort="text">
-                            <span>Service Name</span>
-                            <span class="sort-icon">↕</span>
-                        </th>
-
-                        <th data-sort="text">
-                            <span>Slug</span>
-                            <span class="sort-icon">↕</span>
-                        </th>
-
-                        <th data-sort="text">
-                            <span>Status</span>
-                            <span class="sort-icon">↕</span>
-                        </th>
-
-                        <th data-sort="text">
-                            <span>Verify Status</span>
-                            <span class="sort-icon">↕</span>
-                        </th>
-
                         <th>
-                            <span>Action</span>
+                            <a href="{{ provider_route('provider.services.index', $sortQueryFor('title')) }}" class="admin-booking-sort {{ $sortBy === 'title' ? 'active' : '' }}">
+                                Service
+                                <span class="admin-booking-sort-icons" aria-hidden="true">
+                                    <span class="{{ $sortIconClass('title', 'asc') }}">&uarr;</span>
+                                    <span class="{{ $sortIconClass('title', 'desc') }}">&darr;</span>
+                                </span>
+                            </a>
                         </th>
+                        <th>
+                            <a href="{{ provider_route('provider.services.index', $sortQueryFor('category')) }}" class="admin-booking-sort {{ $sortBy === 'category' ? 'active' : '' }}">
+                                Category
+                                <span class="admin-booking-sort-icons" aria-hidden="true">
+                                    <span class="{{ $sortIconClass('category', 'asc') }}">&uarr;</span>
+                                    <span class="{{ $sortIconClass('category', 'desc') }}">&darr;</span>
+                                </span>
+                            </a>
+                        </th>
+                        <th>Description</th>
+                        <th>
+                            <a href="{{ provider_route('provider.services.index', $sortQueryFor('price')) }}" class="admin-booking-sort {{ $sortBy === 'price' ? 'active' : '' }}">
+                                Pricing
+                                <span class="admin-booking-sort-icons" aria-hidden="true">
+                                    <span class="{{ $sortIconClass('price', 'asc') }}">&uarr;</span>
+                                    <span class="{{ $sortIconClass('price', 'desc') }}">&darr;</span>
+                                </span>
+                            </a>
+                        </th>
+                        <th>
+                            <a href="{{ provider_route('provider.services.index', $sortQueryFor('status')) }}" class="admin-booking-sort {{ $sortBy === 'status' ? 'active' : '' }}">
+                                Status
+                                <span class="admin-booking-sort-icons" aria-hidden="true">
+                                    <span class="{{ $sortIconClass('status', 'asc') }}">&uarr;</span>
+                                    <span class="{{ $sortIconClass('status', 'desc') }}">&darr;</span>
+                                </span>
+                            </a>
+                        </th>
+                        <th>
+                            <a href="{{ provider_route('provider.services.index', $sortQueryFor('document_status')) }}" class="admin-booking-sort {{ $sortBy === 'document_status' ? 'active' : '' }}">
+                                Docs
+                                <span class="admin-booking-sort-icons" aria-hidden="true">
+                                    <span class="{{ $sortIconClass('document_status', 'asc') }}">&uarr;</span>
+                                    <span class="{{ $sortIconClass('document_status', 'desc') }}">&darr;</span>
+                                </span>
+                            </a>
+                        </th>
+                        <th>
+                            <a href="{{ provider_route('provider.services.index', $sortQueryFor('created_at')) }}" class="admin-booking-sort {{ $sortBy === 'created_at' ? 'active' : '' }}">
+                                Created
+                                <span class="admin-booking-sort-icons" aria-hidden="true">
+                                    <span class="{{ $sortIconClass('created_at', 'asc') }}">&uarr;</span>
+                                    <span class="{{ $sortIconClass('created_at', 'desc') }}">&darr;</span>
+                                </span>
+                            </a>
+                        </th>
+                        <th>Action</th>
                     </tr>
                 </thead>
 
                 <tbody>
-                    @forelse ($services as $index => $service)
+                    @forelse ($serviceCollection as $service)
                         @php
-                            $documentStatus = optional($service->provider?->providerProfile)->document_status ?? 'pending';
+                            $imageUrl = $assetUrl($service->gallery_image);
+                            $serviceStatus = $service->status ?? 'inactive';
+                            $documentStatus = $service->provider_document_status ?? 'pending';
+                            $priceTypeValue = $service->price_type ?: 'fixed';
+                            $enabledModes = collect([
+                                $service->is_scheduled_enabled ? 'Scheduled' : null,
+                                $service->is_queue_enabled ? 'Queue' : null,
+                            ])->filter()->values();
                         @endphp
 
                         <tr>
-                            <td>{{ $index + 1 }}</td>
-
                             <td>
-                                <div class="service-name-cell">
-                                    <div class="service-avatar">
-                                        {{ strtoupper(substr($service->title ?? 'S', 0, 1)) }}
-                                    </div>
+                                <div class="category-name-box provider-service-name-box">
+                                    @if ($imageUrl)
+                                        <img src="{{ $imageUrl }}" alt="{{ $service->title }}" class="category-thumb">
+                                    @else
+                                        <span class="category-thumb-placeholder">{{ $serviceInitial($service) }}</span>
+                                    @endif
 
-                                    <div>
-                                        <strong>{{ $service->title }}</strong>
-                                        <small>{{ $service->category ?? 'General' }}</small>
+                                    <div class="category-name-text">
+                                        <strong>{{ $service->title ?? '-' }}</strong>
+                                        <small>{{ $service->code ?: 'No code' }}</small>
                                     </div>
                                 </div>
                             </td>
 
-                            <td>{{ $service->slug }}</td>
+                            <td>
+                                <div class="admin-booking-code-cell">
+                                    <strong>{{ $service->category ?: '-' }}</strong>
+                                    <small>{{ $service->slug ?: 'No slug' }}</small>
+                                    <small>{{ $branchSummary($service) }}</small>
+                                </div>
+                            </td>
 
-                            <td data-status="{{ $service->status }}">
-                                <form action="{{ provider_route('provider.services.toggle-status', $service->id) }}" method="POST" class="service-status-form">
+                            <td>
+                                <p class="category-description-text">{{ $serviceDescription($service, 92) }}</p>
+                                <small class="provider-service-description-meta">
+                                    {{ $formatDuration($service) }} &middot; {{ $enabledModes->isNotEmpty() ? $enabledModes->join(' / ') : 'Unavailable' }}
+                                </small>
+                            </td>
+
+                            <td>
+                                <div class="admin-booking-total-cell">
+                                    <strong>{{ $formatMoney($service->price ?? 0) }}</strong>
+                                    <small>{{ $statusLabel($priceTypeValue) }}</small>
+                                    @if ($service->requires_dp)
+                                        <small>DP {{ $formatMoney($service->dp_amount ?? 0) }}</small>
+                                    @endif
+                                </div>
+                            </td>
+
+                            <td>
+                                <form action="{{ provider_route('provider.services.toggle-status', $service->id) }}" method="POST" class="inline-form provider-service-status-form">
                                     @csrf
                                     @method('PATCH')
-
-                                    <label class="service-switch">
-                                        <input
-                                            type="checkbox"
-                                            onchange="this.form.submit()"
-                                            {{ $service->status === 'active' ? 'checked' : '' }}
-                                        >
+                                    <button type="submit" class="status-pill status-{{ $statusPillClass($serviceStatus) }}" title="Click to change status">
                                         <span></span>
-                                    </label>
+                                        {{ $statusLabel($serviceStatus) }}
+                                    </button>
                                 </form>
                             </td>
 
-                            <td data-verify="{{ $documentStatus }}">
-                                <span class="service-verify-badge {{ $documentStatus }}">
-                                    • {{ ucfirst($documentStatus) }}
+                            <td>
+                                <span class="admin-booking-status {{ $statusClass($documentStatus) }}">
+                                    {{ $statusLabel($documentStatus) }}
                                 </span>
                             </td>
 
                             <td>
-                                <div class="service-action-group">
-                                    <a href="{{ provider_route('provider.services.edit', $service->id) }}" class="service-icon-btn edit" title="Edit">
-                                        <svg viewBox="0 0 24 24">
-                                            <path d="M12 20h9"/>
-                                            <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>
+                                <div class="admin-booking-timeline">
+                                    <span>{{ $formatDate($service->created_at) }}</span>
+                                    <small>{{ $service->created_at?->format('H:i') ?? '-' }}</small>
+                                </div>
+                            </td>
+
+                            <td>
+                                <div class="category-actions provider-service-row-actions">
+                                    <a href="{{ provider_route('provider.services.edit', $service->id) }}" class="category-action-btn" title="Edit" aria-label="Edit {{ $service->title }}">
+                                        <svg viewBox="0 0 24 24" fill="none">
+                                            <path d="M4 20h4L18 10l-4-4L4 16v4Z"></path>
+                                            <path d="m13 7 4 4"></path>
                                         </svg>
                                     </a>
 
-                                    <form action="{{ provider_route('provider.services.destroy', $service->id) }}" method="POST" class="service-delete-form">
-                                        @csrf
-                                        @method('DELETE')
-
-                                        <button type="button" class="service-icon-btn delete service-delete-trigger" title="Delete">
-                                            <svg viewBox="0 0 24 24">
-                                                <path d="M3 6h18"/>
-                                                <path d="M8 6V4h8v2"/>
-                                                <path d="M19 6l-1 14H6L5 6"/>
-                                                <path d="M10 11v6M14 11v6"/>
-                                            </svg>
-                                        </button>
-                                    </form>
-
-                                    <button type="button" class="service-promote-btn">
-                                        Promote
+                                    <button type="button"
+                                            class="category-action-btn danger"
+                                            title="Delete"
+                                            aria-label="Delete {{ $service->title }}"
+                                            data-service-delete-url="{{ provider_route('provider.services.destroy', $service->id) }}">
+                                        <svg viewBox="0 0 24 24" fill="none">
+                                            <path d="M5 7h14"></path>
+                                            <path d="M9 7V5h6v2"></path>
+                                            <path d="m7 7 1 14h8l1-14"></path>
+                                            <path d="M10 11v6"></path>
+                                            <path d="M14 11v6"></path>
+                                        </svg>
                                     </button>
                                 </div>
                             </td>
                         </tr>
                     @empty
-                        <tr class="service-empty-row">
-                            <td colspan="6">No Service found</td>
+                        <tr>
+                            <td colspan="8" class="admin-booking-empty">
+                                <div>
+                                    <span>
+                                        <svg viewBox="0 0 24 24">
+                                            <path d="M4 7h16"></path>
+                                            <path d="M4 12h16"></path>
+                                            <path d="M4 17h16"></path>
+                                        </svg>
+                                    </span>
+
+                                    <strong>No service data found.</strong>
+                                    <p>Coba ubah keyword, status, document, atau price type.</p>
+                                </div>
+                            </td>
                         </tr>
                     @endforelse
                 </tbody>
             </table>
         </div>
 
-        <div class="service-data-footer">
-            <div class="service-info-text" id="serviceInfoText">
-                Showing 0 to 0 of 0 entries
-            </div>
+        <div class="admin-booking-footer category-footer">
+            <p class="admin-booking-showing">
+                <strong>{{ number_format($firstItem) }}-{{ number_format($lastItem) }}</strong>
+                <span>/ {{ number_format($totalItem) }}</span>
+            </p>
 
-            <div class="service-pagination" id="servicePagination">
-                <button type="button" data-page="first">First</button>
-                <button type="button" data-page="previous">Previous</button>
-                <button type="button" class="active" data-page="1">1</button>
-                <button type="button" data-page="next">Next</button>
-                <button type="button" data-page="last">Last</button>
-            </div>
+            @if ($hasPaginator)
+                <div class="admin-booking-pagination category-pagination">
+                    @if ($serviceCollection->onFirstPage())
+                        <span class="disabled">&lsaquo;</span>
+                    @else
+                        <a href="{{ $serviceCollection->previousPageUrl() }}" aria-label="Previous page">&lsaquo;</a>
+                    @endif
+
+                    <span class="active">{{ $serviceCollection->currentPage() }}</span>
+
+                    @if ($serviceCollection->hasMorePages())
+                        <a href="{{ $serviceCollection->nextPageUrl() }}" aria-label="Next page">&rsaquo;</a>
+                    @else
+                        <span class="disabled">&rsaquo;</span>
+                    @endif
+                </div>
+            @else
+                <div class="admin-booking-pagination category-pagination static">
+                    <span class="active">1</span>
+                </div>
+            @endif
         </div>
     </div>
 </section>
 
-<div class="service-delete-modal-overlay" id="serviceDeleteModal">
-    <div class="service-delete-modal">
-        <div class="service-delete-icon">
-            <svg viewBox="0 0 24 24">
-                <path d="M3 6h18"/>
-                <path d="M8 6V4h8v2"/>
-                <path d="M19 6l-1 14H6L5 6"/>
-                <path d="M10 11v6M14 11v6"/>
+<div class="category-modal" id="serviceDeleteModalOverlay" aria-hidden="true">
+    <div class="category-modal-dialog delete" id="serviceDeleteModal" role="dialog" aria-modal="true" aria-labelledby="serviceDeleteTitle">
+        <div class="delete-icon">
+            <svg viewBox="0 0 24 24" fill="none">
+                <path d="M5 7h14"></path>
+                <path d="M9 7V5h6v2"></path>
+                <path d="m7 7 1 14h8l1-14"></path>
+                <path d="M10 11v6"></path>
+                <path d="M14 11v6"></path>
             </svg>
         </div>
 
-        <h2>Confirm Deletion</h2>
+        <h3 id="serviceDeleteTitle">Delete Service?</h3>
 
         <p>
-            Are you sure you want to delete this item? This action cannot be undone.
+            Service ini akan dihapus dari daftar My Service.
+            Data yang sudah dihapus tidak bisa dikembalikan.
         </p>
 
-        <div class="service-delete-modal-actions">
-            <button type="button" class="service-modal-cancel" id="serviceDeleteCancel">
+        <div class="delete-actions">
+            <button type="button" class="modal-cancel-btn" data-service-delete-cancel>
                 Cancel
             </button>
 
-            <form method="POST" id="serviceDeleteConfirmForm">
+            <form method="POST" id="serviceDeleteForm" class="delete-category-form">
                 @csrf
                 @method('DELETE')
 
-                <button type="submit" class="service-modal-delete">
-                    Yes, Delete
+                <button type="submit" class="delete-confirm-btn">
+                    Delete
                 </button>
             </form>
         </div>

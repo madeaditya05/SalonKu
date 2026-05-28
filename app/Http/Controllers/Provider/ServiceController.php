@@ -31,16 +31,120 @@ class ServiceController extends Controller
         return ProviderAccountScope::branchId(Auth::user());
     }
 
-    public function index()
+    public function index(Request $request)
     {
-        $services = Service::with('provider.providerProfile')
-            ->where('provider_id', $this->providerId())
-            ->latest();
-        ProviderAccountScope::applyServiceBranchScope($services, $this->branchId());
+        $search = trim((string) $request->get('search', ''));
+        $status = (string) $request->get('status', 'all');
+        $documentStatus = (string) $request->get('document_status', 'all');
+        $priceType = (string) $request->get('price_type', 'all');
+        $sortBy = (string) $request->get('sort_by', 'created_at');
+        $sortDirection = strtolower((string) $request->get('sort_direction', 'desc')) === 'asc' ? 'asc' : 'desc';
+        $perPage = (int) $request->get('per_page', 10);
 
-        $services = $services->get();
+        if (! in_array($perPage, [10, 25, 50, 100], true)) {
+            $perPage = 10;
+        }
 
-        return view('provider.pages.services.index', compact('services'));
+        $allowedStatuses = ['all', 'active', 'inactive'];
+        $allowedDocumentStatuses = ['all', 'verified', 'submitted', 'pending', 'rejected'];
+        $allowedPriceTypes = ['all', 'fixed', 'hourly'];
+        $sortColumns = [
+            'title' => 'services.title',
+            'category' => 'services.category',
+            'code' => 'services.code',
+            'price' => 'services.price',
+            'status' => 'services.status',
+            'document_status' => 'provider_profiles.document_status',
+            'created_at' => 'services.created_at',
+        ];
+
+        $status = in_array($status, $allowedStatuses, true) ? $status : 'all';
+        $documentStatus = in_array($documentStatus, $allowedDocumentStatuses, true) ? $documentStatus : 'all';
+        $priceType = in_array($priceType, $allowedPriceTypes, true) ? $priceType : 'all';
+        $sortBy = array_key_exists($sortBy, $sortColumns) ? $sortBy : 'created_at';
+
+        $baseQuery = Service::query()
+            ->leftJoin('provider_profiles as provider_profiles', 'provider_profiles.user_id', '=', 'services.provider_id')
+            ->where('services.provider_id', $this->providerId())
+            ->select('services.*', DB::raw('provider_profiles.document_status as provider_document_status'));
+        ProviderAccountScope::applyServiceBranchScope($baseQuery, $this->branchId());
+
+        $summary = [
+            'total' => (clone $baseQuery)->count('services.id'),
+            'active' => (clone $baseQuery)->where('services.status', 'active')->count('services.id'),
+            'verified' => (clone $baseQuery)->where('provider_profiles.document_status', 'verified')->count('services.id'),
+            'revenue' => (clone $baseQuery)->sum('services.price'),
+        ];
+
+        $query = (clone $baseQuery)
+            ->when($status !== 'all', fn ($builder) => $builder->where('services.status', $status))
+            ->when($documentStatus !== 'all', function ($builder) use ($documentStatus) {
+                if ($documentStatus === 'pending') {
+                    $builder->where(function ($query) {
+                        $query->whereNull('provider_profiles.document_status')
+                            ->orWhere('provider_profiles.document_status', 'pending');
+                    });
+
+                    return;
+                }
+
+                $builder->where('provider_profiles.document_status', $documentStatus);
+            })
+            ->when($priceType !== 'all', fn ($builder) => $builder->where('services.price_type', $priceType));
+
+        if ($search !== '') {
+            $query->where(function ($searchQuery) use ($search) {
+                $searchQuery
+                    ->where('services.title', 'like', '%' . $search . '%')
+                    ->orWhere('services.slug', 'like', '%' . $search . '%')
+                    ->orWhere('services.category', 'like', '%' . $search . '%')
+                    ->orWhere('services.code', 'like', '%' . $search . '%')
+                    ->orWhere('services.status', 'like', '%' . $search . '%')
+                    ->orWhere('provider_profiles.document_status', 'like', '%' . $search . '%');
+            });
+        }
+
+        $services = $query
+            ->orderBy($sortColumns[$sortBy], $sortDirection)
+            ->orderByDesc('services.id')
+            ->paginate($perPage)
+            ->withQueryString();
+
+        $filters = [
+            'status' => $status,
+            'search' => $search,
+            'per_page' => $perPage,
+            'document_status' => $documentStatus,
+            'price_type' => $priceType,
+            'sort_by' => $sortBy,
+            'sort_direction' => $sortDirection,
+        ];
+
+        $tabs = [
+            'all' => 'All Services',
+            'active' => 'Active',
+            'inactive' => 'Inactive',
+        ];
+
+        $hasActiveFilters = $search !== ''
+            || $status !== 'all'
+            || $documentStatus !== 'all'
+            || $priceType !== 'all'
+            || $perPage !== 10
+            || $sortBy !== 'created_at'
+            || $sortDirection !== 'desc';
+
+        return view('provider.pages.services.index', compact(
+            'services',
+            'search',
+            'perPage',
+            'filters',
+            'summary',
+            'tabs',
+            'sortBy',
+            'sortDirection',
+            'hasActiveFilters'
+        ));
     }
 
     public function create(Request $request)

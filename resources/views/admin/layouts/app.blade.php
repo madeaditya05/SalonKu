@@ -24,6 +24,36 @@
     </div>
 
     <div class="admin-sidebar-overlay" id="sidebarOverlay"></div>
+    <div class="category-modal" id="adminDeleteConfirmModal" aria-hidden="true">
+        <div class="category-modal-dialog delete" role="dialog" aria-modal="true" aria-labelledby="adminDeleteConfirmTitle">
+            <div class="delete-icon">
+                <svg viewBox="0 0 24 24" fill="none">
+                    <path d="M5 7h14"></path>
+                    <path d="M9 7V5h6v2"></path>
+                    <path d="m7 7 1 14h8l1-14"></path>
+                    <path d="M10 11v6"></path>
+                    <path d="M14 11v6"></path>
+                </svg>
+            </div>
+
+            <h3 id="adminDeleteConfirmTitle">Hapus Data?</h3>
+
+            <p>
+                <strong id="adminDeleteConfirmItem">Data ini</strong><br>
+                <span id="adminDeleteConfirmMessage">Data yang dipilih akan dihapus dari sistem.</span>
+            </p>
+
+            <div class="delete-actions">
+                <button type="button" class="modal-cancel-btn" data-admin-delete-cancel>
+                    Batal
+                </button>
+
+                <button type="button" class="delete-confirm-btn" data-admin-delete-confirm>
+                    Hapus
+                </button>
+            </div>
+        </div>
+    </div>
 
     <script src="https://js.pusher.com/8.4.0/pusher.min.js"></script>
     <script src="{{ asset('js/realtime-notifications.js') }}"></script>

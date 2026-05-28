@@ -1,33 +1,43 @@
 @extends('admin.layouts.app')
 
-@section('title', 'Create Coupon - JasaKu')
-@section('page_title', 'Create Coupon')
+@section('title', 'Add Coupon - JasaKu')
+@section('page_title', 'Add Coupon')
 
 @section('content')
-<section class="admin-coupon-page">
-    <form action="{{ route('admin.coupons.store') }}" method="POST" id="couponForm">
+<section class="admin-coupon-page admin-coupon-form-page admin-booking-page">
+    <form action="{{ route('admin.coupons.store') }}" method="POST" id="couponForm" class="admin-coupon-editor">
         @csrf
 
-        <div class="admin-coupon-heading">
-            <div>
-                <h1>Create Coupon</h1>
-
-                <div class="admin-coupon-breadcrumb">
-                    <a href="{{ route('admin.dashboard') }}">Dashboard</a>
-                    <span>&rsaquo;</span>
-                    <a href="{{ route('admin.coupons.index') }}">Coupons</a>
-                    <span>&rsaquo;</span>
-                    <strong>Create Coupon</strong>
-                </div>
+        <div class="admin-booking-route admin-coupon-form-route">
+            <div class="admin-breadcrumb">
+                <a href="{{ route('admin.dashboard') }}">Dashboard</a>
+                <span>&rsaquo;</span>
+                <a href="{{ route('admin.coupons.index') }}">Coupons</a>
+                <span>&rsaquo;</span>
+                <strong>Add Coupon</strong>
             </div>
 
-            <button type="submit" class="admin-coupon-primary">
-                Save
-            </button>
+            <div class="admin-coupon-form-actions">
+                <a href="{{ route('admin.coupons.index') }}" class="admin-coupon-secondary">
+                    <svg viewBox="0 0 24 24" fill="none">
+                        <path d="m15 18-6-6 6-6"></path>
+                    </svg>
+                    Cancel
+                </a>
+
+                <button type="submit" class="admin-coupon-primary">
+                    <svg viewBox="0 0 24 24" fill="none">
+                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"></path>
+                        <path d="M17 21v-8H7v8"></path>
+                        <path d="M7 3v5h8"></path>
+                    </svg>
+                    Save Coupon
+                </button>
+            </div>
         </div>
 
         @if ($errors->any())
-            <div class="admin-alert error">
+            <div class="admin-booking-alert danger">
                 {{ $errors->first() }}
             </div>
         @endif
@@ -36,6 +46,7 @@
             'coupon' => $coupon,
             'services' => $services,
             'categories' => $categories,
+            'mode' => $mode ?? 'create',
         ])
     </form>
 </section>

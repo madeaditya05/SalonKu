@@ -6,22 +6,25 @@
     <title>@yield('title', 'Provider Dashboard - JasaKu')</title>
 
     <link rel="stylesheet" href="{{ asset('provider/css/provider-dashboard.css') }}">
+    <link rel="stylesheet" href="{{ asset('admin/css/admin-dashboard.css') }}">
 
     @stack('styles')
+    <link rel="stylesheet" href="{{ asset('admin/css/colorful-theme.css') }}">
+    <link rel="stylesheet" href="{{ asset('provider/css/provider-admin-theme.css') }}">
 </head>
-<body>
-    <div class="provider-app-shell">
+<body class="admin-body provider-body">
+    <div class="provider-app-shell admin-layout" id="providerLayout">
         @include('provider.partials.dashboard.sidebar')
 
-        <div class="provider-main-area">
+        <div class="provider-main-area admin-main-wrapper">
             @include('provider.partials.dashboard.topbar')
 
-            <main class="provider-content-area">
+            <main class="provider-content-area admin-main-content">
                 @yield('content')
             </main>
         </div>
 
-        <div class="provider-sidebar-overlay" id="providerSidebarOverlay"></div>
+        <div class="provider-sidebar-overlay admin-sidebar-overlay" id="providerSidebarOverlay"></div>
     </div>
 
     <script src="https://js.pusher.com/8.4.0/pusher.min.js"></script>

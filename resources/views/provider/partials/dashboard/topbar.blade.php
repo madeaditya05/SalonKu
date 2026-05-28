@@ -54,9 +54,9 @@
     ];
 @endphp
 
-<header class="provider-topbar">
-    <div class="topbar-left">
-        <button class="topbar-sidebar-btn" id="mobileSidebarToggle" type="button" aria-label="Open sidebar">
+<header class="provider-topbar admin-topbar">
+    <div class="topbar-left admin-topbar-left">
+        <button class="topbar-sidebar-btn admin-mobile-menu-btn" id="mobileSidebarToggle" type="button" aria-label="Open sidebar">
             <svg viewBox="0 0 24 24">
                 <path d="M4 7h16M4 12h16M4 17h16"/>
             </svg>
@@ -68,23 +68,23 @@
         </div>
     </div>
 
-    <div class="topbar-right">
-        <a href="javascript:void(0)" class="topbar-help-btn">
+    <div class="topbar-right admin-topbar-right">
+        <a href="javascript:void(0)" class="topbar-help-btn admin-help-btn">
             <svg viewBox="0 0 24 24">
                 <path d="M9.09 9a3 3 0 1 1 5.82 1c0 2-3 2-3 4"/>
                 <path d="M12 17h.01"/>
                 <circle cx="12" cy="12" r="9"/>
             </svg>
-            <span>Need help</span>
+            <span class="admin-topbar-action-label">Need help</span>
         </a>
 
         <div class="notification-shell" data-notification-root>
-            <button class="topbar-icon-btn notification-btn" type="button" data-notification-toggle aria-expanded="false" title="Notifications">
+            <button class="topbar-icon-btn admin-topbar-icon notification-btn" type="button" data-notification-toggle aria-expanded="false" title="Notifications">
                 <svg viewBox="0 0 24 24">
                     <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/>
                     <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
                 </svg>
-                <span class="notification-badge is-hidden" data-notification-count>0</span>
+                <span class="notification-badge notification-dot is-hidden" data-notification-count>0</span>
             </button>
 
             <div class="notification-popover" data-notification-popover>
@@ -105,19 +105,19 @@
             </script>
         </div>
 
-        <a href="{{ config('services.frontend.provider_url') }}" class="visit-site-btn">
+        <a href="{{ \App\Support\FrontendUrl::provider(request()) }}" class="visit-site-btn admin-visit-btn">
             <svg viewBox="0 0 24 24">
                 <circle cx="12" cy="12" r="9"/>
                 <path d="M3 12h18"/>
                 <path d="M12 3a14 14 0 0 1 0 18"/>
                 <path d="M12 3a14 14 0 0 0 0 18"/>
             </svg>
-            <span>Visit Website</span>
+            <span class="admin-topbar-action-label">Visit Website</span>
         </a>
 
-        <div class="profile-dropdown" id="profileDropdown">
-            <button class="profile-avatar-btn" id="profileToggle" type="button">
-                <span class="profile-avatar-circle">
+        <div class="profile-dropdown admin-profile-dropdown" id="profileDropdown">
+            <button class="profile-avatar-btn admin-profile-btn" id="profileToggle" type="button">
+                <span class="profile-avatar-circle admin-profile-avatar">
                     @if ($profileImageUrl)
                         <img src="{{ $profileImageUrl }}" alt="{{ $providerName }}">
                     @else
@@ -130,9 +130,9 @@
                 </svg>
             </button>
 
-            <div class="profile-menu" id="profileMenu">
-                <div class="profile-menu-head">
-                    <div class="profile-menu-avatar">
+            <div class="profile-menu admin-profile-menu" id="profileMenu">
+                <div class="profile-menu-head admin-profile-head">
+                    <div class="profile-menu-avatar admin-profile-head-avatar">
                         @if ($profileImageUrl)
                             <img src="{{ $profileImageUrl }}" alt="{{ $providerName }}">
                         @else

@@ -1,8 +1,45 @@
 const normalizeUrl = (url) => String(url || '').replace(/\/$/, '');
-const backendUrl = () => normalizeUrl(import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000');
-const apiBaseUrl = () => normalizeUrl(import.meta.env.VITE_API_BASE_URL || `${backendUrl()}/api`);
+
+const currentHostname = () => window.location.hostname || '127.0.0.1';
+
+const loopbackHosts = new Set(['127.0.0.1', 'localhost', '::1']);
+
+const isLoopbackHost = (hostname) => loopbackHosts.has(String(hostname || '').toLowerCase());
+
+const localizeLoopbackUrl = (url) => {
+    const normalized = normalizeUrl(url);
+
+    try {
+        const parsed = new URL(normalized);
+        const hostname = currentHostname();
+
+        if (!isLoopbackHost(hostname) && isLoopbackHost(parsed.hostname)) {
+            parsed.hostname = hostname;
+        }
+
+        return normalizeUrl(parsed.toString());
+    } catch {
+        return normalized;
+    }
+};
+
+const localBackendUrl = () => {
+    const hostname = currentHostname();
+
+    return `http://${hostname}:8000`;
+};
+
+const localFrontendUrl = (port) => {
+    const hostname = currentHostname();
+
+    return `http://${hostname}:${port}`;
+};
+
+const backendUrl = () => localizeLoopbackUrl(import.meta.env.VITE_BACKEND_URL || localBackendUrl());
+const apiBaseUrl = () => localizeLoopbackUrl(import.meta.env.VITE_API_BASE_URL || `${backendUrl()}/api`);
 const apiFallbackUrls = () => [
     apiBaseUrl(),
+    `${localBackendUrl()}/api`,
     'http://127.0.0.1:8000/api',
     'http://localhost:8000/api',
     'http://127.0.0.1:8001/api',
@@ -39,7 +76,7 @@ async function fetchApi(path, options = {}, params = {}) {
         }
     }
 
-    const error = new Error('Could not connect to the Laravel API. Make sure the backend is running at http://127.0.0.1:8000.');
+    const error = new Error(`Could not connect to the Laravel API. Make sure the backend is running at ${backendUrl()}.`);
     error.cause = lastError;
     throw error;
 }
@@ -217,6 +254,6 @@ export async function cancelCustomerBooking(token, bookingId) {
 }
 
 export const links = {
-    providerFrontend: (import.meta.env.VITE_PROVIDER_FRONTEND_URL || 'http://127.0.0.1:5173').replace(/\/$/, ''),
-    customerApp: (import.meta.env.VITE_CUSTOMER_APP_URL || 'http://127.0.0.1:5174').replace(/\/$/, ''),
+    providerFrontend: localizeLoopbackUrl(import.meta.env.VITE_PROVIDER_FRONTEND_URL || localFrontendUrl(5173)),
+    customerApp: localizeLoopbackUrl(import.meta.env.VITE_CUSTOMER_APP_URL || localFrontendUrl(5174)),
 };

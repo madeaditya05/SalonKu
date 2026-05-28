@@ -119,7 +119,7 @@
 
                         <th data-sort="text">
                             <span>Role</span>
-                            <span class="sort-icon">â†•</span>
+                            <span class="sort-icon">&varr;</span>
                         </th>
 
                         <th data-sort="text">

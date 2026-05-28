@@ -16,6 +16,20 @@ php artisan migrate
 php artisan serve
 ```
 
+Server Laravel sudah disiapkan untuk local network lewat `SERVER_HOST=0.0.0.0`
+dan `SERVER_PORT=8000` di `.env`. Dari device lain di Wi-Fi/LAN yang sama,
+buka:
+
+```text
+http://IP-KOMPUTER:8000
+```
+
+Di Windows, IP komputer bisa dicek dengan:
+
+```powershell
+ipconfig
+```
+
 Route utama:
 
 - `/` diarahkan ke `/admin/login`.

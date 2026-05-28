@@ -16,19 +16,55 @@ class UserController extends Controller
             abort(403, 'Akses ditolak.');
         }
 
-        $search = $request->get('search');
+        $search = trim((string) $request->get('search', ''));
         $perPage = (int) $request->get('per_page', 10);
+        $status = $request->get('status', 'all');
+        $gender = $request->get('gender', 'all');
 
-        if (! in_array($perPage, [10, 25, 50, 100])) {
+        if (! in_array($perPage, [10, 25, 50, 100], true)) {
             $perPage = 10;
         }
 
-        $query = User::query()
+        if (! in_array($status, ['all', 'active', 'inactive'], true)) {
+            $status = 'all';
+        }
+
+        if (! in_array($gender, ['all', 'male', 'female', 'other'], true)) {
+            $gender = 'all';
+        }
+
+        $baseQuery = User::query()
+            ->where('role', 'customer');
+
+        $query = (clone $baseQuery)
             ->with('customerProfile')
-            ->where('role', 'customer')
             ->orderBy('name', 'asc');
 
-        if (! empty($search)) {
+        if ($status !== 'all') {
+            $query->where(function ($statusQuery) use ($status) {
+                if ($status === 'active') {
+                    $statusQuery
+                        ->whereDoesntHave('customerProfile')
+                        ->orWhereHas('customerProfile', function ($profileQuery) {
+                            $profileQuery->where('status', 'active');
+                        });
+
+                    return;
+                }
+
+                $statusQuery->whereHas('customerProfile', function ($profileQuery) {
+                    $profileQuery->where('status', 'inactive');
+                });
+            });
+        }
+
+        if ($gender !== 'all') {
+            $query->whereHas('customerProfile', function ($profileQuery) use ($gender) {
+                $profileQuery->where('gender', $gender);
+            });
+        }
+
+        if ($search !== '') {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', '%' . $search . '%')
                     ->orWhere('email', 'like', '%' . $search . '%')
@@ -42,10 +78,53 @@ class UserController extends Controller
 
         $users = $query->paginate($perPage)->withQueryString();
 
+        $summary = [
+            'total' => (clone $baseQuery)->count(),
+            'active' => (clone $baseQuery)
+                ->where(function ($query) {
+                    $query
+                        ->whereDoesntHave('customerProfile')
+                        ->orWhereHas('customerProfile', function ($profileQuery) {
+                            $profileQuery->where('status', 'active');
+                        });
+                })
+                ->count(),
+            'inactive' => (clone $baseQuery)
+                ->whereHas('customerProfile', function ($query) {
+                    $query->where('status', 'inactive');
+                })
+                ->count(),
+            'profiles' => CustomerProfile::query()->whereHas('user', function ($query) {
+                $query->where('role', 'customer');
+            })->count(),
+        ];
+
+        $filters = [
+            'status' => $status,
+            'gender' => $gender,
+            'search' => $search,
+            'per_page' => $perPage,
+        ];
+
+        $tabs = [
+            'all' => 'All Users',
+            'active' => 'Active',
+            'inactive' => 'Inactive',
+        ];
+
+        $hasActiveFilters = $status !== 'all'
+            || $gender !== 'all'
+            || $search !== ''
+            || $perPage !== 10;
+
         return view('admin.users.index', compact(
             'users',
             'search',
-            'perPage'
+            'perPage',
+            'filters',
+            'tabs',
+            'summary',
+            'hasActiveFilters'
         ));
     }
 

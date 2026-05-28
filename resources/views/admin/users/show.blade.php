@@ -32,8 +32,8 @@
     }
 @endphp
 
-<section class="user-detail-page">
-    <div class="user-detail-header">
+<section class="user-detail-page admin-booking-page admin-people-detail-page">
+    <div class="admin-booking-route admin-people-detail-route">
         <div>
             <h1>User Details</h1>
 
@@ -55,19 +55,19 @@
     </div>
 
     @if (session('success'))
-        <div class="admin-alert success">
+        <div class="admin-booking-alert success">
             {{ session('success') }}
         </div>
     @endif
 
     @if (session('error'))
-        <div class="admin-alert error">
+        <div class="admin-booking-alert danger">
             {{ session('error') }}
         </div>
     @endif
 
     @if ($errors->any())
-        <div class="admin-alert error">
+        <div class="admin-booking-alert danger">
             {{ $errors->first() }}
         </div>
     @endif

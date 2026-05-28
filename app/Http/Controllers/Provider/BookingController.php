@@ -24,25 +24,175 @@ class BookingController extends Controller
 
     public function index(Request $request)
     {
-        $date = $request->get('date', now()->toDateString());
-        $status = $request->get('status', 'all');
+        $status = (string) $request->get('status', 'all');
+        $search = trim((string) $request->get('search', ''));
+        $perPage = (int) $request->get('per_page', 10);
+        $perPage = in_array($perPage, [10, 25, 50, 100], true) ? $perPage : 10;
 
-        $bookings = $this->providerBookings()
-            ->with($this->bookingFlow->bookingRelations())
-            ->whereDate('booking_date', $date)
-            ->when($status !== 'all', fn ($query) => $query->where('status', $status))
-            ->orderByRaw('COALESCE(start_time, booking_time, "23:59:59")')
-            ->orderBy('queue_number')
-            ->get();
-
-        $stats = [
-            'total' => $bookings->count(),
-            'waiting' => $bookings->where('status', 'waiting')->count(),
-            'in_progress' => $bookings->whereIn('status', ['in_progress', 'inprogress'])->count(),
-            'completed' => $bookings->whereIn('status', ['completed', 'order_completed'])->count(),
+        $allowedStatuses = [
+            'all',
+            'open',
+            'pending',
+            'pending_payment',
+            'confirmed',
+            'waiting',
+            'checked_in',
+            'in_progress',
+            'inprogress',
+            'completed',
+            'order_completed',
+            'refund_completed',
+            'provider_cancelled',
+            'customer_cancelled',
+            'rescheduled',
+            'cancelled',
+            'no_show',
         ];
 
-        return view('provider.pages.bookings.index', compact('bookings', 'date', 'status', 'stats'));
+        $paymentStatuses = [
+            'all' => 'All Payments',
+            'unpaid' => 'Unpaid',
+            'pending' => 'Pending',
+            'paid' => 'Paid',
+            'failed' => 'Failed',
+            'refunded' => 'Refunded',
+        ];
+
+        $bookingTypes = [
+            'all' => 'All Modes',
+            'scheduled' => 'Scheduled',
+            'queue' => 'Queue',
+            'walk_in' => 'Walk In',
+        ];
+
+        $sortOptions = [
+            'booking_date' => 'Appointment Date',
+            'created_at' => 'Created Date',
+            'amount' => 'Total Amount',
+            'payment_status' => 'Payment Status',
+            'status' => 'Booking Status',
+            'booking_type' => 'Mode',
+            'booking_code' => 'Booking Code',
+        ];
+
+        $status = in_array($status, $allowedStatuses, true) ? $status : 'all';
+
+        $paymentStatus = (string) $request->get('payment_status', 'all');
+        $paymentStatus = array_key_exists($paymentStatus, $paymentStatuses) ? $paymentStatus : 'all';
+
+        $bookingType = (string) $request->get('booking_type', 'all');
+        $bookingType = array_key_exists($bookingType, $bookingTypes) ? $bookingType : 'all';
+
+        $legacyDate = $request->filled('date') ? (string) $request->get('date') : null;
+        $dateFrom = $request->filled('date_from') ? (string) $request->get('date_from') : $legacyDate;
+        $dateTo = $request->filled('date_to') ? (string) $request->get('date_to') : $legacyDate;
+
+        if ($dateFrom && ! preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateFrom)) {
+            $dateFrom = null;
+        }
+
+        if ($dateTo && ! preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateTo)) {
+            $dateTo = null;
+        }
+
+        $sortBy = (string) $request->get('sort_by', 'booking_date');
+        $sortBy = array_key_exists($sortBy, $sortOptions) ? $sortBy : 'booking_date';
+
+        $sortDirection = strtolower((string) $request->get('sort_direction', 'desc'));
+        $sortDirection = in_array($sortDirection, ['asc', 'desc'], true) ? $sortDirection : 'desc';
+
+        $filters = [
+            'status' => $status,
+            'search' => $search,
+            'per_page' => $perPage,
+            'payment_status' => $paymentStatus,
+            'booking_type' => $bookingType,
+            'date_from' => $dateFrom,
+            'date_to' => $dateTo,
+            'sort_by' => $sortBy,
+            'sort_direction' => $sortDirection,
+        ];
+
+        $query = $this->applyBookingFilters($this->providerBookings(), $filters)
+            ->with($this->bookingFlow->bookingRelations());
+
+        $summaryQuery = $this->applyBookingFilters($this->providerBookings(), $filters);
+
+        $summary = [
+            'total' => (clone $summaryQuery)->count(),
+            'paid' => (clone $summaryQuery)->where(function ($paidQuery) {
+                $paidQuery->where('payment_status', 'paid')
+                    ->orWhereHas('payment', fn ($paymentQuery) => $paymentQuery->where('status', 'paid'));
+            })->count(),
+            'pending' => (clone $summaryQuery)->whereIn('status', ['pending', 'pending_payment', 'confirmed', 'waiting', 'checked_in', 'in_progress', 'inprogress'])->count(),
+            'completed' => (clone $summaryQuery)->whereIn('status', ['completed', 'order_completed'])->count(),
+            'amount' => (float) (clone $summaryQuery)->selectRaw('COALESCE(SUM(COALESCE(total_price, amount, 0)), 0) as aggregate')->value('aggregate'),
+        ];
+
+        $sortExpressions = [
+            'booking_date' => 'booking_date',
+            'created_at' => 'created_at',
+            'amount' => 'COALESCE(total_price, amount, 0)',
+            'payment_status' => 'payment_status',
+            'status' => 'status',
+            'booking_type' => 'booking_type',
+            'booking_code' => 'booking_code',
+        ];
+
+        $query->orderByRaw($sortExpressions[$sortBy] . ' ' . $sortDirection)
+            ->orderByRaw('COALESCE(start_time, booking_time, "23:59:59") asc')
+            ->orderBy('queue_number')
+            ->orderByDesc('id');
+
+        $bookings = $query->paginate($perPage)->withQueryString();
+
+        $tabs = [
+            'all' => 'All Bookings',
+            'pending_payment' => 'Pending Payment',
+            'confirmed' => 'Confirmed',
+            'waiting' => 'Waiting',
+            'checked_in' => 'Checked In',
+            'in_progress' => 'In Progress',
+            'completed' => 'Completed',
+            'cancelled' => 'Cancelled',
+            'no_show' => 'No-show',
+        ];
+
+        $hasActiveFilters = $search !== ''
+            || $status !== 'all'
+            || $paymentStatus !== 'all'
+            || $bookingType !== 'all'
+            || ! empty($dateFrom)
+            || ! empty($dateTo)
+            || $perPage !== 10
+            || $sortBy !== 'booking_date'
+            || $sortDirection !== 'desc';
+
+        $date = $dateFrom ?: now()->toDateString();
+        $stats = [
+            'total' => $summary['total'],
+            'waiting' => (clone $summaryQuery)->where('status', 'waiting')->count(),
+            'in_progress' => (clone $summaryQuery)->whereIn('status', ['in_progress', 'inprogress'])->count(),
+            'completed' => $summary['completed'],
+        ];
+
+        return view('provider.pages.bookings.index', compact(
+            'bookings',
+            'tabs',
+            'status',
+            'search',
+            'perPage',
+            'filters',
+            'paymentStatuses',
+            'bookingTypes',
+            'sortOptions',
+            'sortBy',
+            'sortDirection',
+            'summary',
+            'hasActiveFilters',
+            'date',
+            'stats'
+        ));
     }
 
     public function calendar(Request $request)
@@ -243,16 +393,117 @@ class BookingController extends Controller
 
     public function payments(Request $request)
     {
-        $payments = Payment::query()
-            ->with(['booking.provider', 'booking.customer', 'booking.branch', 'booking.services'])
-            ->whereHas('booking', function ($query) {
-                $query->where('provider_id', $this->providerId());
-                ProviderAccountScope::applyBranchScope($query, $this->branchId());
-            })
-            ->latest()
-            ->paginate(25);
+        $paymentStatuses = [
+            'all' => 'All Payments',
+            'unpaid' => 'Unpaid',
+            'pending' => 'Pending',
+            'paid' => 'Paid',
+            'failed' => 'Failed',
+            'refunded' => 'Refunded',
+        ];
+        $paymentTypes = [
+            'all' => 'All Types',
+            'dp' => 'DP',
+            'full_payment' => 'Full Payment',
+            'pay_at_salon' => 'Pay at Salon',
+        ];
+        $sortOptions = [
+            'created_at' => 'Created Date',
+            'paid_at' => 'Paid Date',
+            'amount' => 'Amount',
+            'status' => 'Status',
+            'payment_type' => 'Type',
+        ];
+        $perPageOptions = [10, 25, 50, 100];
 
-        return view('provider.pages.payments.index', compact('payments'));
+        $filters = [
+            'status' => array_key_exists((string) $request->get('status', 'all'), $paymentStatuses)
+                ? (string) $request->get('status', 'all')
+                : 'all',
+            'payment_type' => array_key_exists((string) $request->get('payment_type', 'all'), $paymentTypes)
+                ? (string) $request->get('payment_type', 'all')
+                : 'all',
+            'search' => trim((string) $request->get('search', '')),
+            'date_from' => $request->get('date_from'),
+            'date_to' => $request->get('date_to'),
+            'per_page' => in_array((int) $request->get('per_page', 25), $perPageOptions, true)
+                ? (int) $request->get('per_page', 25)
+                : 25,
+            'sort_by' => array_key_exists((string) $request->get('sort_by', 'created_at'), $sortOptions)
+                ? (string) $request->get('sort_by', 'created_at')
+                : 'created_at',
+            'sort_direction' => $request->get('sort_direction') === 'asc' ? 'asc' : 'desc',
+        ];
+
+        $baseQuery = $this->providerPaymentsQuery();
+        $filteredQuery = $this->applyPaymentFilters(clone $baseQuery, $filters);
+
+        $summary = [
+            'total' => (clone $filteredQuery)->count(),
+            'amount' => (float) (clone $filteredQuery)->sum('amount'),
+            'paid' => (clone $filteredQuery)->where('status', 'paid')->count(),
+            'pending' => (clone $filteredQuery)->whereIn('status', ['unpaid', 'pending'])->count(),
+        ];
+
+        $statusBreakdownQuery = $this->applyPaymentFilters(clone $baseQuery, $filters, ['status']);
+        $statusBreakdown = collect($paymentStatuses)
+            ->reject(fn ($label, $status) => $status === 'all')
+            ->map(fn ($label, $status) => [
+                'key' => $status,
+                'label' => $label,
+                'count' => (clone $statusBreakdownQuery)->where('status', $status)->count(),
+                'amount' => (float) (clone $statusBreakdownQuery)->where('status', $status)->sum('amount'),
+            ])
+            ->values()
+            ->all();
+
+        $typeBreakdownQuery = $this->applyPaymentFilters(clone $baseQuery, $filters, ['payment_type']);
+        $typeBreakdown = collect($paymentTypes)
+            ->reject(fn ($label, $type) => $type === 'all')
+            ->map(fn ($label, $type) => [
+                'key' => $type,
+                'label' => $label,
+                'count' => (clone $typeBreakdownQuery)->where('payment_type', $type)->count(),
+                'amount' => (float) (clone $typeBreakdownQuery)->where('payment_type', $type)->sum('amount'),
+            ])
+            ->values()
+            ->all();
+
+        $tabCounts = collect($paymentStatuses)
+            ->mapWithKeys(fn ($label, $status) => [
+                $status => $status === 'all'
+                    ? (clone $statusBreakdownQuery)->count()
+                    : (clone $statusBreakdownQuery)->where('status', $status)->count(),
+            ])
+            ->all();
+
+        $payments = $filteredQuery
+            ->with(['booking.provider', 'booking.customer', 'booking.branch', 'booking.service', 'booking.services', 'booking.staff'])
+            ->orderBy($filters['sort_by'], $filters['sort_direction'])
+            ->paginate($filters['per_page'])
+            ->withQueryString();
+
+        $hasActiveFilters = $filters['status'] !== 'all'
+            || $filters['payment_type'] !== 'all'
+            || $filters['search'] !== ''
+            || ! empty($filters['date_from'])
+            || ! empty($filters['date_to'])
+            || $filters['per_page'] !== 25
+            || $filters['sort_by'] !== 'created_at'
+            || $filters['sort_direction'] !== 'desc';
+
+        return view('provider.pages.payments.index', compact(
+            'payments',
+            'filters',
+            'paymentStatuses',
+            'paymentTypes',
+            'sortOptions',
+            'summary',
+            'statusBreakdown',
+            'typeBreakdown',
+            'tabCounts',
+            'hasActiveFilters'
+        ));
     }
 
     public function call(Booking $booking)
@@ -323,6 +574,7 @@ class BookingController extends Controller
         $services = Service::query()
             ->where('provider_id', $this->providerId())
             ->where('status', 'active')
+            ->with('serviceCategory')
             ->orderBy('title');
         ProviderAccountScope::applyServiceBranchScope($services, $this->branchId());
 
@@ -343,6 +595,115 @@ class BookingController extends Controller
     {
         $query = Booking::query()->where('provider_id', $this->providerId());
         ProviderAccountScope::applyBranchScope($query, $this->branchId());
+
+        return $query;
+    }
+
+    private function applyBookingFilters($query, array $filters)
+    {
+        if (($filters['status'] ?? 'all') !== 'all') {
+            $query->where('status', $filters['status']);
+        }
+
+        if (($filters['payment_status'] ?? 'all') !== 'all') {
+            $paymentStatus = $filters['payment_status'];
+
+            $query->where(function ($paymentQuery) use ($paymentStatus) {
+                $paymentQuery->where('payment_status', $paymentStatus)
+                    ->orWhereHas('payment', fn ($relationQuery) => $relationQuery->where('status', $paymentStatus));
+            });
+        }
+
+        if (($filters['booking_type'] ?? 'all') !== 'all') {
+            $query->where('booking_type', $filters['booking_type']);
+        }
+
+        if (! empty($filters['date_from'])) {
+            $query->whereDate('booking_date', '>=', $filters['date_from']);
+        }
+
+        if (! empty($filters['date_to'])) {
+            $query->whereDate('booking_date', '<=', $filters['date_to']);
+        }
+
+        if (($filters['search'] ?? '') !== '') {
+            $search = '%' . $filters['search'] . '%';
+
+            $query->where(function ($searchQuery) use ($search) {
+                $searchQuery
+                    ->where('booking_code', 'like', $search)
+                    ->orWhere('customer_name', 'like', $search)
+                    ->orWhere('customer_phone', 'like', $search)
+                    ->orWhere('payment_status', 'like', $search)
+                    ->orWhere('booking_type', 'like', $search)
+                    ->orWhere('status', 'like', $search)
+                    ->orWhereHas('customer', fn ($customerQuery) => $customerQuery->where('name', 'like', $search)->orWhere('email', 'like', $search))
+                    ->orWhereHas('service', fn ($serviceQuery) => $serviceQuery->where('title', 'like', $search))
+                    ->orWhereHas('services', fn ($serviceQuery) => $serviceQuery->where('title', 'like', $search))
+                    ->orWhereHas('branch', fn ($branchQuery) => $branchQuery->where('branch_name', 'like', $search)->orWhere('city_id', 'like', $search))
+                    ->orWhereHas('staff', function ($staffQuery) use ($search) {
+                        $staffQuery
+                            ->where('first_name', 'like', $search)
+                            ->orWhere('last_name', 'like', $search)
+                            ->orWhere('username', 'like', $search)
+                            ->orWhere('email', 'like', $search);
+                    });
+            });
+        }
+
+        return $query;
+    }
+
+    private function providerPaymentsQuery()
+    {
+        return Payment::query()
+            ->whereHas('booking', function ($query) {
+                $query->where('provider_id', $this->providerId());
+                ProviderAccountScope::applyBranchScope($query, $this->branchId());
+            });
+    }
+
+    private function applyPaymentFilters($query, array $filters, array $except = [])
+    {
+        if (! in_array('status', $except, true) && ($filters['status'] ?? 'all') !== 'all') {
+            $query->where('status', $filters['status']);
+        }
+
+        if (! in_array('payment_type', $except, true) && ($filters['payment_type'] ?? 'all') !== 'all') {
+            $query->where('payment_type', $filters['payment_type']);
+        }
+
+        if (! in_array('date_from', $except, true) && ! empty($filters['date_from'])) {
+            $query->whereDate('created_at', '>=', $filters['date_from']);
+        }
+
+        if (! in_array('date_to', $except, true) && ! empty($filters['date_to'])) {
+            $query->whereDate('created_at', '<=', $filters['date_to']);
+        }
+
+        if (! in_array('search', $except, true) && ($filters['search'] ?? '') !== '') {
+            $search = '%' . $filters['search'] . '%';
+
+            $query->where(function ($searchQuery) use ($search) {
+                $searchQuery
+                    ->where('payment_method', 'like', $search)
+                    ->orWhere('payment_channel', 'like', $search)
+                    ->orWhere('payment_code', 'like', $search)
+                    ->orWhere('payment_code_label', 'like', $search)
+                    ->orWhere('midtrans_order_id', 'like', $search)
+                    ->orWhere('midtrans_transaction_id', 'like', $search)
+                    ->orWhereHas('booking', function ($bookingQuery) use ($search) {
+                        $bookingQuery
+                            ->where('booking_code', 'like', $search)
+                            ->orWhere('customer_name', 'like', $search)
+                            ->orWhere('customer_phone', 'like', $search)
+                            ->orWhereHas('customer', fn ($customerQuery) => $customerQuery->where('name', 'like', $search)->orWhere('email', 'like', $search))
+                            ->orWhereHas('branch', fn ($branchQuery) => $branchQuery->where('branch_name', 'like', $search))
+                            ->orWhereHas('service', fn ($serviceQuery) => $serviceQuery->where('title', 'like', $search))
+                            ->orWhereHas('services', fn ($serviceQuery) => $serviceQuery->where('title', 'like', $search));
+                    });
+            });
+        }
 
         return $query;
     }

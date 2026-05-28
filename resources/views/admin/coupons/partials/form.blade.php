@@ -1,5 +1,12 @@
 @php
+    $mode = $mode ?? (($coupon->exists ?? false) ? 'edit' : 'create');
     $selectedProductType = old('product_type', $coupon->product_type ?? 'all');
+    $selectedCouponType = old('coupon_type', $coupon->coupon_type ?? 'percentage');
+    $selectedCouponValue = old('coupon_value', $coupon->coupon_value);
+    $selectedQuantity = old('quantity', $coupon->quantity);
+    $selectedStatus = old('status', $coupon->status ?? 'active');
+    $selectedStartDate = old('start_date', $coupon->start_date?->format('Y-m-d'));
+    $selectedEndDate = old('end_date', $coupon->end_date?->format('Y-m-d'));
 
     $selectedProductIds = old('product_ids', $coupon->product_ids ?? []);
     $selectedProductIds = is_array($selectedProductIds) ? $selectedProductIds : [];
@@ -19,113 +26,344 @@
             ];
         })->values(),
     ];
+
+    $scopePreviewLabel = match ($selectedProductType) {
+        'service' => 'Selected Services',
+        'category' => 'Selected Categories',
+        default => 'All Services',
+    };
+
+    $couponTypePreviewLabel = match ($selectedCouponType) {
+        'fixed' => 'Fixed Amount',
+        default => 'Percentage',
+    };
+
+    $previewAmount = is_numeric($selectedCouponValue) ? (float) $selectedCouponValue : 0;
+    $previewValue = $selectedCouponType === 'fixed'
+        ? 'Rp ' . number_format($previewAmount, 0, ',', '.')
+        : rtrim(rtrim(number_format($previewAmount, 2, '.', ''), '0'), '.') . '%';
+
+    $previewCode = old('code', $coupon->code) ?: 'SALONHEMAT';
+    $previewQuota = blank($selectedQuantity) ? 'Unlimited' : number_format((int) $selectedQuantity);
+    $previewPeriod = ($selectedStartDate && $selectedEndDate)
+        ? $selectedStartDate . ' to ' . $selectedEndDate
+        : 'Set active period';
 @endphp
 
-<div class="coupon-form-card">
-    <div class="coupon-form-title">
-        <strong>Coupon Detail</strong>
-        <span>Atur kode voucher, nilai diskon, cakupan layanan, dan masa aktif.</span>
-    </div>
+<div class="admin-coupon-form-shell">
+    <div class="admin-coupon-form-main">
+        <div class="coupon-form-card">
+            <div class="coupon-form-title">
+                <span class="coupon-form-title-icon">
+                    <svg viewBox="0 0 24 24" fill="none">
+                        <path d="M4 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3a2 2 0 0 0 0 4v3a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-3a2 2 0 0 0 0-4V7Z"></path>
+                        <path d="m9 15 6-6"></path>
+                        <path d="M9.5 9.5h.01"></path>
+                        <path d="M14.5 14.5h.01"></path>
+                    </svg>
+                </span>
 
-    <div class="coupon-form-grid">
-        <div class="form-group">
-            <label>Coupon Code <span>*</span></label>
-            <input type="text" name="code" value="{{ old('code', $coupon->code) }}" placeholder="Contoh: SALONHEMAT" required>
-        </div>
+                <div>
+                    <strong>{{ $mode === 'edit' ? 'Coupon Detail' : 'New Coupon Detail' }}</strong>
+                    <span>Kode, scope layanan, diskon, kuota, dan masa aktif coupon.</span>
+                </div>
+            </div>
 
-        <div class="form-group">
-            <label>Product Type <span>*</span></label>
-            <select name="product_type" id="productTypeSelect" required>
-                <option value="all" {{ $selectedProductType === 'all' ? 'selected' : '' }}>All</option>
-                <option value="service" {{ $selectedProductType === 'service' ? 'selected' : '' }}>Service</option>
-                <option value="category" {{ $selectedProductType === 'category' ? 'selected' : '' }}>Category</option>
-            </select>
-        </div>
-
-        <div class="form-group coupon-product-field"
-             id="couponProductField"
-            data-selected='@json(array_map("intval", $selectedProductIds))'>
-            <label>
-                <span id="couponProductLabel">Category</span>
-                <span>*</span>
-            </label>
-
-            <div class="coupon-multiselect" id="couponProductSelector">
-                <div class="coupon-multiselect-control" id="couponProductControl">
-                    <div class="coupon-selected-tags" id="couponSelectedTags"></div>
-
-                    <input type="text"
-                           id="couponProductSearch"
-                           placeholder="Select data"
-                           autocomplete="off">
+            <div class="coupon-form-section">
+                <div class="coupon-section-heading">
+                    <span>01</span>
+                    <div>
+                        <strong>Basic Information</strong>
+                        <small>Identitas coupon dan layanan yang menerima promo.</small>
+                    </div>
                 </div>
 
-                <div class="coupon-multiselect-dropdown" id="couponProductDropdown"></div>
+                <div class="coupon-form-grid">
+                    <div class="form-group">
+                        <label for="couponCode">Coupon Code <span class="required">*</span></label>
+                        <input id="couponCode"
+                               type="text"
+                               name="code"
+                               value="{{ old('code', $coupon->code) }}"
+                               placeholder="Contoh: SALONHEMAT"
+                               autocomplete="off"
+                               data-coupon-preview-source="code"
+                               required>
+                        <small class="coupon-field-hint">Gunakan kode singkat tanpa spasi agar mudah dipakai customer.</small>
+                        @error('code')
+                            <small class="coupon-field-error">{{ $message }}</small>
+                        @enderror
+                    </div>
+
+                    <div class="form-group">
+                        <label for="productTypeSelect">Product Type <span class="required">*</span></label>
+                        <select name="product_type" id="productTypeSelect" required>
+                            <option value="all" {{ $selectedProductType === 'all' ? 'selected' : '' }}>All Services</option>
+                            <option value="service" {{ $selectedProductType === 'service' ? 'selected' : '' }}>Selected Services</option>
+                            <option value="category" {{ $selectedProductType === 'category' ? 'selected' : '' }}>Selected Categories</option>
+                        </select>
+                        <small class="coupon-field-hint">Pilih All Services untuk promo global.</small>
+                        @error('product_type')
+                            <small class="coupon-field-error">{{ $message }}</small>
+                        @enderror
+                    </div>
+
+                    <div class="form-group coupon-product-field coupon-field-wide"
+                         id="couponProductField"
+                         data-selected='@json(array_map("intval", $selectedProductIds))'>
+                        <label>
+                            <span id="couponProductLabel">Category</span>
+                            <span class="required">*</span>
+                        </label>
+
+                        <div class="coupon-multiselect" id="couponProductSelector">
+                            <div class="coupon-multiselect-control" id="couponProductControl">
+                                <div class="coupon-selected-tags" id="couponSelectedTags"></div>
+
+                                <input type="text"
+                                       id="couponProductSearch"
+                                       placeholder="Select data"
+                                       autocomplete="off">
+                            </div>
+
+                            <div class="coupon-multiselect-dropdown" id="couponProductDropdown"></div>
+                        </div>
+
+                        <div id="couponProductHiddenInputs"></div>
+                        <small class="coupon-field-hint">Pilih satu atau beberapa item sesuai scope coupon.</small>
+                        @error('product_ids')
+                            <small class="coupon-field-error">{{ $message }}</small>
+                        @enderror
+                    </div>
+                </div>
             </div>
 
-            <div id="couponProductHiddenInputs"></div>
-        </div>
+            <div class="coupon-form-section">
+                <div class="coupon-section-heading">
+                    <span>02</span>
+                    <div>
+                        <strong>Discount & Quota</strong>
+                        <small>Nilai promo dan batas total pemakaian coupon.</small>
+                    </div>
+                </div>
 
-        <div class="form-group">
-            <label>Coupon Type <span>*</span></label>
-            <select name="coupon_type" id="couponTypeSelect" required>
-                <option value="">Select Coupon Type</option>
-                <option value="percentage" {{ old('coupon_type', $coupon->coupon_type) === 'percentage' ? 'selected' : '' }}>Percentage</option>
-                <option value="fixed" {{ old('coupon_type', $coupon->coupon_type) === 'fixed' ? 'selected' : '' }}>Fixed Amount</option>
-            </select>
-        </div>
+                <div class="coupon-form-grid">
+                    <div class="form-group">
+                        <label for="couponTypeSelect">Coupon Type <span class="required">*</span></label>
+                        <select name="coupon_type" id="couponTypeSelect" required>
+                            <option value="percentage" {{ $selectedCouponType === 'percentage' ? 'selected' : '' }}>Percentage</option>
+                            <option value="fixed" {{ $selectedCouponType === 'fixed' ? 'selected' : '' }}>Fixed Amount</option>
+                        </select>
+                        <small class="coupon-field-hint">Percentage memakai %, Fixed Amount memakai rupiah.</small>
+                        @error('coupon_type')
+                            <small class="coupon-field-error">{{ $message }}</small>
+                        @enderror
+                    </div>
 
-        <div class="form-group">
-            <label>Coupon Value <span>*</span></label>
+                    <div class="form-group">
+                        <label for="couponValue">Coupon Value <span class="required">*</span></label>
 
-            <div class="input-with-suffix">
-                <input type="number"
-                       step="0.01"
-                       name="coupon_value"
-                       value="{{ old('coupon_value', $coupon->coupon_value) }}"
-                       placeholder="Enter coupon value"
-                       required>
+                        <div class="input-with-suffix">
+                            <input id="couponValue"
+                                   type="number"
+                                   step="0.01"
+                                   min="0"
+                                   name="coupon_value"
+                                   value="{{ $selectedCouponValue }}"
+                                   placeholder="Enter coupon value"
+                                   data-coupon-preview-source="value"
+                                   required>
 
-                <span id="couponValueSuffix">%</span>
+                            <span id="couponValueSuffix">%</span>
+                        </div>
+                        <small class="coupon-field-hint">Contoh: 10 untuk 10% atau 25000 untuk Rp 25.000.</small>
+                        @error('coupon_value')
+                            <small class="coupon-field-error">{{ $message }}</small>
+                        @enderror
+                    </div>
+
+                    <div class="form-group coupon-field-wide">
+                        <label for="couponQuantity">Quantity</label>
+                        <input id="couponQuantity"
+                               type="number"
+                               min="1"
+                               step="1"
+                               name="quantity"
+                               value="{{ $selectedQuantity }}"
+                               placeholder="Unlimited"
+                               inputmode="numeric"
+                               data-coupon-preview-source="quantity">
+                        <small class="coupon-field-hint">Kosongkan jika coupon tidak memiliki batas jumlah pemakaian.</small>
+                        @error('quantity')
+                            <small class="coupon-field-error">{{ $message }}</small>
+                        @enderror
+                    </div>
+                </div>
             </div>
-        </div>
 
-        <div class="form-group">
-            <label>Quantity</label>
-            <select name="quantity">
-                <option value="">Unlimited</option>
-                <option value="10" {{ old('quantity', $coupon->quantity) == 10 ? 'selected' : '' }}>10</option>
-                <option value="25" {{ old('quantity', $coupon->quantity) == 25 ? 'selected' : '' }}>25</option>
-                <option value="50" {{ old('quantity', $coupon->quantity) == 50 ? 'selected' : '' }}>50</option>
-                <option value="100" {{ old('quantity', $coupon->quantity) == 100 ? 'selected' : '' }}>100</option>
-                <option value="500" {{ old('quantity', $coupon->quantity) == 500 ? 'selected' : '' }}>500</option>
-            </select>
-        </div>
+            <div class="coupon-form-section">
+                <div class="coupon-section-heading">
+                    <span>03</span>
+                    <div>
+                        <strong>Validity & Status</strong>
+                        <small>Periode aktif dan visibilitas coupon di sistem.</small>
+                    </div>
+                </div>
 
-        <div class="form-group">
-            <label>Start Date <span>*</span></label>
-            <input type="date"
-                   name="start_date"
-                   value="{{ old('start_date', $coupon->start_date?->format('Y-m-d')) }}"
-                   required>
-        </div>
+                <div class="coupon-form-grid">
+                    <div class="form-group">
+                        <label for="couponStartDate">Start Date <span class="required">*</span></label>
+                        <input id="couponStartDate"
+                               type="date"
+                               name="start_date"
+                               value="{{ $selectedStartDate }}"
+                               data-coupon-preview-source="start_date"
+                               required>
+                        @error('start_date')
+                            <small class="coupon-field-error">{{ $message }}</small>
+                        @enderror
+                    </div>
 
-        <div class="form-group">
-            <label>End Date <span>*</span></label>
-            <input type="date"
-                   name="end_date"
-                   value="{{ old('end_date', $coupon->end_date?->format('Y-m-d')) }}"
-                   required>
-        </div>
+                    <div class="form-group">
+                        <label for="couponEndDate">End Date <span class="required">*</span></label>
+                        <input id="couponEndDate"
+                               type="date"
+                               name="end_date"
+                               value="{{ $selectedEndDate }}"
+                               data-coupon-preview-source="end_date"
+                               required>
+                        @error('end_date')
+                            <small class="coupon-field-error">{{ $message }}</small>
+                        @enderror
+                    </div>
 
-        <div class="form-group">
-            <label>Status <span>*</span></label>
-            <select name="status" required>
-                <option value="active" {{ old('status', $coupon->status ?? 'active') === 'active' ? 'selected' : '' }}>Active</option>
-                <option value="inactive" {{ old('status', $coupon->status ?? 'active') === 'inactive' ? 'selected' : '' }}>Inactive</option>
-            </select>
+                    <div class="form-group coupon-field-wide">
+                        <label>Status <span class="required">*</span></label>
+
+                        <div class="coupon-status-row">
+                            <span>
+                                <strong>Active Coupon</strong>
+                                <small>Coupon dapat digunakan selama tanggal valid dan kuota masih tersedia.</small>
+                            </span>
+
+                            <label class="coupon-status-toggle" for="couponStatusToggle" aria-label="Toggle coupon status">
+                                <input type="hidden" name="status" value="inactive">
+                                <input id="couponStatusToggle"
+                                       type="checkbox"
+                                       name="status"
+                                       value="active"
+                                       data-coupon-preview-source="status"
+                                       {{ $selectedStatus === 'active' ? 'checked' : '' }}>
+                                <span></span>
+                            </label>
+                        </div>
+                        @error('status')
+                            <small class="coupon-field-error">{{ $message }}</small>
+                        @enderror
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
+
+    <aside class="admin-coupon-form-side" aria-label="Coupon summary">
+        <div class="coupon-summary-card">
+            <div class="coupon-summary-head">
+                <span class="coupon-summary-icon">
+                    <svg viewBox="0 0 24 24" fill="none">
+                        <path d="M4 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3a2 2 0 0 0 0 4v3a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-3a2 2 0 0 0 0-4V7Z"></path>
+                        <path d="m9 15 6-6"></path>
+                    </svg>
+                </span>
+
+                <div>
+                    <small>Coupon Preview</small>
+                    <strong data-coupon-preview="code">{{ $previewCode }}</strong>
+                </div>
+            </div>
+
+            <div class="coupon-summary-value" data-coupon-preview="value">{{ $previewValue }}</div>
+
+            <dl class="coupon-summary-list">
+                <div>
+                    <dt>Discount Type</dt>
+                    <dd data-coupon-preview="type">{{ $couponTypePreviewLabel }}</dd>
+                </div>
+
+                <div>
+                    <dt>Scope</dt>
+                    <dd data-coupon-preview="scope">{{ $scopePreviewLabel }}</dd>
+                </div>
+
+                <div>
+                    <dt>Selected Items</dt>
+                    <dd data-coupon-preview="items">{{ $selectedProductType === 'all' ? 'All available' : number_format(count($selectedProductIds)) . ' selected' }}</dd>
+                </div>
+
+                <div>
+                    <dt>Quantity</dt>
+                    <dd data-coupon-preview="quantity">{{ $previewQuota }}</dd>
+                </div>
+
+                <div>
+                    <dt>Active Period</dt>
+                    <dd data-coupon-preview="period">{{ $previewPeriod }}</dd>
+                </div>
+
+                <div>
+                    <dt>Status</dt>
+                    <dd>
+                        <span class="coupon-preview-status {{ $selectedStatus === 'active' ? 'active' : 'inactive' }}" data-coupon-preview="status">
+                            {{ $selectedStatus === 'active' ? 'Active' : 'Inactive' }}
+                        </span>
+                    </dd>
+                </div>
+            </dl>
+        </div>
+
+        <div class="coupon-side-panel">
+            <div class="coupon-side-panel-head">
+                <strong>Master Data</strong>
+                <span>{{ number_format($services->count()) }} services, {{ number_format($categories->count()) }} categories</span>
+            </div>
+
+            <div class="coupon-side-stat-grid">
+                <div>
+                    <strong>{{ number_format($services->count()) }}</strong>
+                    <span>Services</span>
+                </div>
+
+                <div>
+                    <strong>{{ number_format($categories->count()) }}</strong>
+                    <span>Categories</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="coupon-side-panel">
+            <div class="coupon-side-panel-head">
+                <strong>Coupon Checklist</strong>
+                <span>Validasi cepat sebelum disimpan</span>
+            </div>
+
+            <div class="coupon-checklist">
+                <span>
+                    <i></i>
+                    Code unik dan mudah dibaca.
+                </span>
+
+                <span>
+                    <i></i>
+                    Scope sesuai campaign promo.
+                </span>
+
+                <span>
+                    <i></i>
+                    Tanggal akhir tidak sebelum tanggal mulai.
+                </span>
+            </div>
+        </div>
+    </aside>
 </div>
 
 <script type="application/json" id="couponMasterData">

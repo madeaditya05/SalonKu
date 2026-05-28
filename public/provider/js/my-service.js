@@ -597,7 +597,9 @@ function initServiceDeleteModal() {
             }
 
             deleteForm.setAttribute('action', deleteUrl);
-            overlay.classList.add('active');
+            overlay.classList.add('active', 'show');
+            overlay.setAttribute('aria-hidden', 'false');
+            document.body.classList.add('modal-open');
 
             if (modal) {
                 modal.classList.add('active');
@@ -622,7 +624,9 @@ function initServiceDeleteModal() {
     });
 
     function closeServiceDeleteModal() {
-        overlay.classList.remove('active');
+        overlay.classList.remove('active', 'show');
+        overlay.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('modal-open');
 
         if (modal) {
             modal.classList.remove('active');
@@ -630,4 +634,13 @@ function initServiceDeleteModal() {
 
         deleteForm.removeAttribute('action');
     }
+
+    deleteForm.addEventListener('submit', function () {
+        const button = deleteForm.querySelector('.delete-confirm-btn, .service-modal-delete');
+
+        if (button) {
+            button.disabled = true;
+            button.textContent = 'Deleting...';
+        }
+    });
 }
