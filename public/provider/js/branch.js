@@ -364,6 +364,12 @@ function initBranchImagePreview() {
 function initBranchHoliday() {
     const holidayWrapper = document.getElementById('holidayWrapper');
     const addHolidayBtn = document.getElementById('addHolidayBtn');
+    const removeIcon = `
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M18 6 6 18"></path>
+            <path d="m6 6 12 12"></path>
+        </svg>
+    `;
 
     function bindRemoveHolidayButtons() {
         document.querySelectorAll('.remove-holiday-btn').forEach(function (button) {
@@ -391,7 +397,7 @@ function initBranchHoliday() {
 
             row.innerHTML = `
                 <input type="date" name="holidays[]">
-                <button type="button" class="remove-holiday-btn">x</button>
+                <button type="button" class="remove-holiday-btn" aria-label="Remove holiday" title="Remove holiday">${removeIcon}</button>
             `;
 
             holidayWrapper.appendChild(row);
@@ -436,7 +442,13 @@ function initBranchStaffMultiselect() {
 
             const removeBtn = document.createElement('button');
             removeBtn.type = 'button';
-            removeBtn.textContent = 'x';
+            removeBtn.setAttribute('aria-label', 'Remove ' + staffName);
+            removeBtn.innerHTML = `
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M18 6 6 18"></path>
+                    <path d="m6 6 12 12"></path>
+                </svg>
+            `;
             removeBtn.dataset.removeStaffId = staffId;
 
             tag.appendChild(text);

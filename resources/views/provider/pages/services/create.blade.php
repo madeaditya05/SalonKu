@@ -2,7 +2,7 @@
 
 @section('title', ($mode ?? 'create') === 'edit' ? 'Edit Service - Provider Dashboard' : 'Add Service - Provider Dashboard')
 @section('page_title', ($mode ?? 'create') === 'edit' ? 'Edit Service' : 'Add Service')
-@section('page_subtitle', 'Lengkapi informasi service, branch, dan gallery.')
+@section('page_subtitle', 'Complete service information, branch availability, and gallery media.')
 
 @push('styles')
     <link rel="stylesheet" href="{{ asset('provider/css/my-service.css') }}">
@@ -149,7 +149,7 @@
         </a>
     </div>
 
-    <div class="service-tabs">
+    <div class="service-tabs provider-service-form-tabs">
         <a href="{{ $serviceTabUrl }}" class="service-tab {{ $activeServiceTab ? 'active' : '' }}">
             <svg viewBox="0 0 24 24">
                 <circle cx="12" cy="12" r="9"/>
@@ -189,7 +189,7 @@
 
     @if ($errors->any())
         <div class="service-alert error">
-            Ada data yang belum valid. Silakan cek form kembali.
+            Some data is invalid. Please check the form again.
         </div>
     @endif
 

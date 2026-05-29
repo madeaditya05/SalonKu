@@ -2,7 +2,7 @@
 
 @section('title', 'Branch - Provider Dashboard')
 @section('page_title', 'Branch')
-@section('page_subtitle', 'Manage semua cabang provider kamu.')
+@section('page_subtitle', 'Manage every provider branch, location detail, staff assignment, and operating schedule.')
 
 @push('styles')
     <link rel="stylesheet" href="{{ asset('provider/css/branch.css') }}">
@@ -89,25 +89,25 @@
         <div class="admin-booking-summary-card pink">
             <span>Total Branch</span>
             <strong>{{ number_format($totalBranches) }}</strong>
-            <small>{{ $isBranchAccount ? 'Akses dibatasi ke branch ini' : 'Semua cabang provider' }}</small>
+            <small>{{ $isBranchAccount ? 'Access is limited to this branch' : 'All provider branches' }}</small>
         </div>
 
         <div class="admin-booking-summary-card yellow">
             <span>Active</span>
             <strong>{{ number_format($activeBranches) }}</strong>
-            <small>Branch yang bisa menerima booking</small>
+            <small>Branches that can accept bookings</small>
         </div>
 
         <div class="admin-booking-summary-card blue">
             <span>Total Staff</span>
             <strong>{{ number_format($totalStaffs) }}</strong>
-            <small>Staff terhubung ke branch</small>
+            <small>Staff connected to branches</small>
         </div>
 
         <div class="admin-booking-summary-card orange">
             <span>Inactive</span>
             <strong>{{ number_format($inactiveBranches) }}</strong>
-            <small>Branch nonaktif atau ditutup</small>
+            <small>Inactive or closed branches</small>
         </div>
     </div>
 
@@ -139,7 +139,7 @@
                 </label>
 
                 <button type="button" class="admin-booking-mobile-search-submit" aria-label="Search branch">
-                    Cari
+                    Search
                 </button>
 
                 <button
@@ -288,7 +288,7 @@
 
             <div class="admin-category-mobile-empty admin-booking-mobile-empty provider-branch-mobile-empty" id="branchMobileEmpty" {{ $totalBranches > 0 ? 'hidden' : '' }}>
                 <strong>No branch available.</strong>
-                <p>Tambahkan branch baru atau ubah keyword pencarian.</p>
+                <p>Add a new branch or change the search keyword.</p>
             </div>
         </div>
 
@@ -473,7 +473,7 @@
                                     </span>
 
                                     <strong>No branch available.</strong>
-                                    <p>Tambahkan branch baru untuk mulai mengatur lokasi provider.</p>
+                                    <p>Add a new branch to start managing provider locations.</p>
                                 </div>
                             </td>
                         </tr>
@@ -514,7 +514,7 @@
         <h2>Delete Branch?</h2>
 
         <p>
-            Branch ini akan dihapus dan staff yang terhubung akan dilepas dari branch tersebut.
+            This branch will be deleted, and connected staff will be detached from the branch.
         </p>
 
         <div class="branch-delete-modal-actions">

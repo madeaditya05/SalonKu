@@ -192,27 +192,27 @@
 
     <div class="admin-booking-summary-grid">
         <div class="admin-booking-summary-card pink">
-            <span>Total Service</span>
+            <span>Total Services</span>
             <strong>{{ number_format((int) $summary['total']) }}</strong>
-            <small>Semua service provider</small>
+            <small>All provider services</small>
         </div>
 
         <div class="admin-booking-summary-card yellow">
             <span>Service Value</span>
             <strong>{{ $formatMoney($summary['revenue']) }}</strong>
-            <small>Total nominal layanan</small>
+            <small>Total service value</small>
         </div>
 
         <div class="admin-booking-summary-card blue">
             <span>Active</span>
             <strong>{{ number_format((int) $summary['active']) }}</strong>
-            <small>Service siap dipesan</small>
+            <small>Services ready to book</small>
         </div>
 
         <div class="admin-booking-summary-card orange">
             <span>Verified</span>
             <strong>{{ number_format((int) $summary['verified']) }}</strong>
-            <small>Dokumen provider valid</small>
+            <small>Valid provider documents</small>
         </div>
     </div>
 
@@ -251,7 +251,7 @@
                 </label>
 
                 <button type="submit" class="admin-booking-mobile-search-submit" aria-label="Search service">
-                    Cari
+                    Search
                 </button>
 
                 <button type="button"
@@ -347,7 +347,7 @@
                         </div>
                     </div>
 
-                    <p>{{ \Illuminate\Support\Str::limit(strip_tags((string) ($service->description ?: 'Service belum memiliki deskripsi.')), 120) }}</p>
+                    <p>{{ \Illuminate\Support\Str::limit(strip_tags((string) ($service->description ?: 'This service does not have a description yet.')), 120) }}</p>
 
                     <footer>
                         <span class="admin-booking-status {{ $statusClass($serviceStatus) }}">
@@ -364,7 +364,7 @@
             @empty
                 <div class="admin-service-mobile-empty admin-booking-mobile-empty">
                     <strong>No service data found.</strong>
-                    <p>Coba ubah keyword, status, document, atau price type.</p>
+                    <p>Try changing the keyword, status, document status, or price type.</p>
                 </div>
             @endforelse
         </div>
@@ -530,7 +530,7 @@
                                     </span>
 
                                     <strong>No service data found.</strong>
-                                    <p>Coba ubah keyword, status, document, atau price type.</p>
+                                    <p>Try changing the keyword, status, document status, or price type.</p>
                                 </div>
                             </td>
                         </tr>

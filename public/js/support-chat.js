@@ -39,6 +39,10 @@
     let isPolling = false;
     let currentReadReceipts = config.readReceipts || {};
     let pendingEndChatForm = null;
+    let isRedirectingClosedThread = false;
+    let latestChatNotificationId = Number(config.latestChatNotificationId || 0);
+    let isPollingChatNotifications = false;
+    const previewedMessageIds = new Set();
 
     const scrollToBottom = () => {
         if (messagesNode) {
@@ -72,7 +76,7 @@
         if (input) {
             input.value = '';
             input.disabled = true;
-            input.placeholder = 'Chat sudah diakhiri';
+            input.placeholder = 'Chat has ended';
         }
 
         if (imageInput) {
@@ -95,7 +99,18 @@
             });
         }
 
-        addSystemNotice(message || config.closedMessage || 'Chat sudah diakhiri.');
+        addSystemNotice(message || config.closedMessage || 'Chat has ended.');
+    };
+
+    const leaveClosedThread = () => {
+        if (!config.closedRedirectUrl || isRedirectingClosedThread) {
+            return false;
+        }
+
+        isRedirectingClosedThread = true;
+        window.location.href = config.closedRedirectUrl;
+
+        return true;
     };
 
     const messageExists = (id) => {
@@ -142,8 +157,8 @@
 
             const check = document.createElement('span');
             check.className = 'support-verified-check support-message-check';
-            check.title = 'Akun admin resmi';
-            check.setAttribute('aria-label', 'Akun admin resmi');
+            check.title = 'Official admin account';
+            check.setAttribute('aria-label', 'Official admin account');
             check.innerHTML = '<svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" fill="currentColor"/><path d="M6 10.2l2.5 2.5L14.2 7" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
             senderLine.appendChild(check);
         }
@@ -164,7 +179,7 @@
 
             const image = document.createElement('img');
             image.src = message.attachment.url;
-            image.alt = message.attachment.name || 'Gambar chat';
+            image.alt = message.attachment.name || 'Chat image';
 
             imageLink.appendChild(image);
             bubble.appendChild(imageLink);
@@ -184,7 +199,7 @@
             status.className = `support-message-status is-${message.delivery_status || 'sent'}`;
             status.dataset.messageStatus = '';
             status.dataset.status = message.delivery_status || 'sent';
-            status.textContent = message.delivery_label || 'Dikirim';
+            status.textContent = message.delivery_label || 'Sent';
 
             footer.appendChild(status);
             bubble.appendChild(footer);
@@ -211,7 +226,7 @@
         }
 
         statusNode.dataset.status = status;
-        statusNode.textContent = status === 'read' ? 'Dibaca' : 'Dikirim';
+        statusNode.textContent = status === 'read' ? 'Read' : 'Sent';
         statusNode.classList.remove('is-sent', 'is-read');
         statusNode.classList.add(`is-${status}`);
     };
@@ -252,7 +267,7 @@
 
         if (last) {
             const attachment = message.attachment || {};
-            last.textContent = message.body || (attachment.type === 'image' ? 'Mengirim gambar' : '');
+            last.textContent = message.body || (attachment.type === 'image' ? 'Sending image' : '');
         }
 
         if (time) {
@@ -269,10 +284,76 @@
         }
     };
 
+    const compactCount = (count) => {
+        const value = Number(count || 0);
+
+        return value > 99 ? '99+' : String(value);
+    };
+
+    const incrementSidebarChatBadge = () => {
+        document.querySelectorAll('[data-sidebar-chat-badge]').forEach((badge) => {
+            const current = Number(String(badge.textContent || '0').replace('+', '')) || 0;
+            const next = current + 1;
+
+            badge.textContent = compactCount(next);
+            badge.classList.remove('is-hidden');
+        });
+    };
+
+    const notificationTime = (notification) => {
+        if (!notification.created_at) {
+            return notification.time || '';
+        }
+
+        const date = new Date(notification.created_at);
+
+        if (Number.isNaN(date.getTime())) {
+            return notification.time || '';
+        }
+
+        return date.toLocaleTimeString('id-ID', {
+            hour: '2-digit',
+            minute: '2-digit',
+        });
+    };
+
+    const updateThreadPreviewFromNotification = (notification, incrementSidebarTotal = false) => {
+        if (notification.type !== 'chat.message') {
+            return;
+        }
+
+        const threadId = Number(notification.data?.thread_id || 0);
+        const messageId = Number(notification.data?.message_id || 0);
+
+        if (!threadId || !messageId || previewedMessageIds.has(messageId)) {
+            return;
+        }
+
+        previewedMessageIds.add(messageId);
+
+        const isActive = threadId === activeThreadId;
+
+        updateThreadPreview({
+            id: messageId,
+            thread_id: threadId,
+            body: notification.body || '',
+            sent_at: notificationTime(notification),
+            attachment: {},
+        }, !isActive);
+
+        if (!isActive && incrementSidebarTotal) {
+            incrementSidebarChatBadge();
+        }
+
+        if (isActive) {
+            markRead();
+        }
+    };
+
     const updateThreadStatus = (thread) => {
         const item = threadList?.querySelector(`[data-thread-id="${thread.id}"]`);
         const statusNodes = root.querySelectorAll(`[data-thread-status="${thread.id}"]`);
-        const label = thread.ticket_status === 'closed' ? 'Diakhiri' : thread.ticket_status;
+        const label = thread.ticket_status === 'closed' ? 'Ended' : thread.ticket_status;
 
         statusNodes.forEach((node) => {
             node.textContent = label;
@@ -293,10 +374,46 @@
         updateThreadStatus(thread);
         updateDeliveryStatuses(thread);
 
-        if (Number(thread.id) === activeThreadId && thread.ticket_status === 'closed') {
+        if (Number(thread.id) === activeThreadId && thread.ticket_status === 'closed' && !leaveClosedThread()) {
             closeComposer(thread.ticket_rejection_reason || config.closedMessage);
         }
     };
+
+    const closedTicketNotificationTypes = new Set([
+        'ticket.closed',
+        'ticket.internal.closed',
+    ]);
+
+    window.addEventListener('app:notification-created', (event) => {
+        const notification = event.detail?.notification || {};
+        const notificationId = Number(notification.id || 0);
+
+        if (notificationId && notification.type === 'chat.message') {
+            latestChatNotificationId = Math.max(latestChatNotificationId, notificationId);
+        }
+
+        updateThreadPreviewFromNotification(notification);
+
+        if (!closedTicketNotificationTypes.has(notification.type)) {
+            return;
+        }
+
+        const threadId = Number(notification.data?.thread_id || 0);
+
+        if (!threadId) {
+            return;
+        }
+
+        handleThreadUpdated({
+            id: threadId,
+            conversation_type: config.conversationType || 'provider_admin',
+            ticket_status: 'closed',
+            status: 'closed',
+            ticket_rejection_reason: notification.body || config.closedMessage,
+            closed_at: notification.created_at || null,
+            read_receipts: currentReadReceipts,
+        });
+    });
 
     const markRead = () => {
         if (!config.readUrl) {
@@ -326,8 +443,16 @@
 
         const isActive = Number(message.thread_id) === activeThreadId;
         const fromCurrentUser = Number(message.sender_id) === currentUserId;
+        const messageId = Number(message.id || 0);
+        const previewAlreadyApplied = messageId && previewedMessageIds.has(messageId);
 
-        updateThreadPreview(message, fromRealtime && !isActive && !fromCurrentUser);
+        if (!previewAlreadyApplied) {
+            if (messageId) {
+                previewedMessageIds.add(messageId);
+            }
+
+            updateThreadPreview(message, fromRealtime && !isActive && !fromCurrentUser);
+        }
 
         if (isActive) {
             latestMessageId = Math.max(latestMessageId, Number(message.id || 0));
@@ -348,6 +473,49 @@
 
         if (fromRealtime && isActive && !fromCurrentUser) {
             markRead();
+        }
+    };
+
+    const pollChatNotifications = async () => {
+        if (!config.chatNotificationPollUrl || isPollingChatNotifications) {
+            return;
+        }
+
+        isPollingChatNotifications = true;
+
+        try {
+            const url = new URL(config.chatNotificationPollUrl, window.location.origin);
+            const response = await fetch(url.toString(), {
+                headers: {
+                    Accept: 'application/json',
+                    'X-CSRF-TOKEN': config.csrfToken || '',
+                },
+                credentials: 'same-origin',
+            });
+
+            if (!response.ok) {
+                return;
+            }
+
+            const payload = await response.json();
+            const chatNotifications = (payload.notifications || [])
+                .filter((notification) => notification.type === 'chat.message')
+                .sort((first, second) => Number(first.id || 0) - Number(second.id || 0));
+
+            chatNotifications.forEach((notification) => {
+                const notificationId = Number(notification.id || 0);
+
+                if (!notificationId || notificationId <= latestChatNotificationId) {
+                    return;
+                }
+
+                latestChatNotificationId = Math.max(latestChatNotificationId, notificationId);
+                updateThreadPreviewFromNotification(notification);
+            });
+        } catch (error) {
+            // Realtime is primary; polling quietly covers local websocket gaps.
+        } finally {
+            isPollingChatNotifications = false;
         }
     };
 
@@ -495,7 +663,7 @@
             event.preventDefault();
 
             if (!endChatDialog) {
-                if (window.confirm('Anda yakin ingin mengakhiri chat ini?')) {
+                if (window.confirm('Are you sure you want to end this chat?')) {
                     endForm.dataset.chatEndConfirmed = 'true';
                     endForm.requestSubmit();
                 }
@@ -588,7 +756,7 @@
             }
 
             if (file && file.size > 4 * 1024 * 1024) {
-                addSystemNotice('Ukuran gambar maksimal 4 MB.');
+                addSystemNotice('Maximum image size is 4 MB.');
                 return;
             }
 
@@ -633,7 +801,7 @@
                 autoresizeInput();
                 appendMessage(payload.message, false);
             } catch (error) {
-                addSystemNotice('Pesan gagal dikirim. Coba kirim ulang.');
+                addSystemNotice('Message failed to send. Please try again.');
             } finally {
                 if (button) {
                     button.disabled = false;
@@ -716,5 +884,10 @@
     if (config.messagesUrl) {
         window.setTimeout(pollMessages, 900);
         window.setInterval(pollMessages, 2500);
+    }
+
+    if (config.chatNotificationPollUrl) {
+        window.setTimeout(pollChatNotifications, 1200);
+        window.setInterval(pollChatNotifications, 3000);
     }
 })();

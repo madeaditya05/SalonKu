@@ -2,7 +2,7 @@
 
 @section('title', 'My Service - Provider Dashboard')
 @section('page_title', 'My Service')
-@section('page_subtitle', 'Manage semua layanan yang kamu buat.')
+@section('page_subtitle', 'Manage every service you created, including pricing, availability, branch coverage, and document status.')
 
 @push('styles')
     <link rel="stylesheet" href="{{ asset('provider/css/my-service.css') }}">
@@ -144,7 +144,7 @@
     };
 
     $serviceInitial = fn ($service) => strtoupper(substr((string) ($service->title ?: 'S'), 0, 1));
-    $serviceDescription = fn ($service, $limit = 110) => Str::limit(strip_tags((string) ($service->description ?: 'Service belum memiliki deskripsi.')), $limit);
+    $serviceDescription = fn ($service, $limit = 110) => Str::limit(strip_tags((string) ($service->description ?: 'This service does not have a description yet.')), $limit);
 
     $cleanQuery = function (array $query) {
         return collect($query)
@@ -236,30 +236,30 @@
         <div class="admin-booking-summary-card pink">
             <span>Total Service</span>
             <strong>{{ number_format((int) $summary['total']) }}</strong>
-            <small>Semua layanan provider</small>
+            <small>All provider services</small>
         </div>
 
         <div class="admin-booking-summary-card yellow">
             <span>Active</span>
             <strong>{{ number_format((int) $summary['active']) }}</strong>
-            <small>Layanan tampil di katalog</small>
+            <small>Services shown in the catalog</small>
         </div>
 
         <div class="admin-booking-summary-card blue">
             <span>Verified</span>
             <strong>{{ number_format((int) $summary['verified']) }}</strong>
-            <small>Dokumen provider valid</small>
+            <small>Provider documents are valid</small>
         </div>
 
         <div class="admin-booking-summary-card orange">
             <span>Service Value</span>
             <strong>{{ $formatMoney($summary['revenue']) }}</strong>
-            <small>Total nominal layanan</small>
+            <small>Total service value</small>
         </div>
     </div>
 
     <div class="admin-booking-card category-card provider-service-category-card">
-        <div class="admin-booking-tabs">
+        <div class="admin-booking-tabs provider-service-tabs">
             @foreach ($tabs as $key => $label)
                 <a href="{{ provider_route('provider.services.index', $queryFor(['status' => $key])) }}"
                    class="admin-booking-tab {{ ($currentStatus === $key || ($key === 'all' && empty($currentStatus))) ? 'active' : '' }}">
@@ -293,7 +293,7 @@
                 </label>
 
                 <button type="submit" class="admin-booking-mobile-search-submit" aria-label="Search service">
-                    Cari
+                    Search
                 </button>
 
                 <button type="button"
@@ -468,7 +468,7 @@
             @empty
                 <div class="admin-category-mobile-empty admin-booking-mobile-empty">
                     <strong>No service data found.</strong>
-                    <p>Coba ubah keyword, status, document, atau price type.</p>
+                    <p>Try changing the keyword, status, document, or price type.</p>
                 </div>
             @endforelse
         </div>
@@ -652,7 +652,7 @@
                                     </span>
 
                                     <strong>No service data found.</strong>
-                                    <p>Coba ubah keyword, status, document, atau price type.</p>
+                                    <p>Try changing the keyword, status, document, or price type.</p>
                                 </div>
                             </td>
                         </tr>
@@ -707,8 +707,8 @@
         <h3 id="serviceDeleteTitle">Delete Service?</h3>
 
         <p>
-            Service ini akan dihapus dari daftar My Service.
-            Data yang sudah dihapus tidak bisa dikembalikan.
+            This service will be removed from the My Service list.
+            Deleted data cannot be restored.
         </p>
 
         <div class="delete-actions">

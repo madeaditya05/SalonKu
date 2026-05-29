@@ -273,14 +273,14 @@ class BookingController extends Controller
         ]), null, true);
 
         return provider_route_redirect('provider.queue.index')
-            ->with('success', 'Walk-in berhasil masuk antrian #' . $booking->queue_number . '.');
+            ->with('success', 'Walk-in added to queue #' . $booking->queue_number . '.');
     }
 
     public function skills()
     {
         $staffs = ProviderStaff::query()
             ->where('provider_id', $this->providerId())
-            ->with(['branch', 'skills'])
+            ->with(['branch', 'skills.serviceCategory'])
             ->orderBy('first_name');
         ProviderAccountScope::applyBranchScope($staffs, $this->branchId());
 
@@ -289,6 +289,7 @@ class BookingController extends Controller
         $services = Service::query()
             ->where('provider_id', $this->providerId())
             ->where('status', 'active')
+            ->with('serviceCategory')
             ->orderBy('title');
         ProviderAccountScope::applyServiceBranchScope($services, $this->branchId());
 
@@ -336,14 +337,14 @@ class BookingController extends Controller
 
         if ($validServiceIds->count() !== $serviceIds->count()) {
             return back()
-                ->withErrors(['skills' => 'Ada service yang tidak tersedia di branch staff ini.'])
+                ->withErrors(['skills' => 'Some services are not available at this staff branch.'])
                 ->withInput();
         }
 
         $staff->skills()->sync($validServiceIds->all());
 
         return provider_route_redirect('provider.staff.skills')
-            ->with('success', 'Skill ' . ($staff->full_name ?: $staff->email) . ' berhasil diperbarui.')
+            ->with('success', 'Skills for ' . ($staff->full_name ?: $staff->email) . ' have been updated.')
             ->with('updated_staff_id', $staff->id);
     }
 
@@ -351,7 +352,7 @@ class BookingController extends Controller
     {
         $staffs = ProviderStaff::query()
             ->where('provider_id', $this->providerId())
-            ->with('schedules')
+            ->with(['branch', 'schedules'])
             ->orderBy('first_name');
         ProviderAccountScope::applyBranchScope($staffs, $this->branchId());
 
@@ -388,7 +389,7 @@ class BookingController extends Controller
         });
 
         return provider_route_redirect('provider.staff.schedules')
-            ->with('success', 'Jadwal staff berhasil diperbarui.');
+            ->with('success', 'Staff schedule has been updated.');
     }
 
     public function payments(Request $request)
@@ -511,7 +512,7 @@ class BookingController extends Controller
         $this->authorizeBooking($booking);
         $booking = $this->bookingFlow->updateStatus($booking, 'checked_in');
 
-        return back()->with('success', 'Antrian #' . $booking->queue_number . ' dipanggil.');
+        return back()->with('success', 'Queue #' . $booking->queue_number . ' has been called.');
     }
 
     public function checkIn(Booking $booking)
@@ -519,7 +520,7 @@ class BookingController extends Controller
         $this->authorizeBooking($booking);
         $this->bookingFlow->updateStatus($booking, 'checked_in');
 
-        return back()->with('success', 'Customer berhasil check-in.');
+        return back()->with('success', 'Customer checked in successfully.');
     }
 
     public function start(Booking $booking)
@@ -534,7 +535,7 @@ class BookingController extends Controller
 
         $this->bookingFlow->updateStatus($booking->refresh(), 'in_progress');
 
-        return back()->with('success', 'Service dimulai.');
+        return back()->with('success', 'Service has started.');
     }
 
     public function complete(Booking $booking)
@@ -542,7 +543,7 @@ class BookingController extends Controller
         $this->authorizeBooking($booking);
         $this->bookingFlow->completeBooking($booking);
 
-        return back()->with('success', 'Service selesai. Staff tersedia kembali.');
+        return back()->with('success', 'Service completed. Staff is available again.');
     }
 
     public function cancel(Booking $booking)
@@ -550,7 +551,7 @@ class BookingController extends Controller
         $this->authorizeBooking($booking);
         $this->bookingFlow->updateStatus($booking, 'cancelled');
 
-        return back()->with('success', 'Booking dibatalkan.');
+        return back()->with('success', 'Booking has been cancelled.');
     }
 
     public function noShow(Booking $booking)
@@ -558,7 +559,7 @@ class BookingController extends Controller
         $this->authorizeBooking($booking);
         $this->bookingFlow->updateStatus($booking, 'no_show');
 
-        return back()->with('success', 'Booking ditandai no-show.');
+        return back()->with('success', 'Booking marked as no-show.');
     }
 
     private function formData(): array

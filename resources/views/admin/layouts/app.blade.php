@@ -36,20 +36,20 @@
                 </svg>
             </div>
 
-            <h3 id="adminDeleteConfirmTitle">Hapus Data?</h3>
+            <h3 id="adminDeleteConfirmTitle">Delete Data?</h3>
 
             <p>
-                <strong id="adminDeleteConfirmItem">Data ini</strong><br>
-                <span id="adminDeleteConfirmMessage">Data yang dipilih akan dihapus dari sistem.</span>
+                <strong id="adminDeleteConfirmItem">This data</strong><br>
+                <span id="adminDeleteConfirmMessage">The selected data will be deleted from the system.</span>
             </p>
 
             <div class="delete-actions">
                 <button type="button" class="modal-cancel-btn" data-admin-delete-cancel>
-                    Batal
+                    Cancel
                 </button>
 
                 <button type="button" class="delete-confirm-btn" data-admin-delete-confirm>
-                    Hapus
+                    Delete
                 </button>
             </div>
         </div>

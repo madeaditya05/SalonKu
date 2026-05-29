@@ -1,8 +1,8 @@
 @extends('provider.layouts.dashboard')
 
-@section('title', 'Antrian - JasaKu')
-@section('page_title', 'Antrian')
-@section('page_subtitle', 'Panggil customer, mulai layanan, dan pantau estimasi tunggu queue serta walk-in.')
+@section('title', 'Queue - JasaKu')
+@section('page_title', 'Queue')
+@section('page_subtitle', 'Call customers, start services, and monitor estimated waiting times for queue and walk-in bookings.')
 
 @section('content')
 @php
@@ -101,7 +101,7 @@
     };
 
     $bookingInitial = fn ($booking, $customerName) => strtoupper(substr((string) ($customerName ?: $booking->booking_code ?: 'A'), 0, 1));
-    $estimateRange = fn ($booking, $index) => max(10, $index * (int) ($booking->total_duration ?: 30)) . ' - ' . max(20, ($index + 1) * (int) ($booking->total_duration ?: 30)) . ' menit';
+    $estimateRange = fn ($booking, $index) => max(10, $index * (int) ($booking->total_duration ?: 30)) . ' - ' . max(20, ($index + 1) * (int) ($booking->total_duration ?: 30)) . ' minutes';
 @endphp
 
 <section class="admin-category-page admin-booking-page provider-booking-category-page provider-queue-category-page">
@@ -109,7 +109,7 @@
         <div class="admin-breadcrumb">
             <a href="{{ provider_route('provider.dashboard') }}">Dashboard</a>
             <span>&rsaquo;</span>
-            <strong>Antrian</strong>
+            <strong>Queue</strong>
         </div>
 
         <div class="provider-booking-category-actions provider-queue-actions provider-queue-actions-desktop">
@@ -130,7 +130,7 @@
                     <path d="M16 3v3"></path>
                     <path d="M5 6h14v15H5z"></path>
                 </svg>
-                Kalender
+                Calendar
             </a>
 
             <a class="admin-category-add-button" href="{{ provider_route('provider.walk-in.index') }}">
@@ -138,7 +138,7 @@
                     <path d="M12 5v14"></path>
                     <path d="M5 12h14"></path>
                 </svg>
-                Tambah Walk-in
+                Add Walk-in
             </a>
         </div>
     </div>
@@ -163,34 +163,34 @@
 
     <div class="admin-booking-summary-grid">
         <div class="admin-booking-summary-card pink">
-            <span>Antrian Aktif</span>
+            <span>Active Queue</span>
             <strong>{{ number_format($totalItem) }}</strong>
-            <small>Queue dan walk-in tanggal ini</small>
+            <small>Queue and walk-in items for this date</small>
         </div>
 
         <div class="admin-booking-summary-card yellow">
-            <span>Menunggu</span>
+            <span>Waiting</span>
             <strong>{{ number_format($waitingCount) }}</strong>
-            <small>Customer siap dipanggil</small>
+            <small>Customers ready to be called</small>
         </div>
 
         <div class="admin-booking-summary-card blue">
             <span>Checked In</span>
             <strong>{{ number_format($checkedInCount) }}</strong>
-            <small>Customer sudah dipanggil</small>
+            <small>Customers already called</small>
         </div>
 
         <div class="admin-booking-summary-card orange">
             <span>In Progress</span>
             <strong>{{ number_format($inProgressCount) }}</strong>
-            <small>{{ $estimatedLastMinutes > 0 ? 'Estimasi selesai ' . $estimatedLastMinutes . ' menit' : 'Belum ada estimasi' }}</small>
+            <small>{{ $estimatedLastMinutes > 0 ? 'Estimated finish in ' . $estimatedLastMinutes . ' minutes' : 'No estimate yet' }}</small>
         </div>
     </div>
 
     <div class="admin-booking-card category-card provider-booking-category-card provider-queue-category-card">
         <div class="admin-booking-tabs provider-queue-tabs">
             <a href="{{ provider_route('provider.queue.index', ['date' => $dateValue]) }}" class="admin-booking-tab active">
-                Antrian Aktif
+                Active Queue
             </a>
             <a href="{{ provider_route('provider.bookings.index', ['date_from' => $dateValue, 'date_to' => $dateValue, 'booking_type' => 'queue']) }}" class="admin-booking-tab">
                 Queue Bookings
@@ -199,18 +199,18 @@
                 Walk-in
             </a>
             <a href="{{ provider_route('provider.calendar.index', ['date' => $dateValue]) }}" class="admin-booking-tab">
-                Kalender Staff
+                Staff Calendar
             </a>
         </div>
 
         <form method="GET" action="{{ provider_route('provider.queue.index') }}" class="admin-booking-filter-panel compact provider-queue-filter-panel">
             <div class="admin-booking-filter-row provider-queue-filter-row">
                 <label class="admin-booking-field provider-queue-date-field">
-                    <input type="date" name="date" value="{{ $dateValue }}" aria-label="Tanggal antrian" title="Tanggal antrian">
+                    <input type="date" name="date" value="{{ $dateValue }}" aria-label="Queue date" title="Queue date">
                 </label>
 
                 <div class="admin-booking-filter-buttons">
-                    <button type="submit">Lihat</button>
+                    <button type="submit">View</button>
                     @if ($dateValue !== $todayDate)
                         <a href="{{ provider_route('provider.queue.index') }}">Reset</a>
                     @endif
@@ -218,10 +218,10 @@
             </div>
 
             <div class="admin-booking-filter-meta">
-                <span class="admin-booking-filter-count">{{ number_format($totalItem) }} antrian aktif</span>
-                <span>Tanggal: {{ $formatDate($dateValue) }}</span>
-                <span>{{ number_format($waitingCount) }} menunggu</span>
-                <span>{{ number_format($checkedInCount + $inProgressCount) }} sedang ditangani</span>
+                <span class="admin-booking-filter-count">{{ number_format($totalItem) }} active queue items</span>
+                <span>Date: {{ $formatDate($dateValue) }}</span>
+                <span>{{ number_format($waitingCount) }} waiting</span>
+                <span>{{ number_format($checkedInCount + $inProgressCount) }} being handled</span>
             </div>
         </form>
 
@@ -230,11 +230,11 @@
                 <svg viewBox="0 0 24 24" fill="none">
                     <path d="m15 18-6-6 6-6"></path>
                 </svg>
-                Sebelumnya
+                Previous
             </a>
 
             <a class="admin-category-add-button secondary" href="{{ provider_route('provider.queue.index', ['date' => $nextDate]) }}">
-                Berikutnya
+                Next
                 <svg viewBox="0 0 24 24" fill="none">
                     <path d="m9 18 6-6-6-6"></path>
                 </svg>
@@ -285,13 +285,13 @@
                         <div>
                             <span>Service</span>
                             <strong>{{ Str::limit($serviceName, 32) }}</strong>
-                            <small>{{ $serviceCount($booking) }} service &middot; {{ $duration }} menit</small>
+                            <small>{{ $serviceCount($booking) }} service &middot; {{ $duration }} minutes</small>
                         </div>
 
                         <div>
-                            <span>Estimasi</span>
+                            <span>Estimate</span>
                             <strong>{{ $estimateRange($booking, $index) }}</strong>
-                            <small>{{ $startTime ? 'Mulai ' . $startTime : 'Belum mulai' }}{{ $endTime ? ' - ' . $endTime : '' }}</small>
+                            <small>{{ $startTime ? 'Started ' . $startTime : 'Not started yet' }}{{ $endTime ? ' - ' . $endTime : '' }}</small>
                         </div>
 
                         <div>
@@ -301,7 +301,7 @@
                         </div>
 
                         <div>
-                            <span>Kontak</span>
+                            <span>Contact</span>
                             <strong>{{ $customerPhone ?: 'No phone' }}</strong>
                             <small>{{ $statusLabel($bookingType) }}</small>
                         </div>
@@ -323,7 +323,7 @@
                                 @if ($canCall)
                                     <form method="POST" action="{{ provider_route('provider.queue.call', $booking) }}">
                                         @csrf
-                                        <button class="category-action-btn info" type="submit" title="Panggil" aria-label="Panggil {{ $booking->booking_code ?? ('#' . $booking->id) }}">
+                                        <button class="category-action-btn info" type="submit" title="Call" aria-label="Call {{ $booking->booking_code ?? ('#' . $booking->id) }}">
                                             <svg viewBox="0 0 24 24" fill="none">
                                                 <path d="M15 17h5l-1.4-1.4A2 2 0 0 1 18 14.2V11a6 6 0 0 0-12 0v3.2c0 .5-.2 1-.6 1.4L4 17h5"></path>
                                                 <path d="M9 17a3 3 0 0 0 6 0"></path>
@@ -359,8 +359,8 @@
                 </article>
             @empty
                 <div class="admin-category-mobile-empty admin-booking-mobile-empty">
-                    <strong>Antrian masih kosong.</strong>
-                    <p>Belum ada queue atau walk-in aktif di tanggal {{ $formatDate($dateValue) }}.</p>
+                    <strong>The queue is still empty.</strong>
+                    <p>No active queue or walk-in items on {{ $formatDate($dateValue) }} yet.</p>
                 </div>
             @endforelse
         </div>
@@ -369,11 +369,11 @@
             <table class="admin-booking-table detailed category-table provider-queue-category-table">
                 <thead>
                     <tr>
-                        <th>No. Antrian</th>
+                        <th>Queue No.</th>
                         <th>Customer</th>
                         <th>Service</th>
                         <th>Staff & Branch</th>
-                        <th>Estimasi</th>
+                        <th>Estimate</th>
                         <th>Mode</th>
                         <th>Status</th>
                         <th>Action</th>
@@ -424,7 +424,7 @@
                             <td>
                                 <p class="category-description-text">{{ Str::limit($serviceName, 92) }}</p>
                                 <small class="provider-booking-description-meta">
-                                    {{ $serviceCount($booking) }} service &middot; {{ $duration }} menit
+                                    {{ $serviceCount($booking) }} service &middot; {{ $duration }} minutes
                                 </small>
                                 @if (! empty($booking->notes))
                                     <small class="provider-booking-description-meta">{{ Str::limit($booking->notes, 58) }}</small>
@@ -444,7 +444,7 @@
                                     @if ($startTime)
                                         <small>{{ $startTime }}{{ $endTime ? ' - ' . $endTime : '' }}</small>
                                     @else
-                                        <small>Belum mulai</small>
+                                        <small>Not started yet</small>
                                     @endif
                                 </div>
                             </td>
@@ -467,7 +467,7 @@
                                         @if ($canCall)
                                             <form method="POST" action="{{ provider_route('provider.queue.call', $booking) }}">
                                                 @csrf
-                                                <button class="category-action-btn info" type="submit" title="Panggil" aria-label="Panggil {{ $booking->booking_code ?? ('#' . $booking->id) }}">
+                                                <button class="category-action-btn info" type="submit" title="Call" aria-label="Call {{ $booking->booking_code ?? ('#' . $booking->id) }}">
                                                     <svg viewBox="0 0 24 24" fill="none">
                                                         <path d="M15 17h5l-1.4-1.4A2 2 0 0 1 18 14.2V11a6 6 0 0 0-12 0v3.2c0 .5-.2 1-.6 1.4L4 17h5"></path>
                                                         <path d="M9 17a3 3 0 0 0 6 0"></path>
@@ -515,8 +515,8 @@
                                         </svg>
                                     </span>
 
-                                    <strong>Antrian masih kosong.</strong>
-                                    <p>Belum ada queue atau walk-in aktif di tanggal {{ $formatDate($dateValue) }}.</p>
+                                    <strong>The queue is still empty.</strong>
+                                    <p>No active queue or walk-in items on {{ $formatDate($dateValue) }} yet.</p>
                                 </div>
                             </td>
                         </tr>

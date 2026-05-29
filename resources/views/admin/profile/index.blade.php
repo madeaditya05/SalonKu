@@ -31,7 +31,7 @@
     $roleLabel = \Illuminate\Support\Str::headline($admin->role ?? 'admin');
     $position = $profile->position ?: 'Administrator';
     $phoneNumber = $profile->phone_number ?: '-';
-    $bio = $profile->bio ?: 'Belum ada catatan profile.';
+    $bio = $profile->bio ?: 'No profile notes yet.';
     $createdAt = $admin->created_at ? $admin->created_at->format('d M Y') : '-';
     $createdTime = $admin->created_at ? $admin->created_at->format('H:i') : '-';
     $updatedAt = $admin->updated_at ? $admin->updated_at->format('d M Y') : '-';
@@ -71,7 +71,7 @@
         <div class="admin-booking-summary-card pink">
             <span>Role</span>
             <strong>{{ $roleLabel }}</strong>
-            <small>Akses dashboard utama</small>
+            <small>Main dashboard access</small>
         </div>
 
         <div class="admin-booking-summary-card yellow">
@@ -81,7 +81,7 @@
         </div>
 
         <div class="admin-booking-summary-card blue">
-            <span>Bergabung</span>
+            <span>Joined</span>
             <strong>{{ $createdAt }}</strong>
             <small>{{ $createdTime }} WIB</small>
         </div>
@@ -89,7 +89,7 @@
         <div class="admin-booking-summary-card orange">
             <span>Profile Update</span>
             <strong>{{ $profileUpdatedAt }}</strong>
-            <small>Data akun terakhir</small>
+            <small>Latest account data</small>
         </div>
     </div>
 
@@ -216,7 +216,7 @@
 
                         <div>
                             <strong>Profile Photo</strong>
-                            <p>JPG, PNG, atau WEBP. Maksimal 2MB.</p>
+                            <p>JPG, PNG, or WEBP. Maximum 2MB.</p>
                             @error('avatar') <small>{{ $message }}</small> @enderror
                         </div>
                     </div>
@@ -224,37 +224,37 @@
                     <div class="admin-profile-form-grid">
                         <div class="admin-profile-form-group">
                             <label for="adminName">Name <span>*</span></label>
-                            <input type="text" name="name" id="adminName" value="{{ old('name', $admin->name) }}" placeholder="Nama admin">
+                            <input type="text" name="name" id="adminName" value="{{ old('name', $admin->name) }}" placeholder="Admin name">
                             @error('name') <small>{{ $message }}</small> @enderror
                         </div>
 
                         <div class="admin-profile-form-group">
                             <label for="adminUsername">Username</label>
-                            <input type="text" name="username" id="adminUsername" value="{{ old('username', $admin->username) }}" placeholder="Username admin">
+                            <input type="text" name="username" id="adminUsername" value="{{ old('username', $admin->username) }}" placeholder="Admin username">
                             @error('username') <small>{{ $message }}</small> @enderror
                         </div>
 
                         <div class="admin-profile-form-group">
                             <label for="adminEmail">Email <span>*</span></label>
-                            <input type="email" name="email" id="adminEmail" value="{{ old('email', $admin->email) }}" placeholder="Email admin">
+                            <input type="email" name="email" id="adminEmail" value="{{ old('email', $admin->email) }}" placeholder="Admin email">
                             @error('email') <small>{{ $message }}</small> @enderror
                         </div>
 
                         <div class="admin-profile-form-group">
                             <label for="adminPhone">Phone Number</label>
-                            <input type="text" name="phone_number" id="adminPhone" value="{{ old('phone_number', $profile->phone_number) }}" placeholder="Nomor telepon">
+                            <input type="text" name="phone_number" id="adminPhone" value="{{ old('phone_number', $profile->phone_number) }}" placeholder="Phone number">
                             @error('phone_number') <small>{{ $message }}</small> @enderror
                         </div>
 
                         <div class="admin-profile-form-group full">
                             <label for="adminPosition">Position</label>
-                            <input type="text" name="position" id="adminPosition" value="{{ old('position', $profile->position) }}" placeholder="Jabatan admin">
+                            <input type="text" name="position" id="adminPosition" value="{{ old('position', $profile->position) }}" placeholder="Admin position">
                             @error('position') <small>{{ $message }}</small> @enderror
                         </div>
 
                         <div class="admin-profile-form-group full">
                             <label for="adminBio">Profile Note</label>
-                            <textarea name="bio" id="adminBio" rows="4" placeholder="Catatan singkat profile admin">{{ old('bio', $profile->bio) }}</textarea>
+                            <textarea name="bio" id="adminBio" rows="4" placeholder="Short admin profile note">{{ old('bio', $profile->bio) }}</textarea>
                             @error('bio') <small>{{ $message }}</small> @enderror
                         </div>
                     </div>
@@ -292,7 +292,7 @@
 
                             <div>
                                 <strong>Login Password</strong>
-                                <p>Terakhir update akun: {{ $updatedAt }}</p>
+                                <p>Last account update: {{ $updatedAt }}</p>
                             </div>
                         </div>
 

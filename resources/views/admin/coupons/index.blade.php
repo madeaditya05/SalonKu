@@ -116,13 +116,13 @@
 
     $scopeDetail = function ($coupon) {
         if (($coupon->product_type ?? 'all') === 'all') {
-            return 'Berlaku untuk semua service';
+            return 'Applies to all services';
         }
 
         $count = count($coupon->product_ids ?: []);
         $label = $coupon->product_type === 'category' ? 'category' : 'service';
 
-        return number_format($count) . ' ' . $label . ' dipilih';
+        return number_format($count) . ' ' . $label . ' selected';
     };
 
     $couponState = function ($coupon) {
@@ -241,25 +241,25 @@
         <div class="admin-booking-summary-card pink">
             <span>Total Coupon</span>
             <strong>{{ number_format((int) $summary['total']) }}</strong>
-            <small>Semua kode promo</small>
+            <small>All promo codes</small>
         </div>
 
         <div class="admin-booking-summary-card yellow">
             <span>Valid</span>
             <strong>{{ number_format((int) $summary['valid']) }}</strong>
-            <small>Aktif dan belum expired</small>
+            <small>Active and not expired</small>
         </div>
 
         <div class="admin-booking-summary-card blue">
             <span>Redeemed</span>
             <strong>{{ number_format((int) $summary['redeemed']) }}</strong>
-            <small>Total penggunaan coupon</small>
+            <small>Total coupon redemptions</small>
         </div>
 
         <div class="admin-booking-summary-card orange">
             <span>Expired</span>
             <strong>{{ number_format((int) $summary['expired']) }}</strong>
-            <small>Kode sudah melewati tanggal</small>
+            <small>Codes past their expiry date</small>
         </div>
     </div>
 
@@ -298,7 +298,7 @@
                 </label>
 
                 <button type="submit" class="admin-booking-mobile-search-submit" aria-label="Search coupon">
-                    Cari
+                    Search
                 </button>
 
                 <button type="button"
@@ -432,13 +432,13 @@
                             <form action="{{ route('admin.coupons.destroy', $coupon->id) }}"
                                   method="POST"
                                   data-delete-form
-                                  data-delete-title="Hapus Coupon?"
+                                  data-delete-title="Delete Coupon?"
                                   data-delete-item="{{ $coupon->code }}"
-                                  data-delete-message="Coupon ini akan dihapus dari daftar promo dan tidak bisa dipakai lagi.">
+                                  data-delete-message="This coupon will be removed from the promo list and can no longer be used.">
                                 @csrf
                                 @method('DELETE')
 
-                                <button type="submit" class="admin-coupon-action danger" title="Delete" aria-label="Hapus coupon {{ $coupon->code }}">
+                                <button type="submit" class="admin-coupon-action danger" title="Delete" aria-label="Delete coupon {{ $coupon->code }}">
                                     <svg viewBox="0 0 24 24">
                                         <path d="M3 6h18"></path>
                                         <path d="M8 6V4h8v2"></path>
@@ -454,7 +454,7 @@
             @empty
                 <div class="admin-coupon-mobile-empty admin-booking-mobile-empty">
                     <strong>No coupon data found.</strong>
-                    <p>Coba ubah keyword, status, scope, tipe, atau tanggal coupon.</p>
+                    <p>Try changing the keyword, status, scope, type, or coupon date.</p>
                 </div>
             @endforelse
         </div>
@@ -574,7 +574,7 @@
                             <td>
                                 <div class="admin-coupon-discount-cell">
                                     <strong>{{ $remaining === null ? 'Unlimited' : number_format($remaining) }}</strong>
-                                    <small>{{ $remaining === null ? 'No quantity limit' : 'coupon tersisa' }}</small>
+                                    <small>{{ $remaining === null ? 'No quantity limit' : 'coupons remaining' }}</small>
                                 </div>
                             </td>
 
@@ -610,13 +610,13 @@
                                     <form action="{{ route('admin.coupons.destroy', $coupon->id) }}"
                                           method="POST"
                                           data-delete-form
-                                          data-delete-title="Hapus Coupon?"
+                                          data-delete-title="Delete Coupon?"
                                           data-delete-item="{{ $coupon->code }}"
-                                          data-delete-message="Coupon ini akan dihapus dari daftar promo dan tidak bisa dipakai lagi.">
+                                          data-delete-message="This coupon will be removed from the promo list and can no longer be used.">
                                         @csrf
                                         @method('DELETE')
 
-                                        <button type="submit" class="admin-coupon-action danger" title="Delete" aria-label="Hapus coupon {{ $coupon->code }}">
+                                        <button type="submit" class="admin-coupon-action danger" title="Delete" aria-label="Delete coupon {{ $coupon->code }}">
                                             <svg viewBox="0 0 24 24">
                                                 <path d="M3 6h18"></path>
                                                 <path d="M8 6V4h8v2"></path>
@@ -640,7 +640,7 @@
                                     </span>
 
                                     <strong>No coupon data found.</strong>
-                                    <p>Coba ubah keyword, status, scope, tipe, atau tanggal coupon.</p>
+                                    <p>Try changing the keyword, status, scope, type, or coupon date.</p>
                                 </div>
                             </td>
                         </tr>

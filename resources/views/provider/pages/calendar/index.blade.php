@@ -1,8 +1,8 @@
 @extends('provider.layouts.dashboard')
 
-@section('title', 'Kalender Staff - JasaKu')
-@section('page_title', 'Kalender Staff')
-@section('page_subtitle', 'Pantau jadwal aktif setiap staff, queue, dan walk-in dalam satu tampilan.')
+@section('title', 'Staff Calendar - JasaKu')
+@section('page_title', 'Staff Calendar')
+@section('page_subtitle', 'Monitor each staff member schedule, queue items, and walk-ins in one detailed view.')
 
 @section('content')
 @php
@@ -88,23 +88,23 @@
         <div class="admin-breadcrumb">
             <a href="{{ provider_route('provider.dashboard') }}">Dashboard</a>
             <span>&rsaquo;</span>
-            <strong>Kalender Staff</strong>
+            <strong>Staff Calendar</strong>
         </div>
 
         <div class="provider-booking-category-actions provider-calendar-actions provider-calendar-actions-desktop">
-            <a class="admin-category-add-button secondary" href="{{ provider_route('provider.calendar.index', ['date' => $previousDate]) }}" aria-label="Tanggal sebelumnya">
+            <a class="admin-category-add-button secondary" href="{{ provider_route('provider.calendar.index', ['date' => $previousDate]) }}" aria-label="Previous date">
                 <svg viewBox="0 0 24 24" fill="none">
                     <path d="m15 18-6-6 6-6"></path>
                 </svg>
-                Sebelumnya
+                Previous
             </a>
 
             <a class="admin-category-add-button secondary" href="{{ provider_route('provider.calendar.index', ['date' => $todayDate]) }}">
-                Hari ini
+                Today
             </a>
 
-            <a class="admin-category-add-button secondary" href="{{ provider_route('provider.calendar.index', ['date' => $nextDate]) }}" aria-label="Tanggal berikutnya">
-                Berikutnya
+            <a class="admin-category-add-button secondary" href="{{ provider_route('provider.calendar.index', ['date' => $nextDate]) }}" aria-label="Next date">
+                Next
                 <svg viewBox="0 0 24 24" fill="none">
                     <path d="m9 18 6-6-6-6"></path>
                 </svg>
@@ -124,45 +124,45 @@
 
     <div class="admin-booking-summary-grid">
         <div class="admin-booking-summary-card pink">
-            <span>Staff Aktif</span>
+            <span>Active Staff</span>
             <strong>{{ number_format($activeStaffCount) }}</strong>
-            <small>{{ number_format($availableStaffCount) }} staff tanpa booking aktif</small>
+            <small>{{ number_format($availableStaffCount) }} staff without active bookings</small>
         </div>
 
         <div class="admin-booking-summary-card yellow">
-            <span>Staff Terisi</span>
+            <span>Busy Staff</span>
             <strong>{{ number_format($busyStaffCount) }}</strong>
-            <small>Staff punya jadwal di tanggal ini</small>
+            <small>Staff with bookings on this date</small>
         </div>
 
         <div class="admin-booking-summary-card blue">
             <span>Booking Staff</span>
             <strong>{{ number_format($assignedBookingCount) }}</strong>
-            <small>Booking aktif yang sudah punya staff</small>
+            <small>Active bookings already assigned to staff</small>
         </div>
 
         <div class="admin-booking-summary-card orange">
             <span>Any Staff</span>
             <strong>{{ number_format($unassignedQueueCount) }}</strong>
-            <small>Queue dan walk-in belum ditugaskan</small>
+            <small>Queue and walk-in items not assigned yet</small>
         </div>
     </div>
 
     <div class="admin-booking-card category-card provider-booking-category-card provider-calendar-category-card">
         <div class="admin-booking-tabs provider-calendar-tabs">
-            <a href="#staff-calendar" class="admin-booking-tab active">Jadwal Staff</a>
-            <a href="#any-staff-queue" class="admin-booking-tab">Antrian Any Staff</a>
+            <a href="#staff-calendar" class="admin-booking-tab active">Staff Schedule</a>
+            <a href="#any-staff-queue" class="admin-booking-tab">Any Staff Queue</a>
             <a href="{{ provider_route('provider.bookings.index', ['date_from' => $dateValue, 'date_to' => $dateValue]) }}" class="admin-booking-tab">Detail Bookings</a>
         </div>
 
         <form method="GET" action="{{ provider_route('provider.calendar.index') }}" class="admin-booking-filter-panel compact provider-calendar-filter-panel">
             <div class="admin-booking-filter-row provider-calendar-filter-row">
                 <label class="admin-booking-field mini">
-                    <input type="date" name="date" value="{{ $dateValue }}" aria-label="Tanggal kalender staff" title="Tanggal kalender staff">
+                    <input type="date" name="date" value="{{ $dateValue }}" aria-label="Staff calendar date" title="Staff calendar date">
                 </label>
 
                 <div class="admin-booking-filter-buttons">
-                    <button type="submit">Lihat</button>
+                    <button type="submit">View</button>
                     @if ($dateValue !== $todayDate)
                         <a href="{{ provider_route('provider.calendar.index') }}">Reset</a>
                     @endif
@@ -170,9 +170,9 @@
             </div>
 
             <div class="admin-booking-filter-meta">
-                <span class="admin-booking-filter-count">{{ number_format($assignedBookingCount + $unassignedQueueCount) }} booking aktif</span>
-                <span>Tanggal: {{ $activeDate->format('d M Y') }}</span>
-                <span>{{ number_format($busyStaffCount) }} dari {{ number_format($activeStaffCount) }} staff terisi</span>
+                <span class="admin-booking-filter-count">{{ number_format($assignedBookingCount + $unassignedQueueCount) }} active bookings</span>
+                <span>Date: {{ $activeDate->format('d M Y') }}</span>
+                <span>{{ number_format($busyStaffCount) }} of {{ number_format($activeStaffCount) }} staff busy</span>
             </div>
         </form>
 
@@ -181,11 +181,11 @@
                 <svg viewBox="0 0 24 24" fill="none">
                     <path d="m15 18-6-6 6-6"></path>
                 </svg>
-                Sebelumnya
+                Previous
             </a>
 
             <a class="admin-category-add-button secondary" href="{{ provider_route('provider.calendar.index', ['date' => $nextDate]) }}">
-                Berikutnya
+                Next
                 <svg viewBox="0 0 24 24" fill="none">
                     <path d="m9 18 6-6-6-6"></path>
                 </svg>
@@ -206,7 +206,7 @@
 
                             <div>
                                 <strong>{{ $staff->full_name }}</strong>
-                                <small>{{ number_format($staffBookings->count()) }} booking aktif</small>
+                                <small>{{ number_format($staffBookings->count()) }} active bookings</small>
                             </div>
                         </div>
 
@@ -259,16 +259,16 @@
                             </article>
                         @empty
                             <div class="provider-calendar-empty-inline">
-                                <strong>Slot staff kosong.</strong>
-                                <span>Belum ada booking aktif untuk tanggal ini.</span>
+                                <strong>Staff slot is empty.</strong>
+                                <span>No active bookings for this date yet.</span>
                             </div>
                         @endforelse
                     </div>
                 </article>
             @empty
                 <div class="admin-category-mobile-empty admin-booking-mobile-empty provider-calendar-empty-state">
-                    <strong>Belum ada staff aktif.</strong>
-                    <p>Tambahkan staff atau cek filter cabang provider.</p>
+                    <strong>No active staff yet.</strong>
+                    <p>Add staff or check the provider branch filter.</p>
                 </div>
             @endforelse
         </div>
@@ -276,8 +276,8 @@
         <section class="provider-calendar-queue-section" id="any-staff-queue">
             <div class="provider-calendar-section-head">
                 <div>
-                    <h3>Antrian Any Staff</h3>
-                    <p>Queue dan walk-in yang belum dikunci ke staff tertentu.</p>
+                    <h3>Any Staff Queue</h3>
+                    <p>Queue and walk-in items that are not locked to a specific staff member.</p>
                 </div>
 
                 <span class="admin-booking-status info">{{ number_format($unassignedQueueCount) }} item</span>
@@ -324,8 +324,8 @@
                     </article>
                 @empty
                     <div class="admin-category-mobile-empty admin-booking-mobile-empty">
-                        <strong>Tidak ada antrian Any Staff.</strong>
-                        <p>Semua queue aktif sudah punya staff atau belum ada queue di tanggal ini.</p>
+                        <strong>No Any Staff queue items.</strong>
+                        <p>All active queue items already have staff, or there is no queue for this date.</p>
                     </div>
                 @endforelse
             </div>
@@ -403,8 +403,8 @@
                                             </svg>
                                         </span>
 
-                                        <strong>Tidak ada antrian Any Staff.</strong>
-                                        <p>Semua queue aktif sudah punya staff atau belum ada queue di tanggal ini.</p>
+                                        <strong>No Any Staff queue items.</strong>
+                                        <p>All active queue items already have staff, or there is no queue for this date.</p>
                                     </div>
                                 </td>
                             </tr>

@@ -145,27 +145,27 @@
 
     <div class="admin-booking-summary-grid admin-people-summary-grid">
         <div class="admin-booking-summary-card pink">
-            <span>Total Provider</span>
+            <span>Total Providers</span>
             <strong>{{ number_format((int) $summary['total']) }}</strong>
-            <small>Provider pusat terdaftar</small>
+            <small>Registered main providers</small>
         </div>
 
         <div class="admin-booking-summary-card yellow">
             <span>Active</span>
             <strong>{{ number_format((int) $summary['active']) }}</strong>
-            <small>Akun bisa mengakses dashboard</small>
+            <small>Accounts allowed to access the dashboard</small>
         </div>
 
         <div class="admin-booking-summary-card blue">
             <span>Verified</span>
             <strong>{{ number_format((int) $summary['verified']) }}</strong>
-            <small>Dokumen provider valid</small>
+            <small>Valid provider documents</small>
         </div>
 
         <div class="admin-booking-summary-card orange">
             <span>Branch Accounts</span>
             <strong>{{ number_format((int) $summary['branches']) }}</strong>
-            <small>Total akun cabang provider</small>
+            <small>Total provider branch accounts</small>
         </div>
     </div>
 
@@ -201,7 +201,7 @@
                 </label>
 
                 <button type="submit" class="admin-booking-mobile-search-submit" aria-label="Search provider">
-                    Cari
+                    Search
                 </button>
 
                 <button type="button"
@@ -300,8 +300,8 @@
 
                     <p>
                         {{ $branchAccounts->isEmpty()
-                            ? 'Belum ada akun cabang.'
-                            : $branchAccounts->take(2)->pluck('name')->join(', ') . ($branchAccounts->count() > 2 ? ' +' . ($branchAccounts->count() - 2) . ' lainnya' : '') }}
+                            ? 'No branch accounts yet.'
+                            : $branchAccounts->take(2)->pluck('name')->join(', ') . ($branchAccounts->count() > 2 ? ' +' . ($branchAccounts->count() - 2) . ' more' : '') }}
                     </p>
 
                     <footer class="admin-people-mobile-footer">
@@ -320,11 +320,11 @@
                                 </svg>
                             </a>
 
-                            <form action="{{ route('admin.providers.destroy', $provider->id) }}" method="POST" data-delete-form data-delete-title="Hapus Provider?" data-delete-item="{{ $provider->name }}" data-delete-message="Provider ini akan dihapus dari daftar. Data profil dan dokumen provider ikut terhapus.">
+                            <form action="{{ route('admin.providers.destroy', $provider->id) }}" method="POST" data-delete-form data-delete-title="Delete Provider?" data-delete-item="{{ $provider->name }}" data-delete-message="This provider will be removed from the list. Provider profile and document data will also be deleted.">
                                 @csrf
                                 @method('DELETE')
 
-                                <button type="submit" class="provider-action-btn danger" title="Delete" aria-label="Hapus provider {{ $provider->name }}">
+                                <button type="submit" class="provider-action-btn danger" title="Delete" aria-label="Delete provider {{ $provider->name }}">
                                     <svg viewBox="0 0 24 24" fill="none">
                                         <path d="M5 7h14"></path>
                                         <path d="M9 7V5h6v2"></path>
@@ -341,7 +341,7 @@
             @empty
                 <div class="provider-mobile-empty admin-booking-mobile-empty">
                     <strong>No provider data found.</strong>
-                    <p>Coba ubah keyword, status akun, atau status dokumen.</p>
+                    <p>Try changing the keyword, account status, or document status.</p>
                 </div>
             @endforelse
         </div>
@@ -477,11 +477,11 @@
                                         </svg>
                                     </a>
 
-                                    <form action="{{ route('admin.providers.destroy', $provider->id) }}" method="POST" data-delete-form data-delete-title="Hapus Provider?" data-delete-item="{{ $provider->name }}" data-delete-message="Provider ini akan dihapus dari daftar. Data profil dan dokumen provider ikut terhapus.">
+                                    <form action="{{ route('admin.providers.destroy', $provider->id) }}" method="POST" data-delete-form data-delete-title="Delete Provider?" data-delete-item="{{ $provider->name }}" data-delete-message="This provider will be removed from the list. Provider profile and document data will also be deleted.">
                                         @csrf
                                         @method('DELETE')
 
-                                        <button type="submit" class="provider-action-btn danger" title="Delete" aria-label="Hapus provider {{ $provider->name }}">
+                                        <button type="submit" class="provider-action-btn danger" title="Delete" aria-label="Delete provider {{ $provider->name }}">
                                             <svg viewBox="0 0 24 24" fill="none">
                                                 <path d="M5 7h14"></path>
                                                 <path d="M9 7V5h6v2"></path>
@@ -505,12 +505,12 @@
                                             <span>{{ $provider->name }}</span>
                                         </div>
 
-                                        <span>{{ $branchAccounts->count() }} akun</span>
+                                        <span>{{ $branchAccounts->count() }} accounts</span>
                                     </div>
 
                                     @if ($branchAccounts->isEmpty())
                                         <div class="provider-branch-empty">
-                                            Provider pusat ini belum punya akun branch.
+                                            This main provider does not have branch accounts yet.
                                         </div>
                                     @else
                                         <div class="provider-branch-list">
@@ -524,8 +524,8 @@
 
                                             @foreach ($branchAccounts as $account)
                                                 @php
-                                                    $branchName = $account->providerBranch->branch_name ?? 'Branch belum dipilih';
-                                                    $roleName = $account->providerRole->role_name ?? 'Role belum dipilih';
+                                                    $branchName = $account->providerBranch->branch_name ?? 'No branch selected';
+                                                    $roleName = $account->providerRole->role_name ?? 'No role selected';
                                                     $roleStatus = $account->providerRole?->status ?? 'inactive';
                                                     $menuCount = $account->providerRole?->menuPermissions?->count() ?? 0;
                                                 @endphp
@@ -563,7 +563,7 @@
                                     </span>
 
                                     <strong>No provider data found.</strong>
-                                    <p>Coba ubah keyword, status akun, atau status dokumen.</p>
+                                    <p>Try changing the keyword, account status, or document status.</p>
                                 </div>
                             </td>
                         </tr>

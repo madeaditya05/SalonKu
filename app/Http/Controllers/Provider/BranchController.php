@@ -49,7 +49,7 @@ class BranchController extends Controller
 
     public function create(Request $request)
     {
-        abort_if($this->isBranchAccount(), 403, 'Akun cabang tidak dapat membuat branch baru.');
+        abort_if($this->isBranchAccount(), 403, 'Branch accounts cannot create a new branch.');
 
         $step = $request->get('step', 'branch');
 
@@ -71,7 +71,7 @@ class BranchController extends Controller
 
     public function continue(Request $request)
     {
-        abort_if($this->isBranchAccount(), 403, 'Akun cabang tidak dapat membuat branch baru.');
+        abort_if($this->isBranchAccount(), 403, 'Branch accounts cannot create a new branch.');
 
         $validated = $this->validateBranch($request);
 
@@ -94,7 +94,7 @@ class BranchController extends Controller
 
     public function store(Request $request)
     {
-        abort_if($this->isBranchAccount(), 403, 'Akun cabang tidak dapat membuat branch baru.');
+        abort_if($this->isBranchAccount(), 403, 'Branch accounts cannot create a new branch.');
 
         if (!session()->has('branch_draft')) {
             return provider_route_redirect('provider.branch.create')
@@ -209,7 +209,7 @@ class BranchController extends Controller
     public function destroy(ProviderBranch $branch)
     {
         $this->authorizeBranch($branch);
-        abort_if($this->isBranchAccount(), 403, 'Akun cabang tidak dapat menghapus branch.');
+        abort_if($this->isBranchAccount(), 403, 'Branch accounts cannot delete branches.');
 
         DB::transaction(function () use ($branch) {
             ProviderStaff::where('provider_id', $this->providerId())
@@ -275,8 +275,8 @@ class BranchController extends Controller
     private function dropdownData(): array
     {
         /*
-         * Country, State, City tidak diambil dari database lagi.
-         * Datanya diambil dari API lewat public/provider/js/branch.js.
+         * Country, State, and City are no longer loaded from the database.
+         * The data is loaded from the API through public/provider/js/branch.js.
          */
         $countries = collect();
         $states = collect();

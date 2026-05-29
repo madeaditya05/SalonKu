@@ -31,10 +31,10 @@
     ];
 
     $ticketLabels = [
-        'pending' => 'Menunggu',
-        'approved' => 'Disetujui',
-        'rejected' => 'Ditolak',
-        'closed' => 'Diakhiri',
+        'pending' => 'Pending',
+        'approved' => 'Approved',
+        'rejected' => 'Rejected',
+        'closed' => 'Closed',
     ];
 
     $statusTabs = [
@@ -173,13 +173,13 @@
     </div>
 
     @if (session('success'))
-        <div class="admin-booking-alert success">
+        <div class="support-ticket-alert success">
             {{ session('success') }}
         </div>
     @endif
 
     @if ($errors->any())
-        <div class="admin-booking-alert danger">
+        <div class="support-ticket-alert error">
             {{ $errors->first() }}
         </div>
     @endif
@@ -188,25 +188,25 @@
         <div class="admin-booking-summary-card pink">
             <span>Total Ticket</span>
             <strong>{{ number_format((int) $summary['total']) }}</strong>
-            <small>Semua tiket support provider</small>
+            <small>All provider support tickets</small>
         </div>
 
         <div class="admin-booking-summary-card yellow">
             <span>Pending</span>
             <strong>{{ number_format((int) $summary['pending']) }}</strong>
-            <small>Menunggu review admin</small>
+            <small>Waiting for admin review</small>
         </div>
 
         <div class="admin-booking-summary-card blue">
             <span>Approved</span>
             <strong>{{ number_format((int) $summary['approved']) }}</strong>
-            <small>Chat sudah bisa digunakan</small>
+            <small>Chat is available</small>
         </div>
 
         <div class="admin-booking-summary-card orange">
             <span>Finished</span>
             <strong>{{ number_format((int) $summary['completed']) }}</strong>
-            <small>Ditolak atau sudah diakhiri</small>
+            <small>Rejected or closed</small>
         </div>
     </div>
 
@@ -245,7 +245,7 @@
                 </label>
 
                 <button type="submit" class="admin-booking-mobile-search-submit" aria-label="Search ticket">
-                    Cari
+                    Search
                 </button>
 
                 <button type="button"
@@ -322,8 +322,8 @@
                     $requester = $requesterFor($thread);
                     $profile = $provider?->providerProfile;
                     $ticketStatus = $thread->ticket_status ?? 'pending';
-                    $subject = $thread->ticket_subject ?: 'Pengajuan chat provider';
-                    $ticketBody = $thread->ticket_body ?: 'Provider belum menulis detail tiket.';
+                    $subject = $thread->ticket_subject ?: 'Provider chat request';
+                    $ticketBody = $thread->ticket_body ?: 'The provider has not written ticket details yet.';
                 @endphp
 
                 <article class="admin-booking-mobile-card admin-ticket-mobile-card">
@@ -358,14 +358,14 @@
                             {{ ucfirst($profile->document_status ?? 'pending') }}
                         </span>
                         <a href="{{ route('admin.tickets.index', $threadQuery($thread)) }}" class="admin-ticket-mini-link">
-                            Detail
+                            Details
                         </a>
                     </footer>
                 </article>
             @empty
                 <div class="admin-booking-mobile-empty">
                     <strong>No ticket data found.</strong>
-                    <p>Coba ubah keyword, status, atau urutan tiket.</p>
+                    <p>Try changing the keyword, status, or ticket order.</p>
                 </div>
             @endforelse
         </div>
@@ -458,15 +458,15 @@
                             $lastMessageBody = trim((string) ($thread->lastMessage?->body ?? ''));
                             $lastMessagePreview = $thread->lastMessage
                                 ? ($lastMessageBody !== '' ? \Illuminate\Support\Str::limit($lastMessageBody, 42) : ($thread->lastMessage->attachment_path ? 'Mengirim gambar' : 'No message body'))
-                                : 'Belum ada pesan';
+                                : 'No messages yet';
                         @endphp
 
                         <tr class="{{ $isActive ? 'is-selected' : '' }}">
                             <td>
                                 <div class="admin-ticket-subject-cell">
-                                    <strong>{{ $thread->ticket_subject ?: 'Pengajuan chat provider' }}</strong>
+                                    <strong>{{ $thread->ticket_subject ?: 'Provider chat request' }}</strong>
                                     <small>Ticket #{{ $thread->id }}</small>
-                                    <em>{{ \Illuminate\Support\Str::limit($thread->ticket_body ?: 'Provider belum menulis detail tiket.', 70) }}</em>
+                                    <em>{{ \Illuminate\Support\Str::limit($thread->ticket_body ?: 'The provider has not written ticket details yet.', 70) }}</em>
                                 </div>
                             </td>
 
@@ -492,7 +492,7 @@
 
                             <td>
                                 <div class="admin-booking-date">
-                                    <strong>{{ $branchName ?: 'Provider pusat' }}</strong>
+                                    <strong>{{ $branchName ?: 'Main provider' }}</strong>
                                     <small>{{ $roleName ?: 'Owner account' }}</small>
                                 </div>
                             </td>
@@ -541,7 +541,7 @@
                             <td>
                                 <div class="admin-ticket-action-row">
                                     <a href="{{ route('admin.tickets.index', $threadQuery($thread)) }}" class="admin-ticket-action-btn">
-                                        Detail
+                                        Details
                                     </a>
 
                                     @if (in_array($ticketStatus, ['pending', 'rejected'], true))
@@ -574,7 +574,7 @@
                                     </span>
 
                                     <strong>No ticket data found.</strong>
-                                    <p>Coba ubah keyword, status, atau urutan tiket.</p>
+                                    <p>Try changing the keyword, status, or ticket order.</p>
                                 </div>
                             </td>
                         </tr>
@@ -595,20 +595,20 @@
                 $activeLastBody = trim((string) ($activeLastMessage?->body ?? ''));
                 $activeLastPreview = $activeLastMessage
                     ? ($activeLastBody !== '' ? $activeLastBody : ($activeLastMessage->attachment_path ? 'Mengirim gambar' : 'No message body'))
-                    : 'Belum ada pesan chat.';
+                    : 'No chat messages yet.';
             @endphp
 
             <div class="admin-ticket-detail-grid">
                 <div class="support-ticket-card admin-ticket-review-card">
                     <span class="support-ticket-kicker">Ticket #{{ $activeThread->id }}</span>
                     <div class="admin-ticket-detail-heading">
-                        <h2>{{ $activeThread->ticket_subject ?: 'Pengajuan chat provider' }}</h2>
+                        <h2>{{ $activeThread->ticket_subject ?: 'Provider chat request' }}</h2>
                         <span class="admin-booking-status {{ $statusClass($activeStatus) }}">
                             {{ $ticketLabels[$activeStatus] ?? ucfirst($activeStatus) }}
                         </span>
                     </div>
 
-                    <p>{{ $activeThread->ticket_body ?: 'Provider belum menulis detail tiket.' }}</p>
+                    <p>{{ $activeThread->ticket_body ?: 'The provider has not written ticket details yet.' }}</p>
 
                     <dl class="support-ticket-meta admin-ticket-meta">
                         <div>
@@ -627,7 +627,7 @@
                         </div>
 
                         <div>
-                            <dt>Chat Terakhir</dt>
+                            <dt>Last Chat</dt>
                             <dd>{{ $formatDateTime($activeThread->last_message_at) }}</dd>
                         </div>
                     </dl>
@@ -649,7 +649,7 @@
                                 @csrf
 
                                 <button type="submit" class="support-ticket-primary">
-                                    Setujui tiket
+                                    Approve Ticket
                                 </button>
                             </form>
                         @endif
@@ -658,7 +658,7 @@
                             <form method="POST" action="{{ route('admin.tickets.reject', $activeThread) }}" class="support-ticket-reject-form admin-ticket-reject-form">
                                 @csrf
 
-                                <input type="text" name="reason" maxlength="500" placeholder="Alasan penolakan opsional">
+                                <input type="text" name="reason" maxlength="500" placeholder="Optional rejection reason">
 
                                 <button type="submit" class="support-ticket-secondary">
                                     Tolak
@@ -668,14 +668,14 @@
 
                         @if ($activeStatus === 'approved')
                             <a href="{{ route('admin.chat.index', ['thread' => $activeThread->id]) }}" class="support-ticket-primary support-ticket-link">
-                                Buka Chat
+                                Open Chat
                             </a>
                         @endif
                     </div>
                 </div>
 
                 <aside class="admin-ticket-info-card">
-                    <h3>Detail Provider</h3>
+                    <h3>Provider Details</h3>
 
                     <div class="admin-ticket-info-list">
                         <div>
@@ -686,7 +686,7 @@
 
                         <div>
                             <span>Scope</span>
-                            <strong>{{ $activeBranchName ?: 'Provider pusat' }}</strong>
+                            <strong>{{ $activeBranchName ?: 'Main provider' }}</strong>
                             <small>{{ $activeRoleName ?: 'Owner account' }}</small>
                         </div>
 
@@ -697,7 +697,7 @@
                         </div>
 
                         <div>
-                            <span>Kategori</span>
+                            <span>Category</span>
                             <strong>{{ $activeProfile->category ?? '-' }}</strong>
                             <small>{{ $activeProfile->phone_number ?? 'No phone' }}</small>
                         </div>
@@ -705,13 +705,13 @@
                         <div>
                             <span>Account</span>
                             <strong>{{ ucfirst($activeProfile->status ?? 'inactive') }}</strong>
-                            <small>Status akun provider</small>
+                            <small>Provider account status</small>
                         </div>
 
                         <div>
                             <span>Documents</span>
                             <strong>{{ ucfirst($activeProfile->document_status ?? 'pending') }}</strong>
-                            <small>Status verifikasi dokumen</small>
+                            <small>Document verification status</small>
                         </div>
 
                         <div>
@@ -740,8 +740,8 @@
                             </svg>
                         </span>
 
-                        <strong>Pilih tiket</strong>
-                        <p>Detail review tiket akan tampil di sini setelah data tersedia.</p>
+                        <strong>Choose a Ticket</strong>
+                        <p>Ticket review details will appear here once data is available.</p>
                     </div>
                 </div>
             </div>
@@ -980,6 +980,24 @@
 
     window.addEventListener('popstate', () => {
         loadTickets(new URL(window.location.href), { push: false });
+    });
+
+    window.addEventListener('app:notification-created', (event) => {
+        const notification = event.detail?.notification || {};
+
+        if (notification.type !== 'ticket.pending') {
+            return;
+        }
+
+        const url = notification.url
+            ? new URL(notification.url, window.location.origin)
+            : new URL(window.location.href);
+
+        if (url.origin !== window.location.origin || !url.pathname.includes('/tickets')) {
+            return;
+        }
+
+        loadTickets(url, { push: false });
     });
 })();
 </script>

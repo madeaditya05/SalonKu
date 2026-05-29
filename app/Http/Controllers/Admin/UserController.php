@@ -13,7 +13,7 @@ class UserController extends Controller
     public function index(Request $request)
     {
         if (! Auth::check() || Auth::user()->role !== 'admin') {
-            abort(403, 'Akses ditolak.');
+            abort(403, 'Access denied.');
         }
 
         $search = trim((string) $request->get('search', ''));
@@ -131,7 +131,7 @@ class UserController extends Controller
     public function show(User $user)
     {
         if (! Auth::check() || Auth::user()->role !== 'admin') {
-            abort(403, 'Akses ditolak.');
+            abort(403, 'Access denied.');
         }
 
         if ($user->role !== 'customer') {
@@ -148,7 +148,7 @@ class UserController extends Controller
     public function toggleStatus(User $user)
     {
         if (! Auth::check() || Auth::user()->role !== 'admin') {
-            abort(403, 'Akses ditolak.');
+            abort(403, 'Access denied.');
         }
 
         if ($user->role !== 'customer') {
@@ -175,13 +175,13 @@ class UserController extends Controller
             'status' => $profile->status === 'active' ? 'inactive' : 'active',
         ]);
 
-        return back()->with('success', 'Status user berhasil diubah.');
+        return back()->with('success', 'User status has been updated.');
     }
 
     public function destroy(User $user)
     {
         if (! Auth::check() || Auth::user()->role !== 'admin') {
-            abort(403, 'Akses ditolak.');
+            abort(403, 'Access denied.');
         }
 
         if ($user->role !== 'customer') {
@@ -191,6 +191,6 @@ class UserController extends Controller
         $user->customerProfile()?->delete();
         $user->delete();
 
-        return back()->with('success', 'User berhasil dihapus.');
+        return back()->with('success', 'User has been deleted.');
     }
 }

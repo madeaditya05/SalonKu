@@ -170,7 +170,7 @@ function initStaffTable() {
 
 function initStaffModal() {
     const modal = document.getElementById('staffModal');
-    const addBtn = document.getElementById('staffAddBtn');
+    const addButtons = document.querySelectorAll('[data-staff-add]');
     const closeBtn = document.getElementById('staffModalClose');
     const cancelBtn = document.getElementById('staffModalCancel');
     const form = document.getElementById('staffForm');
@@ -242,12 +242,12 @@ function initStaffModal() {
         select.dataset.selected = value ?? '';
     }
 
-    if (addBtn) {
-        addBtn.addEventListener('click', function () {
+    addButtons.forEach(function (button) {
+        button.addEventListener('click', function () {
             resetForm();
             openModal();
         });
-    }
+    });
 
     editButtons.forEach(function (button) {
         button.addEventListener('click', function () {

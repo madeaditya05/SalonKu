@@ -8,6 +8,36 @@
     display: none !important;
 }
 
+.notification-btn .notification-dot,
+.notification-btn .notification-badge,
+.admin-topbar-icon .notification-dot,
+.admin-topbar-icon .notification-badge,
+.topbar-icon-btn .notification-dot,
+.topbar-icon-btn .notification-badge {
+    position: absolute;
+    top: -6px;
+    right: -7px;
+    width: auto;
+    min-width: 19px;
+    max-width: none;
+    height: 19px;
+    padding: 0 5px;
+    box-sizing: border-box;
+    border: 2px solid #ffffff;
+    border-radius: 999px;
+    background: #ef4444;
+    color: #ffffff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 850;
+    line-height: 1;
+    letter-spacing: 0;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
 .notification-popover {
     position: absolute;
     top: calc(100% + 12px);

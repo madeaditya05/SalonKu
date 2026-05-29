@@ -15,11 +15,11 @@
     ]);
 
     $ticketLabels = [
-        'pending' => 'Menunggu',
-        'approved' => 'Disetujui',
-        'rejected' => 'Ditolak',
-        'closed' => 'Diakhiri',
-        'none' => 'Belum ada tiket',
+        'pending' => 'Pending',
+        'approved' => 'Approved',
+        'rejected' => 'Rejected',
+        'closed' => 'Closed',
+        'none' => 'No ticket yet',
     ];
 
     $isTicketList = ($activeTab ?? 'messages') === 'tickets';
@@ -28,34 +28,6 @@
     $isPanelOpen = $isRoomOpen || $isTicketDetailOpen;
     $activeChatTotal = $threads->count();
     $ticketTotal = $ticketThreads->count();
-    $unreadTotal = $threads->sum(fn ($thread) => (int) ($thread->unread_count ?? 0));
-    $pendingTicketTotal = $ticketThreads->where('ticket_status', 'pending')->count();
-    $chatSummaryCards = [
-        [
-            'tone' => 'pink',
-            'label' => 'Active Chats',
-            'value' => $activeChatTotal,
-            'hint' => 'Room chat disetujui',
-        ],
-        [
-            'tone' => 'yellow',
-            'label' => 'Unread',
-            'value' => $unreadTotal,
-            'hint' => 'Pesan belum dibaca',
-        ],
-        [
-            'tone' => 'blue',
-            'label' => 'Tickets',
-            'value' => $ticketTotal,
-            'hint' => 'Semua tiket support',
-        ],
-        [
-            'tone' => 'orange',
-            'label' => 'Pending',
-            'value' => $pendingTicketTotal,
-            'hint' => 'Menunggu approval',
-        ],
-    ];
 @endphp
 
 <section class="support-chat-page support-chat-admin support-chat-modern {{ $isPanelOpen ? 'has-active-room' : 'is-chat-list' }} {{ $isTicketList ? 'is-ticket-list' : '' }}" data-support-chat>
@@ -65,16 +37,6 @@
             <span>&rsaquo;</span>
             <strong>Chat</strong>
         </div>
-    </div>
-
-    <div class="support-chat-summary-grid">
-        @foreach ($chatSummaryCards as $card)
-            <div class="support-chat-summary-card {{ $card['tone'] }}">
-                <span>{{ $card['label'] }}</span>
-                <strong>{{ number_format((int) $card['value']) }}</strong>
-                <small>{{ $card['hint'] }}</small>
-            </div>
-        @endforeach
     </div>
 
     @if (session('success'))
@@ -120,11 +82,11 @@
                             $provider = $thread->provider;
                             $requester = $thread->providerUser ?: $provider;
                             $branchName = $requester?->providerBranch?->branch_name;
-                            $requesterLabel = $branchName ? "Cabang: {$branchName}" : 'Provider pusat';
+                            $requesterLabel = $branchName ? "Branch: {$branchName}" : 'Main provider';
                             $ticketStatus = $thread->ticket_status ?? 'pending';
                             $isActiveTicket = $activeTicketThread && (int) $activeTicketThread->id === (int) $thread->id;
                             $initial = strtoupper(substr($requester->name ?? 'P', 0, 1));
-                            $ticketPreview = \Illuminate\Support\Str::limit($thread->ticket_subject ?: 'Tiket chat provider', 48);
+                            $ticketPreview = \Illuminate\Support\Str::limit($thread->ticket_subject ?: 'Provider chat ticket', 48);
                         @endphp
 
                         <a
@@ -153,8 +115,8 @@
                         </a>
                     @empty
                         <div class="support-chat-empty compact">
-                            <strong>Belum ada tiket</strong>
-                            <span>Tiket provider yang masuk tampil di sini.</span>
+                            <strong>No tickets yet</strong>
+                            <span>Incoming provider tickets appear here.</span>
                         </div>
                     @endforelse
                 @else
@@ -163,7 +125,7 @@
                             $provider = $thread->provider;
                             $requester = $thread->providerUser ?: $provider;
                             $branchName = $requester?->providerBranch?->branch_name;
-                            $requesterLabel = $branchName ? "Cabang: {$branchName}" : 'Provider pusat';
+                            $requesterLabel = $branchName ? "Branch: {$branchName}" : 'Main provider';
                             $lastMessage = $thread->lastMessage;
                             $ticketStatus = $thread->ticket_status ?? 'none';
                             $unreadCount = (int) ($thread->unread_count ?? 0);
@@ -174,7 +136,7 @@
                                 ? ($previewBody !== ''
                                     ? \Illuminate\Support\Str::limit($previewBody, 48)
                                     : ($lastMessage->attachment_path ? 'Mengirim gambar' : ''))
-                                : \Illuminate\Support\Str::limit($thread->ticket_subject ?: 'Tiket chat provider', 48);
+                                : \Illuminate\Support\Str::limit($thread->ticket_subject ?: 'Provider chat ticket', 48);
                         @endphp
 
                         <a
@@ -206,8 +168,8 @@
                         </a>
                     @empty
                         <div class="support-chat-empty compact">
-                            <strong>Belum ada chat aktif</strong>
-                            <span>Chat tampil setelah tiket disetujui dari menu Tickets.</span>
+                            <strong>No active chats yet</strong>
+                            <span>Chats appear after tickets are approved from the Tickets menu.</span>
                         </div>
                     @endforelse
                 @endif
@@ -221,7 +183,7 @@
                         $activeTicketProvider = $activeTicketThread->provider;
                         $activeTicketRequester = $activeTicketThread->providerUser ?: $activeTicketProvider;
                         $activeTicketBranchName = $activeTicketRequester?->providerBranch?->branch_name;
-                        $activeTicketRequesterLabel = $activeTicketBranchName ? "Cabang: {$activeTicketBranchName}" : 'Provider pusat';
+                        $activeTicketRequesterLabel = $activeTicketBranchName ? "Branch: {$activeTicketBranchName}" : 'Main provider';
                         $activeTicketProfile = $activeTicketProvider?->providerProfile;
                         $activeTicketStatus = $activeTicketThread->ticket_status ?? 'pending';
                         $activeTicketInitial = strtoupper(substr($activeTicketRequester->name ?? 'P', 0, 1));
@@ -231,8 +193,8 @@
                         <a
                             href="{{ route('admin.chat.index', array_filter(['tab' => 'tickets', 'search' => $search ?: null])) }}"
                             class="support-chat-back"
-                            title="Kembali ke daftar tiket"
-                            aria-label="Kembali ke daftar tiket"
+                            title="Back to ticket list"
+                            aria-label="Back to ticket list"
                         >
                             <svg viewBox="0 0 24 24" fill="none">
                                 <path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -260,9 +222,9 @@
 
                     <div class="support-ticket-review support-ticket-detail-review">
                         <div class="support-ticket-card support-ticket-detail-card">
-                            <span class="support-ticket-kicker">Pengajuan Tiket</span>
-                            <h2>{{ $activeTicketThread->ticket_subject ?: 'Pengajuan chat provider' }}</h2>
-                            <p>{{ $activeTicketThread->ticket_body ?: 'Provider belum menulis detail tiket.' }}</p>
+                            <span class="support-ticket-kicker">Ticket Request</span>
+                            <h2>{{ $activeTicketThread->ticket_subject ?: 'Provider chat request' }}</h2>
+                            <p>{{ $activeTicketThread->ticket_body ?: 'The provider has not written ticket details yet.' }}</p>
 
                             <dl class="support-ticket-meta">
                                 <div>
@@ -289,7 +251,7 @@
                                         <input type="hidden" name="return_to" value="chat">
 
                                         <button type="submit" class="support-ticket-primary">
-                                            Setujui tiket
+                                            Approve Ticket
                                         </button>
                                     </form>
                                 @endif
@@ -299,7 +261,7 @@
                                         @csrf
                                         <input type="hidden" name="return_to" value="chat">
 
-                                        <input type="text" name="reason" maxlength="500" placeholder="Alasan penolakan opsional">
+                                        <input type="text" name="reason" maxlength="500" placeholder="Optional rejection reason">
 
                                         <button type="submit" class="support-ticket-secondary">
                                             Tolak
@@ -309,7 +271,7 @@
 
                                 @if ($activeTicketStatus === 'approved')
                                     <a href="{{ route('admin.chat.index', ['thread' => $activeTicketThread->id]) }}" class="support-ticket-primary support-ticket-link">
-                                        Buka Chat
+                                        Open Chat
                                     </a>
                                 @endif
                             </div>
@@ -323,8 +285,8 @@
                                 <path d="M8 9h8M8 13h5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                             </svg>
                         </span>
-                        <strong>Pilih tiket</strong>
-                        <span>Pilih tiket dari daftar untuk membuka detailnya.</span>
+                        <strong>Choose a Ticket</strong>
+                        <span>Choose a ticket from the list to open its details.</span>
                     </div>
                 @endif
             </div>
@@ -335,7 +297,7 @@
                     $activeProvider = $activeThread->provider;
                     $activeRequester = $activeThread->providerUser ?: $activeProvider;
                     $activeBranchName = $activeRequester?->providerBranch?->branch_name;
-                    $activeRequesterLabel = $activeBranchName ? "Cabang: {$activeBranchName}" : 'Provider pusat';
+                    $activeRequesterLabel = $activeBranchName ? "Branch: {$activeBranchName}" : 'Main provider';
                     $ticketStatus = $activeThread->ticket_status ?? 'none';
                     $activeInitial = strtoupper(substr($activeRequester->name ?? 'P', 0, 1));
                 @endphp
@@ -344,8 +306,8 @@
                     <a
                         href="{{ route('admin.chat.index', array_filter(['list' => 1, 'search' => $search ?: null])) }}"
                         class="support-chat-back"
-                        title="Kembali ke daftar chat"
-                        aria-label="Kembali ke daftar chat"
+                        title="Back to chat list"
+                        aria-label="Back to chat list"
                     >
                         <svg viewBox="0 0 24 24" fill="none">
                             <path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -364,8 +326,8 @@
                                 <span
                                     class="support-room-status {{ $activeThreadCanChat ? 'is-active' : 'is-inactive' }}"
                                     role="img"
-                                    title="{{ $activeThreadCanChat ? 'Aktif' : 'Tidak aktif' }}"
-                                    aria-label="{{ $activeThreadCanChat ? 'Aktif' : 'Tidak aktif' }}"
+                                    title="{{ $activeThreadCanChat ? 'Active' : 'Inactive' }}"
+                                    aria-label="{{ $activeThreadCanChat ? 'Active' : 'Inactive' }}"
                                 ></span>
                             </span>
                             <span class="support-room-subtitle">
@@ -389,7 +351,7 @@
                             <form method="POST" action="{{ route('admin.chat.ticket.end', $activeThread) }}" class="support-chat-end-form support-chat-end-compact" data-chat-end-form>
                                 @csrf
 
-                                <button type="submit" title="Akhiri chat">
+                                <button type="submit" title="End chat">
                                     <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
                                         <path d="M18 6 6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                                     </svg>
@@ -398,7 +360,7 @@
                             </form>
                         @endif
 
-                        <a href="{{ route('admin.tickets.index', ['thread' => $activeThread->id, 'status' => $ticketStatus]) }}" title="Tickets" aria-label="Buka tiket chat">
+                        <a href="{{ route('admin.tickets.index', ['thread' => $activeThread->id, 'status' => $ticketStatus]) }}" title="Tickets" aria-label="Open chat ticket">
                             <svg viewBox="0 0 24 24" fill="none">
                                 <path d="M4 5h16v14H4z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
                                 <path d="M8 9h8M8 13h5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -411,9 +373,9 @@
                 @if (! $activeThreadCanChat)
                     <div class="support-ticket-review">
                         <div class="support-ticket-card">
-                            <span class="support-ticket-kicker">Tiket Chat</span>
-                            <h2>{{ $activeThread->ticket_subject ?: 'Pengajuan chat provider' }}</h2>
-                            <p>Pengajuan dan approval tiket dikelola di menu Tickets.</p>
+                            <span class="support-ticket-kicker">Chat Ticket</span>
+                            <h2>{{ $activeThread->ticket_subject ?: 'Provider chat request' }}</h2>
+                            <p>Ticket requests and approvals are managed in the Tickets menu.</p>
 
                             <dl class="support-ticket-meta">
                                 <div>
@@ -435,7 +397,7 @@
 
                             <div class="support-ticket-actions">
                                 <a href="{{ route('admin.tickets.index', ['thread' => $activeThread->id, 'status' => $ticketStatus]) }}" class="support-ticket-primary support-ticket-link">
-                                    Buka Tickets
+                                    Open Tickets
                                 </a>
                             </div>
                         </div>
@@ -456,7 +418,7 @@
                                             <strong>{{ $message['sender_name'] }}</strong>
                                             @if (($message['sender_role'] ?? '') === 'admin')
                                                 <span class="support-admin-badge">Admin</span>
-                                                <span class="support-verified-check support-message-check" title="Akun admin resmi" aria-label="Akun admin resmi">
+                                                <span class="support-verified-check support-message-check" title="Official admin account" aria-label="Official admin account">
                                                     <svg viewBox="0 0 20 20" fill="none">
                                                         <circle cx="10" cy="10" r="9" fill="currentColor"/>
                                                         <path d="M6 10.2l2.5 2.5L14.2 7" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -469,7 +431,7 @@
 
                                     @if (! empty($message['attachment']) && ($message['attachment']['type'] ?? '') === 'image')
                                         <a href="{{ $message['attachment']['url'] }}" class="support-message-image" target="_blank" rel="noopener">
-                                            <img src="{{ $message['attachment']['url'] }}" alt="{{ $message['attachment']['name'] ?: 'Gambar chat' }}">
+                                            <img src="{{ $message['attachment']['url'] }}" alt="{{ $message['attachment']['name'] ?: 'Chat image' }}">
                                         </a>
                                     @endif
 
@@ -498,8 +460,8 @@
                                         <path d="M8 9h8M8 13h5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                                     </svg>
                                 </span>
-                                <strong>Belum ada pesan</strong>
-                                <span>Mulai percakapan dengan provider ini.</span>
+                                <strong>No messages yet</strong>
+                                <span>Start a conversation with this provider.</span>
                             </div>
                         @endforelse
                     </div>
@@ -513,7 +475,7 @@
                                 </svg>
                             </button>
 
-                            <button type="button" title="Kirim gambar" data-chat-image-trigger>
+                                    <button type="button" title="Send image" data-chat-image-trigger>
                                 <svg viewBox="0 0 24 24" fill="none">
                                     <rect x="4" y="5" width="16" height="14" rx="2" stroke="currentColor" stroke-width="2"/>
                                     <circle cx="9" cy="10" r="1.5" fill="currentColor"/>
@@ -531,11 +493,11 @@
                         </div>
 
                         <div class="support-compose-field">
-                            <textarea name="body" rows="1" placeholder="Tulis pesan..." maxlength="2000" data-chat-input></textarea>
+                            <textarea name="body" rows="1" placeholder="Write a message..." maxlength="2000" data-chat-input></textarea>
 
                             <div class="support-file-preview is-hidden" data-chat-file-preview>
                                 <span data-chat-file-name></span>
-                                <button type="button" title="Hapus gambar" aria-label="Hapus gambar" data-chat-file-clear>
+                                <button type="button" title="Remove image" aria-label="Remove image" data-chat-file-clear>
                                     <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
                                         <path d="M18 6 6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                                     </svg>
@@ -560,8 +522,8 @@
                             <path d="M8 9h8M8 13h5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                         </svg>
                     </span>
-                    <strong>Pilih chat</strong>
-                    <span>Pilih provider dari daftar untuk membuka room chat.</span>
+                    <strong>Choose a Chat</strong>
+                    <span>Choose a provider from the list to open the chat room.</span>
                 </div>
             @endif
         </div>
@@ -569,7 +531,7 @@
     </div>
 
     <div class="support-confirm-modal" data-chat-end-dialog hidden aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="chatEndConfirmTitle">
-        <button type="button" class="support-confirm-backdrop" data-chat-end-cancel aria-label="Batalkan"></button>
+        <button type="button" class="support-confirm-backdrop" data-chat-end-cancel aria-label="Cancel"></button>
 
         <div class="support-confirm-card">
             <span class="support-confirm-icon" aria-hidden="true">
@@ -581,13 +543,13 @@
             </span>
 
             <div class="support-confirm-copy">
-                <strong id="chatEndConfirmTitle">Akhiri chat ini?</strong>
-                <span>Anda yakin ingin mengakhiri chat ini? Provider harus mengajukan tiket ulang untuk membuka sesi chat berikutnya.</span>
+                <strong id="chatEndConfirmTitle">End this chat?</strong>
+                <span>Are you sure you want to end this chat? The provider must submit another ticket to open the next chat session.</span>
             </div>
 
             <div class="support-confirm-actions">
-                <button type="button" class="support-confirm-secondary" data-chat-end-cancel>Batal</button>
-                <button type="button" class="support-confirm-danger" data-chat-end-confirm>Akhiri chat</button>
+                <button type="button" class="support-confirm-secondary" data-chat-end-cancel>Cancel</button>
+                <button type="button" class="support-confirm-danger" data-chat-end-confirm>End Chat</button>
             </div>
         </div>
     </div>

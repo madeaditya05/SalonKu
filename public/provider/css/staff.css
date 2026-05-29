@@ -1,8 +1,10 @@
-.provider-staff-page {
+.provider-staff-page,
+.provider-staff-category-page {
     background: transparent;
     min-height: calc(100vh - 64px);
 }
 
+.provider-staff-category-page svg,
 .provider-staff-page svg,
 .staff-modal svg,
 .staff-delete-modal svg {
@@ -13,6 +15,161 @@
     stroke-width: 1.8;
     stroke-linecap: round;
     stroke-linejoin: round;
+}
+
+.provider-staff-actions {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    min-width: 0;
+}
+
+.provider-staff-route {
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.provider-staff-actions-mobile {
+    display: none;
+}
+
+.provider-staff-category-page .admin-category-add-button {
+    text-decoration: none;
+    font-family: inherit;
+}
+
+.provider-staff-category-page .admin-category-add-button svg,
+.provider-staff-category-page .category-action-btn svg,
+.provider-staff-category-page .admin-booking-empty svg {
+    fill: none;
+}
+
+.provider-staff-filter-row {
+    grid-template-columns: minmax(240px, 1.35fr) minmax(150px, .72fr) minmax(150px, .72fr) minmax(78px, .34fr) auto;
+}
+
+.provider-staff-category-table {
+    min-width: 1260px;
+}
+
+.provider-staff-category-table th:nth-child(1),
+.provider-staff-category-table td:nth-child(1) {
+    width: 190px;
+}
+
+.provider-staff-category-table th:nth-child(2),
+.provider-staff-category-table td:nth-child(2) {
+    width: 178px;
+}
+
+.provider-staff-category-table th:nth-child(3),
+.provider-staff-category-table td:nth-child(3) {
+    width: 190px;
+}
+
+.provider-staff-category-table th:nth-child(4),
+.provider-staff-category-table td:nth-child(4) {
+    width: 190px;
+}
+
+.provider-staff-category-table th:nth-child(5),
+.provider-staff-category-table td:nth-child(5) {
+    width: 190px;
+}
+
+.provider-staff-category-table th:nth-child(6),
+.provider-staff-category-table td:nth-child(6) {
+    width: 122px;
+    text-align: center;
+}
+
+.provider-staff-category-table th:nth-child(7),
+.provider-staff-category-table td:nth-child(7) {
+    width: 122px;
+    text-align: center;
+}
+
+.provider-staff-category-table th:nth-child(8),
+.provider-staff-category-table td:nth-child(8) {
+    width: 166px;
+    text-align: center;
+}
+
+.provider-staff-name-box .category-thumb,
+.provider-staff-name-box .category-thumb-placeholder,
+.provider-staff-mobile-card .admin-category-mobile-title img,
+.provider-staff-mobile-card .admin-category-mobile-title > span {
+    box-shadow: 0 5px 12px rgba(21, 19, 31, .12);
+}
+
+.provider-staff-location-stack,
+.provider-staff-assignment-stack {
+    justify-items: start;
+}
+
+.provider-staff-role-stack {
+    justify-items: center;
+}
+
+.provider-staff-action-icons {
+    gap: 6px;
+}
+
+.provider-staff-action-icons .category-action-btn {
+    flex: 0 0 auto;
+}
+
+.provider-staff-action-icons .category-action-btn.info {
+    border-color: #bae6fd;
+    background: #f0f9ff;
+    color: #0369a1;
+}
+
+.provider-staff-action-icons .category-action-btn.danger {
+    border-color: #fecaca;
+    background: #fef2f2;
+    color: #dc2626;
+}
+
+.provider-staff-action-icons .category-action-btn.info:hover {
+    border-color: #7dd3fc;
+    background: #e0f2fe;
+}
+
+.provider-staff-action-icons .category-action-btn.danger:hover {
+    border-color: #fca5a5;
+    background: #fee2e2;
+}
+
+.provider-staff-mobile-main {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.provider-staff-mobile-main small {
+    display: block;
+    margin-top: 3px;
+    color: #64748b;
+    font-size: 10.5px;
+    font-weight: 700;
+    line-height: 1.3;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.provider-staff-mobile-footer {
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.provider-staff-mobile-footer .provider-staff-action-icons {
+    margin-left: auto;
+}
+
+.provider-staff-mobile-action-icons {
+    margin-left: auto;
 }
 
 .staff-index-header {
@@ -493,6 +650,26 @@
     border-color: #111827;
 }
 
+.staff-image-upload span {
+    display: grid;
+    place-items: center;
+    gap: 5px;
+    color: #111827;
+    font-weight: 800;
+    line-height: 1.2;
+}
+
+.staff-image-upload span svg {
+    width: 22px;
+    height: 22px;
+}
+
+.staff-image-upload span small {
+    color: inherit;
+    font-size: 12px;
+    font-weight: 800;
+}
+
 .staff-image-upload img {
     width: 100%;
     height: 100%;
@@ -691,6 +868,21 @@
 }
 
 @media (max-width: 768px) {
+    .provider-staff-actions-desktop {
+        display: none;
+    }
+
+    .provider-staff-actions-mobile {
+        display: grid;
+        grid-template-columns: 1fr;
+        justify-content: stretch;
+    }
+
+    .provider-staff-actions-mobile .admin-category-add-button {
+        width: 100%;
+        min-width: 0;
+    }
+
     .staff-index-header {
         flex-direction: column;
     }
@@ -735,5 +927,30 @@
 
     .staff-modal {
         max-height: 95vh;
+    }
+}
+
+@media (max-width: 640px) {
+    .provider-staff-filter-row {
+        grid-template-columns: minmax(0, 1fr) 42px 58px;
+    }
+
+    .admin-booking-filter-panel.is-expanded .provider-staff-filter-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .provider-staff-mobile-footer .provider-staff-action-icons {
+        width: 100%;
+        margin-left: 0;
+        justify-content: flex-start;
+    }
+
+    .provider-staff-tabs {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .provider-staff-tabs .admin-booking-tab {
+        min-width: 0;
+        padding-inline: 6px;
     }
 }

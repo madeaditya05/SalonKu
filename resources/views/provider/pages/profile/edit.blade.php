@@ -19,29 +19,36 @@
     $documentLocked = $documentStatus === 'verified';
 @endphp
 
-<section class="profile-page">
-    <div class="profile-header">
-        <div>
-            <h1>Edit Profile</h1>
-            <p>Dashboard / My Profile / Edit</p>
+<section class="profile-page admin-category-page admin-booking-page provider-profile-page">
+    <div class="admin-booking-route admin-category-route provider-profile-route">
+        <div class="admin-breadcrumb">
+            <a href="{{ provider_route('provider.dashboard') }}">Dashboard</a>
+            <span>&rsaquo;</span>
+            <a href="{{ provider_route('provider.profile') }}">My Profile</a>
+            <span>&rsaquo;</span>
+            <strong>Edit</strong>
         </div>
 
-        <a href="{{ provider_route('provider.profile') }}" class="profile-secondary-btn">
+        <a href="{{ provider_route('provider.profile') }}" class="admin-category-add-button secondary">
+            <svg viewBox="0 0 24 24" fill="none">
+                <path d="M19 12H5"></path>
+                <path d="m12 19-7-7 7-7"></path>
+            </svg>
             Back
         </a>
     </div>
 
     @if (session('success'))
-        <div class="profile-alert success">{{ session('success') }}</div>
+        <div class="admin-booking-alert success">{{ session('success') }}</div>
     @endif
 
     @if (session('error'))
-        <div class="profile-alert error">{{ session('error') }}</div>
+        <div class="admin-booking-alert danger">{{ session('error') }}</div>
     @endif
 
     @if ($errors->any())
-        <div class="profile-alert error">
-            Ada data yang belum valid. Silakan cek kembali.
+        <div class="admin-booking-alert danger">
+            Some data is invalid. Please check the form again.
         </div>
     @endif
 
@@ -54,7 +61,7 @@
                 <div class="profile-card-title">
                     <div>
                         <h2>Profile Information</h2>
-                        <p>Ubah data utama akun provider.</p>
+                        <p>Update the main provider account details.</p>
                     </div>
                 </div>
 
@@ -73,7 +80,7 @@
 
                     <div>
                         <strong>Profile Photo</strong>
-                        <p>JPG, PNG, atau WEBP. Maksimal 2MB.</p>
+                        <p>JPG, PNG, or WEBP. Maximum 2 MB.</p>
                         @error('image') <small>{{ $message }}</small> @enderror
                     </div>
                 </div>
@@ -123,9 +130,9 @@
                         <h2>Documents</h2>
 
                         @if ($documentLocked)
-                            <p>Dokumen sudah verified dan tidak bisa dimodifikasi lagi.</p>
+                            <p>Documents are already verified and can no longer be modified.</p>
                         @else
-                            <p>Upload dokumen verifikasi provider.</p>
+                            <p>Upload provider verification documents.</p>
                         @endif
                     </div>
 
@@ -168,7 +175,7 @@
                             hidden
                         >
 
-                        <h3>Foto KTP</h3>
+                        <h3>ID Card Photo</h3>
                         @error('ktp_image') <small>{{ $message }}</small> @enderror
                     </div>
 
@@ -180,12 +187,12 @@
                             @if ($businessImage)
                                 <img src="{{ $businessImage }}" id="businessImagePreview" alt="Business Image">
                                 <span id="businessImagePlaceholder" class="hidden">
-                                    {{ $documentLocked ? 'Verified' : 'Upload Usaha' }}
+                                    {{ $documentLocked ? 'Verified' : 'Upload Business' }}
                                 </span>
                             @else
                                 <img src="" id="businessImagePreview" class="hidden" alt="Business Image">
                                 <span id="businessImagePlaceholder">
-                                    {{ $documentLocked ? 'Verified' : 'Upload Usaha' }}
+                                    {{ $documentLocked ? 'Verified' : 'Upload Business' }}
                                 </span>
                             @endif
 
@@ -205,28 +212,28 @@
                             hidden
                         >
 
-                        <h3>Foto Usaha</h3>
+                        <h3>Business Photo</h3>
                         @error('business_image') <small>{{ $message }}</small> @enderror
                     </div>
                 </div>
 
                 @if ($documentLocked)
                     <div class="profile-help-box verified">
-                        Dokumen sudah <b>Verified</b> oleh admin. Provider tidak dapat mengganti atau mengupload ulang dokumen.
+                        Documents have been <b>Verified</b> by admin. Provider cannot replace or re-upload these documents.
                     </div>
                 @elseif ($documentStatus === 'submitted')
                     <div class="profile-help-box">
-                        Dokumen sudah <b>Submitted</b> dan sedang menunggu proses verifikasi admin.
-                        Jika kamu upload ulang dokumen, status tetap menjadi <b>Submitted</b>.
+                        Documents have been <b>Submitted</b> and are waiting for admin verification.
+                        If you re-upload documents, the status will remain <b>Submitted</b>.
                     </div>
                 @elseif ($documentStatus === 'rejected')
                     <div class="profile-help-box rejected">
-                        Dokumen sebelumnya ditolak. Silakan upload dokumen baru.
-                        Setelah dikirim, status akan menjadi <b>Submitted</b>.
+                        Previous documents were rejected. Please upload new documents.
+                        After submission, the status will become <b>Submitted</b>.
                     </div>
                 @else
                     <div class="profile-help-box">
-                        Setelah dokumen dikirim, status dokumen akan menjadi <b>Submitted</b>.
+                        After documents are submitted, the document status will become <b>Submitted</b>.
                     </div>
                 @endif
 
@@ -250,7 +257,7 @@
                 <div class="profile-card-title">
                     <div>
                         <h2>Change Password</h2>
-                        <p>Ubah password login provider.</p>
+                        <p>Update the provider login password.</p>
                     </div>
                 </div>
 

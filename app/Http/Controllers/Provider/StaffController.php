@@ -28,11 +28,39 @@ class StaffController extends Controller
     {
         $providerId = $this->providerId();
 
-        $search = $request->get('search');
+        $search = trim((string) $request->get('search', ''));
         $perPage = (int) $request->get('per_page', 10);
 
         if (! in_array($perPage, [10, 25, 50, 100], true)) {
             $perPage = 10;
+        }
+
+        $status = $request->get('status', 'all');
+
+        if (! in_array($status, ['all', 'active', 'inactive'], true)) {
+            $status = 'all';
+        }
+
+        $branchFilter = $request->get('branch_id', 'all');
+        $branchFilter = $branchFilter === null || $branchFilter === '' ? 'all' : $branchFilter;
+
+        if ($branchFilter !== 'all' && ! ctype_digit((string) $branchFilter)) {
+            $branchFilter = 'all';
+        }
+
+        $categoryFilter = $request->get('category_id', 'all');
+        $categoryFilter = $categoryFilter === null || $categoryFilter === '' ? 'all' : $categoryFilter;
+
+        if ($categoryFilter !== 'all' && ! ctype_digit((string) $categoryFilter)) {
+            $categoryFilter = 'all';
+        }
+
+        $sortBy = $request->get('sort_by', 'created_at');
+        $sortDirection = $request->get('sort_direction', 'desc') === 'asc' ? 'asc' : 'desc';
+        $sortableColumns = ['full_name', 'email', 'phone_number', 'status', 'created_at'];
+
+        if (! in_array($sortBy, $sortableColumns, true)) {
+            $sortBy = 'created_at';
         }
 
         /*
@@ -67,7 +95,7 @@ class StaffController extends Controller
         |--------------------------------------------------------------------------
         */
 
-        $staffs = ProviderStaff::query()
+        $staffQuery = ProviderStaff::query()
             ->where('provider_id', $providerId)
             ->with([
                 'branch:id,provider_id,branch_name,status',
@@ -89,17 +117,76 @@ class StaffController extends Controller
                         });
                 });
             })
-            ->latest();
-        ProviderAccountScope::applyBranchScope($staffs, $this->branchId());
+            ->when($branchFilter !== 'all', function ($query) use ($branchFilter) {
+                $query->where('branch_id', (int) $branchFilter);
+            })
+            ->when($categoryFilter !== 'all', function ($query) use ($categoryFilter) {
+                $query->where('category_id', (int) $categoryFilter);
+            });
 
-        $staffs = $staffs
+        ProviderAccountScope::applyBranchScope($staffQuery, $this->branchId());
+
+        $statusSummaryQuery = clone $staffQuery;
+
+        if ($status !== 'all') {
+            $staffQuery->where('status', $status);
+        }
+
+        $summaryQuery = clone $staffQuery;
+
+        $summary = [
+            'total' => (clone $summaryQuery)->count(),
+            'active' => (clone $summaryQuery)->where('status', 'active')->count(),
+            'inactive' => (clone $summaryQuery)->where('status', 'inactive')->count(),
+            'branches' => (clone $summaryQuery)->whereNotNull('branch_id')->distinct()->count('branch_id'),
+        ];
+
+        $statusCounts = [
+            'all' => (clone $statusSummaryQuery)->count(),
+            'active' => (clone $statusSummaryQuery)->where('status', 'active')->count(),
+            'inactive' => (clone $statusSummaryQuery)->where('status', 'inactive')->count(),
+        ];
+
+        if ($sortBy === 'full_name') {
+            $staffQuery
+                ->orderBy('first_name', $sortDirection)
+                ->orderBy('last_name', $sortDirection);
+        } else {
+            $staffQuery->orderBy($sortBy, $sortDirection);
+        }
+
+        $staffs = $staffQuery
             ->paginate($perPage)
             ->withQueryString();
+
+        $filters = [
+            'status' => $status,
+            'search' => $search,
+            'per_page' => $perPage,
+            'branch_id' => $branchFilter,
+            'category_id' => $categoryFilter,
+            'sort_by' => $sortBy,
+            'sort_direction' => $sortDirection,
+        ];
+
+        $hasActiveFilters = $search !== ''
+            || $status !== 'all'
+            || $branchFilter !== 'all'
+            || $categoryFilter !== 'all'
+            || $perPage !== 10
+            || $sortBy !== 'created_at'
+            || $sortDirection !== 'desc';
 
         return view('provider.pages.staff.index', compact(
             'staffs',
             'search',
             'perPage',
+            'filters',
+            'summary',
+            'statusCounts',
+            'hasActiveFilters',
+            'sortBy',
+            'sortDirection',
             'categories',
             'branches'
         ));
@@ -119,7 +206,7 @@ class StaffController extends Controller
         ProviderStaff::create($validated);
 
         return provider_route_redirect('provider.staffs.index')
-            ->with('success', 'Staff berhasil ditambahkan.');
+            ->with('success', 'Staff member has been added.');
     }
 
     public function update(Request $request, ProviderStaff $staff)
@@ -143,7 +230,7 @@ class StaffController extends Controller
         $staff->update($validated);
 
         return provider_route_redirect('provider.staffs.index')
-            ->with('success', 'Staff berhasil diperbarui.');
+            ->with('success', 'Staff member has been updated.');
     }
 
     public function destroy(ProviderStaff $staff)
@@ -157,7 +244,7 @@ class StaffController extends Controller
         $staff->delete();
 
         return provider_route_redirect('provider.staffs.index')
-            ->with('success', 'Staff berhasil dihapus.');
+            ->with('success', 'Staff member has been deleted.');
     }
 
     private function validatedStaffData(Request $request, ?ProviderStaff $staff = null): array
@@ -290,15 +377,15 @@ class StaffController extends Controller
                 Rule::in(['active', 'inactive']),
             ],
         ], [
-            'first_name.required' => 'First name wajib diisi.',
-            'last_name.required' => 'Last name wajib diisi.',
-            'email.required' => 'Email wajib diisi.',
-            'email.email' => 'Format email tidak valid.',
-            'email.unique' => 'Email staff sudah digunakan.',
-            'category_id.required' => 'Category wajib dipilih.',
-            'category_id.exists' => 'Category tidak valid.',
-            'branch_id.required' => 'Branch wajib dipilih.',
-            'branch_id.exists' => 'Branch tidak valid atau bukan milik provider ini.',
+            'first_name.required' => 'First name is required.',
+            'last_name.required' => 'Last name is required.',
+            'email.required' => 'Email is required.',
+            'email.email' => 'Email format is invalid.',
+            'email.unique' => 'Staff email is already in use.',
+            'category_id.required' => 'Category is required.',
+            'category_id.exists' => 'Category is invalid.',
+            'branch_id.required' => 'Branch is required.',
+            'branch_id.exists' => 'Branch is invalid or does not belong to this provider.',
         ]);
 
         if ($this->branchId() !== null) {
@@ -311,11 +398,11 @@ class StaffController extends Controller
     private function authorizeProviderStaff(ProviderStaff $staff): void
     {
         if ((int) $staff->provider_id !== $this->providerId()) {
-            abort(403, 'Akses ditolak.');
+            abort(403, 'Access denied.');
         }
 
         if ($this->branchId() !== null && (int) $staff->branch_id !== $this->branchId()) {
-            abort(403, 'Akses ditolak.');
+            abort(403, 'Access denied.');
         }
     }
 }

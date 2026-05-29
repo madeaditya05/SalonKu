@@ -134,7 +134,7 @@
     $sortIconClass = fn (string $key, string $direction) => $sortBy === $key && $sortDirection === $direction ? 'active' : '';
 
     $categoryInitial = fn ($category) => strtoupper(substr((string) ($category->name ?: 'C'), 0, 1));
-    $categoryDescription = fn ($category, $limit = 110) => Str::limit(strip_tags((string) ($category->description ?: 'Category belum memiliki deskripsi.')), $limit);
+    $categoryDescription = fn ($category, $limit = 110) => Str::limit(strip_tags((string) ($category->description ?: 'This category does not have a description yet.')), $limit);
 
     $hasActiveFilters = $hasActiveFilters ?? (($filters['search'] ?? '') !== ''
         || ($filters['status'] ?? 'all') !== 'all'
@@ -188,25 +188,25 @@
         <div class="admin-booking-summary-card pink">
             <span>Total Category</span>
             <strong>{{ number_format((int) $summary['total']) }}</strong>
-            <small>Semua kategori service</small>
+            <small>All service categories</small>
         </div>
 
         <div class="admin-booking-summary-card yellow">
             <span>Active</span>
             <strong>{{ number_format((int) $summary['active']) }}</strong>
-            <small>Kategori tampil di katalog</small>
+            <small>Categories shown in the catalog</small>
         </div>
 
         <div class="admin-booking-summary-card blue">
             <span>Featured</span>
             <strong>{{ number_format((int) $summary['featured']) }}</strong>
-            <small>Prioritas di landing customer</small>
+            <small>Priority on the customer landing page</small>
         </div>
 
         <div class="admin-booking-summary-card orange">
             <span>Linked Services</span>
             <strong>{{ number_format((int) $summary['services']) }}</strong>
-            <small>Service memakai kategori</small>
+            <small>Services using categories</small>
         </div>
     </div>
 
@@ -245,7 +245,7 @@
                 </label>
 
                 <button type="submit" class="admin-booking-mobile-search-submit" aria-label="Search category">
-                    Cari
+                    Search
                 </button>
 
                 <button type="button"
@@ -392,7 +392,7 @@
             @empty
                 <div class="admin-category-mobile-empty admin-booking-mobile-empty">
                     <strong>No category data found.</strong>
-                    <p>Coba ubah keyword, status, atau filter featured.</p>
+                    <p>Try changing the keyword, status, or featured filter.</p>
                 </div>
             @endforelse
         </div>
@@ -523,7 +523,7 @@
                                         type="submit"
                                         class="feature-switch {{ $isFeatured ? 'is-on' : '' }}"
                                         aria-label="Toggle featured"
-                                        title="{{ $isFeatured ? 'Featured aktif' : 'Featured nonaktif' }}">
+                                        title="{{ $isFeatured ? 'Featured active' : 'Featured inactive' }}">
                                         <span></span>
                                     </button>
                                 </form>
@@ -570,7 +570,7 @@
                                     </span>
 
                                     <strong>No category data found.</strong>
-                                    <p>Coba ubah keyword, status, atau filter featured.</p>
+                                    <p>Try changing the keyword, status, or featured filter.</p>
                                 </div>
                             </td>
                         </tr>
@@ -616,7 +616,7 @@
         <div class="category-modal-header">
             <div>
                 <h3 id="addCategoryTitle">Add Category</h3>
-                <p>Tambah category service baru untuk katalog customer dan provider.</p>
+                <p>Add a new service category for the customer and provider catalog.</p>
             </div>
 
             <button type="button" class="modal-close" data-modal-close aria-label="Close modal">
@@ -635,7 +635,7 @@
                                type="text"
                                name="name"
                                value="{{ old('name') }}"
-                               placeholder="Contoh: Hair Treatment"
+                               placeholder="Example: Hair Treatment"
                                data-slug-source
                                required>
                     </div>
@@ -646,7 +646,7 @@
                                type="text"
                                name="slug"
                                value="{{ old('slug') }}"
-                               placeholder="Otomatis jika kosong"
+                               placeholder="Generated automatically if empty"
                                data-slug-target>
                     </div>
                 </div>
@@ -663,7 +663,7 @@
                             </span>
                             <div>
                                 <strong>Category Image</strong>
-                                <small>Thumbnail besar untuk daftar category dan katalog.</small>
+                                <small>Large thumbnail for category lists and catalogs.</small>
                             </div>
                         </div>
 
@@ -678,11 +678,11 @@
                                 </svg>
                             </span>
                             <strong>Upload Image</strong>
-                            <small>JPG, PNG, WEBP. Maksimal 2MB.</small>
-                            <em data-upload-meta>Belum ada file dipilih</em>
+                            <small>JPG, PNG, WEBP. Maximum 2MB.</small>
+                            <em data-upload-meta>No file selected</em>
                         </label>
 
-                        <p class="upload-note">Rekomendasi rasio 4:3 atau 1:1 agar tidak terpotong di mobile.</p>
+                        <p class="upload-note">Recommended ratio is 4:3 or 1:1 so it is not cropped on mobile.</p>
                     </div>
 
                     <div class="category-media-card">
@@ -696,7 +696,7 @@
                             </span>
                             <div>
                                 <strong>Category Icon</strong>
-                                <small>Ikon kecil untuk quick access dan label visual.</small>
+                                <small>Small icon for quick access and visual labels.</small>
                             </div>
                         </div>
 
@@ -711,11 +711,11 @@
                                 </svg>
                             </span>
                             <strong>Upload Icon</strong>
-                            <small>SVG, PNG, JPG, WEBP. Maksimal 2MB.</small>
-                            <em data-upload-meta>Belum ada file dipilih</em>
+                            <small>SVG, PNG, JPG, WEBP. Maximum 2MB.</small>
+                            <em data-upload-meta>No file selected</em>
                         </label>
 
-                        <p class="upload-note">Gunakan icon sederhana dengan background transparan jika memungkinkan.</p>
+                        <p class="upload-note">Use a simple icon with a transparent background when possible.</p>
                     </div>
                 </div>
 
@@ -728,7 +728,7 @@
                     <div class="switch-row">
                         <span>
                             Status Active
-                            <small>Kategori bisa tampil di katalog.</small>
+                            <small>The category can appear in the catalog.</small>
                         </span>
 
                         <label class="form-switch">
@@ -741,7 +741,7 @@
                     <div class="switch-row">
                         <span>
                             Featured
-                            <small>Prioritaskan di area kategori pilihan.</small>
+                            <small>Prioritize in the selected category area.</small>
                         </span>
 
                         <label class="form-switch">
@@ -778,7 +778,7 @@
             <div class="category-modal-header">
                 <div>
                     <h3 id="editCategoryTitle{{ $category->id }}">Edit Category</h3>
-                    <p>Ubah nama, slug, media, status, dan featured category.</p>
+                    <p>Update the name, slug, media, status, and featured category.</p>
                 </div>
 
                 <button type="button" class="modal-close" data-modal-close aria-label="Close modal">
@@ -815,7 +815,7 @@
                                 </span>
                                 <div>
                                     <strong>Category Image</strong>
-                                    <small>Ganti thumbnail besar kategori.</small>
+                                    <small>Replace the large category thumbnail.</small>
                                 </div>
                             </div>
 
@@ -840,11 +840,11 @@
                                     </svg>
                                 </span>
                                 <strong>Change Image</strong>
-                                <small>Biarkan kosong jika tidak diganti.</small>
-                                <em data-upload-meta>Belum ada file baru</em>
+                                <small>Leave blank if not replacing it.</small>
+                                <em data-upload-meta>No new file selected</em>
                             </label>
 
-                            <p class="upload-note">File baru akan menggantikan image saat form disimpan.</p>
+                            <p class="upload-note">The new file will replace the image when the form is saved.</p>
                         </div>
 
                         <div class="category-media-card">
@@ -858,7 +858,7 @@
                                 </span>
                                 <div>
                                     <strong>Category Icon</strong>
-                                    <small>Ganti icon kecil kategori.</small>
+                                    <small>Replace the small category icon.</small>
                                 </div>
                             </div>
 
@@ -883,24 +883,24 @@
                                     </svg>
                                 </span>
                                 <strong>Change Icon</strong>
-                                <small>Biarkan kosong jika tidak diganti.</small>
-                                <em data-upload-meta>Belum ada file baru</em>
+                                <small>Leave blank if not replacing it.</small>
+                                <em data-upload-meta>No new file selected</em>
                             </label>
 
-                            <p class="upload-note">SVG disarankan untuk icon supaya tetap tajam.</p>
+                            <p class="upload-note">SVG is recommended so the icon stays sharp.</p>
                         </div>
                     </div>
 
                     <div class="form-group">
                         <label for="categoryDescription{{ $category->id }}">Description</label>
-                        <textarea id="categoryDescription{{ $category->id }}" name="description" rows="4" placeholder="Deskripsi category">{{ old('description', $category->description) }}</textarea>
+                        <textarea id="categoryDescription{{ $category->id }}" name="description" rows="4" placeholder="Category description">{{ old('description', $category->description) }}</textarea>
                     </div>
 
                     <div class="switch-grid">
                         <div class="switch-row">
                             <span>
                                 Status Active
-                                <small>Kategori bisa tampil di katalog.</small>
+                                <small>The category can appear in the catalog.</small>
                             </span>
 
                             <label class="form-switch">
@@ -913,7 +913,7 @@
                         <div class="switch-row">
                             <span>
                                 Featured
-                                <small>Prioritaskan di area kategori pilihan.</small>
+                                <small>Prioritize in the selected category area.</small>
                             </span>
 
                             <label class="form-switch">
@@ -954,8 +954,8 @@
             <h3 id="deleteCategoryTitle{{ $category->id }}">Delete Category?</h3>
 
             <p>
-                Category <strong>{{ $category->name }}</strong> akan dihapus dari daftar.
-                Service yang sudah memakai kategori ini akan kehilangan relasi kategorinya.
+                Category <strong>{{ $category->name }}</strong> will be deleted from the list.
+                Services already using this category will lose their category relationship.
             </p>
 
             <div class="delete-actions">

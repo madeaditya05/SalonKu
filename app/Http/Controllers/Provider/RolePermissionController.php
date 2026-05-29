@@ -94,7 +94,7 @@ class RolePermissionController extends Controller
         });
 
         return provider_route_redirect('provider.roles-permissions.index')
-            ->with('success', 'Akun cabang dan permission berhasil dibuat.');
+            ->with('success', 'Branch account and permissions have been created.');
     }
 
     public function update(Request $request, ProviderRole $role)
@@ -119,7 +119,7 @@ class RolePermissionController extends Controller
         });
 
         return provider_route_redirect('provider.roles-permissions.index')
-            ->with('success', 'Akun cabang dan permission berhasil diperbarui.');
+            ->with('success', 'Branch account and permissions have been updated.');
     }
 
     public function destroy(ProviderRole $role)
@@ -137,7 +137,7 @@ class RolePermissionController extends Controller
         });
 
         return provider_route_redirect('provider.roles-permissions.index')
-            ->with('success', 'Akun cabang dan permission berhasil dihapus.');
+            ->with('success', 'Branch account and permissions have been deleted.');
     }
 
     private function validatedRoleData(Request $request, ?ProviderRole $role = null): array
@@ -172,16 +172,16 @@ class RolePermissionController extends Controller
             'menu_keys' => ['nullable', 'array'],
             'menu_keys.*' => ['required', Rule::in($menuKeys)],
         ], [
-            'role_name.required' => 'Nama role wajib diisi.',
-            'account_name.required' => 'Nama akun cabang wajib diisi.',
-            'account_email.required' => 'Email akun cabang wajib diisi.',
-            'account_email.email' => 'Format email akun cabang tidak valid.',
-            'account_email.unique' => 'Email akun cabang sudah digunakan.',
-            'account_password.required' => 'Password akun cabang wajib diisi.',
-            'account_password.min' => 'Password akun cabang minimal 8 karakter.',
-            'branch_id.required' => 'Branch wajib dipilih.',
-            'branch_id.exists' => 'Branch tidak valid atau bukan milik provider ini.',
-            'menu_keys.*.in' => 'Menu permission tidak valid.',
+            'role_name.required' => 'Role name is required.',
+            'account_name.required' => 'Branch account name is required.',
+            'account_email.required' => 'Branch account email is required.',
+            'account_email.email' => 'Branch account email format is invalid.',
+            'account_email.unique' => 'Branch account email is already in use.',
+            'account_password.required' => 'Branch account password is required.',
+            'account_password.min' => 'Branch account password must be at least 8 characters.',
+            'branch_id.required' => 'Branch is required.',
+            'branch_id.exists' => 'Branch is invalid or does not belong to this provider.',
+            'menu_keys.*.in' => 'Menu permission is invalid.',
         ]);
 
         $validated['menu_keys'] = collect($validated['menu_keys'] ?? [])
@@ -280,7 +280,7 @@ class RolePermissionController extends Controller
     {
         $user = Auth::user();
 
-        abort_unless($user && ProviderMenuAccess::isProviderOwner($user), 403, 'Hanya akun provider pusat yang boleh mengatur akun cabang.');
+        abort_unless($user && ProviderMenuAccess::isProviderOwner($user), 403, 'Only the main provider account can manage branch accounts.');
     }
 
     private function uniqueSlug(string $roleName, int $providerId, ?int $ignoreId = null): string
@@ -305,7 +305,7 @@ class RolePermissionController extends Controller
 
     private function authorizeProviderRole(ProviderRole $role): void
     {
-        abort_unless((int) $role->provider_id === $this->providerId(), 403, 'Akses ditolak.');
+        abort_unless((int) $role->provider_id === $this->providerId(), 403, 'Access denied.');
     }
 
     private function branchAccountMenuSections(): array

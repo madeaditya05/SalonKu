@@ -199,27 +199,27 @@
 
     <div class="admin-booking-summary-grid">
         <div class="admin-booking-summary-card pink">
-            <span>Total Booking</span>
+            <span>Total Bookings</span>
             <strong>{{ number_format((int) $summary['total']) }}</strong>
-            <small>Semua data booking</small>
+            <small>All booking data</small>
         </div>
 
         <div class="admin-booking-summary-card yellow">
             <span>Revenue</span>
             <strong>Rp{{ number_format((float) $summary['amount'], 0, ',', '.') }}</strong>
-            <small>Total nilai booking</small>
+            <small>Total booking value</small>
         </div>
 
         <div class="admin-booking-summary-card blue">
             <span>Paid</span>
             <strong>{{ number_format((int) $summary['paid']) }}</strong>
-            <small>Pembayaran selesai</small>
+            <small>Completed payments</small>
         </div>
 
         <div class="admin-booking-summary-card orange">
             <span>In Progress</span>
             <strong>{{ number_format((int) $summary['pending']) }}</strong>
-            <small>Masih berjalan</small>
+            <small>Still in progress</small>
         </div>
     </div>
 
@@ -258,7 +258,7 @@
                 </label>
 
                 <button type="submit" class="admin-booking-mobile-search-submit" aria-label="Search booking">
-                    Cari
+                    Search
                 </button>
 
                 <button type="button"
@@ -410,7 +410,7 @@
             @empty
                 <div class="admin-booking-mobile-empty">
                     <strong>No booking data found.</strong>
-                    <p>Coba ubah keyword, filter tanggal, payment, atau status booking.</p>
+                    <p>Try changing the keyword, date filter, payment status, or booking status.</p>
                 </div>
             @endforelse
         </div>
@@ -674,7 +674,7 @@
                                     </span>
 
                                     <strong>No booking data found.</strong>
-                                    <p>Coba ubah keyword, filter tanggal, payment, atau status booking.</p>
+                                    <p>Try changing the keyword, date filter, payment status, or booking status.</p>
                                 </div>
                             </td>
                         </tr>

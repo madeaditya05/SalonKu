@@ -2,7 +2,7 @@
 
 @section('title', 'Bookings - JasaKu')
 @section('page_title', 'Bookings')
-@section('page_subtitle', 'Kelola check-in, start service, complete, cancel, dan no-show dari satu meja kerja.')
+@section('page_subtitle', 'Manage check-in, service start, completion, cancellation, and no-show handling from one workspace.')
 
 @section('content')
 @php
@@ -203,7 +203,7 @@
                     <path d="M12 5v14"></path>
                     <path d="M5 12h14"></path>
                 </svg>
-                Tambah Walk-in
+                Add Walk-in
             </a>
         </div>
     </div>
@@ -230,30 +230,30 @@
         <div class="admin-booking-summary-card pink">
             <span>Total Booking</span>
             <strong>{{ number_format((int) $summary['total']) }}</strong>
-            <small>Data sesuai filter aktif</small>
+            <small>Data based on the active filters</small>
         </div>
 
         <div class="admin-booking-summary-card yellow">
             <span>Revenue</span>
             <strong>{{ $formatMoney($summary['amount']) }}</strong>
-            <small>Total nilai booking</small>
+            <small>Total booking value</small>
         </div>
 
         <div class="admin-booking-summary-card blue">
             <span>Paid</span>
             <strong>{{ number_format((int) $summary['paid']) }}</strong>
-            <small>Pembayaran selesai</small>
+            <small>Completed payments</small>
         </div>
 
         <div class="admin-booking-summary-card orange">
             <span>In Progress</span>
             <strong>{{ number_format((int) $summary['pending']) }}</strong>
-            <small>Booking masih berjalan</small>
+            <small>Bookings still in progress</small>
         </div>
     </div>
 
     <div class="admin-booking-card category-card provider-booking-category-card">
-        <div class="admin-booking-tabs">
+        <div class="admin-booking-tabs provider-booking-tabs">
             @foreach ($statusTabs as $key => $label)
                 <a href="{{ provider_route('provider.bookings.index', $queryFor(['status' => $key])) }}"
                    class="admin-booking-tab {{ ($currentStatus === $key || ($key === 'all' && empty($currentStatus))) ? 'active' : '' }}">
@@ -287,7 +287,7 @@
                 </label>
 
                 <button type="submit" class="admin-booking-mobile-search-submit" aria-label="Search booking">
-                    Cari
+                    Search
                 </button>
 
                 <button type="button"
@@ -386,7 +386,7 @@
                     <path d="M12 5v14"></path>
                     <path d="M5 12h14"></path>
                 </svg>
-                Tambah Walk-in
+                Add Walk-in
             </a>
         </div>
 
@@ -529,7 +529,7 @@
             @empty
                 <div class="admin-category-mobile-empty admin-booking-mobile-empty">
                     <strong>No booking data found.</strong>
-                    <p>Coba ubah keyword, filter tanggal, payment, mode, atau status booking.</p>
+                    <p>Try changing the keyword, date filter, payment, mode, or booking status.</p>
                 </div>
             @endforelse
         </div>
@@ -772,7 +772,7 @@
                                     </span>
 
                                     <strong>No booking data found.</strong>
-                                    <p>Coba ubah keyword, filter tanggal, payment, mode, atau status booking.</p>
+                                    <p>Try changing the keyword, date filter, payment, mode, or booking status.</p>
                                 </div>
                             </td>
                         </tr>

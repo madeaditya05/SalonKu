@@ -17,7 +17,11 @@ class NotificationController extends Controller
         abort_unless($user, 403);
 
         if ($request->expectsJson()) {
-            $notifications = $this->visibleNotificationsQuery((int) $user->id)
+            $notificationQuery = $request->boolean('include_chat')
+                ? AppNotification::query()->where('user_id', $user->id)->where('type', 'chat.message')
+                : $this->visibleNotificationsQuery((int) $user->id);
+
+            $notifications = $notificationQuery
                 ->latest()
                 ->limit(12)
                 ->get()
@@ -74,7 +78,7 @@ class NotificationController extends Controller
             ->update(['read_at' => now()]);
 
         if (! $request->expectsJson()) {
-            return back()->with('success', 'Semua notifikasi berhasil ditandai dibaca.');
+            return back()->with('success', 'All notifications have been marked as read.');
         }
 
         return response()->json([
@@ -100,7 +104,7 @@ class NotificationController extends Controller
             ->count();
 
         if (! $request->expectsJson()) {
-            return back()->with('success', 'Notifikasi berhasil ditandai dibaca.');
+            return back()->with('success', 'Notification has been marked as read.');
         }
 
         return response()->json([

@@ -16,7 +16,7 @@ class CouponController extends Controller
     public function index(Request $request)
     {
         if (! Auth::check() || Auth::user()->role !== 'admin') {
-            abort(403, 'Akses ditolak.');
+            abort(403, 'Access denied.');
         }
 
         $tab = $request->get('tab', 'all');
@@ -155,7 +155,7 @@ class CouponController extends Controller
     public function create()
     {
         if (! Auth::check() || Auth::user()->role !== 'admin') {
-            abort(403, 'Akses ditolak.');
+            abort(403, 'Access denied.');
         }
 
         return view('admin.coupons.create', array_merge([
@@ -167,7 +167,7 @@ class CouponController extends Controller
     public function store(Request $request)
     {
         if (! Auth::check() || Auth::user()->role !== 'admin') {
-            abort(403, 'Akses ditolak.');
+            abort(403, 'Access denied.');
         }
 
         $validated = $this->validateCoupon($request);
@@ -176,13 +176,13 @@ class CouponController extends Controller
 
         return redirect()
             ->route('admin.coupons.index')
-            ->with('success', 'Coupon berhasil ditambahkan.');
+            ->with('success', 'Coupon has been added.');
     }
 
     public function edit(Coupon $coupon)
     {
         if (! Auth::check() || Auth::user()->role !== 'admin') {
-            abort(403, 'Akses ditolak.');
+            abort(403, 'Access denied.');
         }
 
         return view('admin.coupons.edit', array_merge([
@@ -194,7 +194,7 @@ class CouponController extends Controller
     public function update(Request $request, Coupon $coupon)
     {
         if (! Auth::check() || Auth::user()->role !== 'admin') {
-            abort(403, 'Akses ditolak.');
+            abort(403, 'Access denied.');
         }
 
         $validated = $this->validateCoupon($request, $coupon->id);
@@ -203,18 +203,18 @@ class CouponController extends Controller
 
         return redirect()
             ->route('admin.coupons.index')
-            ->with('success', 'Coupon berhasil diperbarui.');
+            ->with('success', 'Coupon has been updated.');
     }
 
     public function destroy(Coupon $coupon)
     {
         if (! Auth::check() || Auth::user()->role !== 'admin') {
-            abort(403, 'Akses ditolak.');
+            abort(403, 'Access denied.');
         }
 
         $coupon->delete();
 
-        return back()->with('success', 'Coupon berhasil dihapus.');
+        return back()->with('success', 'Coupon has been deleted.');
     }
 
     private function validateCoupon(Request $request, ?int $couponId = null): array
@@ -236,14 +236,14 @@ class CouponController extends Controller
             'end_date' => ['required', 'date', 'after_or_equal:start_date'],
             'status' => ['nullable', Rule::in(['active', 'inactive'])],
         ], [
-            'code.required' => 'Code wajib diisi.',
-            'code.unique' => 'Code coupon sudah digunakan.',
-            'product_type.required' => 'Product type wajib dipilih.',
-            'coupon_type.required' => 'Coupon type wajib dipilih.',
-            'coupon_value.required' => 'Coupon value wajib diisi.',
-            'start_date.required' => 'Start date wajib diisi.',
-            'end_date.required' => 'End date wajib diisi.',
-            'end_date.after_or_equal' => 'End date harus sama atau setelah start date.',
+            'code.required' => 'Code is required.',
+            'code.unique' => 'Coupon code is already in use.',
+            'product_type.required' => 'Product type is required.',
+            'coupon_type.required' => 'Coupon type is required.',
+            'coupon_value.required' => 'Coupon value is required.',
+            'start_date.required' => 'Start date is required.',
+            'end_date.required' => 'End date is required.',
+            'end_date.after_or_equal' => 'End date must be the same as or after the start date.',
         ]);
 
         $productType = $validated['product_type'];
@@ -254,7 +254,7 @@ class CouponController extends Controller
         } else {
             if (empty($productIds)) {
                 throw ValidationException::withMessages([
-                    'product_ids' => ucfirst($productType) . ' wajib dipilih.',
+                    'product_ids' => ucfirst($productType) . ' is required.',
                 ]);
             }
 
@@ -282,7 +282,7 @@ class CouponController extends Controller
 
         if ($count !== count(array_unique($productIds))) {
             throw ValidationException::withMessages([
-                'product_ids' => 'Data master yang dipilih tidak valid.',
+                'product_ids' => 'Selected master data is invalid.',
             ]);
         }
     }

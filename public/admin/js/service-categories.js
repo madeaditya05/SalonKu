@@ -78,7 +78,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         if (meta) {
-            meta.textContent = meta.dataset.defaultText || 'Belum ada file dipilih';
+            meta.textContent = meta.dataset.defaultText || 'No file selected';
         }
 
         uploadField.classList.remove('has-preview');
@@ -108,13 +108,13 @@ document.addEventListener('DOMContentLoaded', function () {
         const isImage = file.type.startsWith('image/') || file.name.toLowerCase().endsWith('.svg');
 
         if (!isImage) {
-            window.alert('File harus berupa gambar.');
+            window.alert('The file must be an image.');
             resetFilePreview(input, uploadField);
             return;
         }
 
         if (file.size > 2 * 1024 * 1024) {
-            window.alert('Ukuran file maksimal 2MB.');
+            window.alert('Maximum file size is 2MB.');
             resetFilePreview(input, uploadField);
             return;
         }

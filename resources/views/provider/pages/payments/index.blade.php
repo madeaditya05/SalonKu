@@ -1,8 +1,8 @@
 @extends('provider.layouts.dashboard')
 
-@section('title', 'Pembayaran - JasaKu')
-@section('page_title', 'Pembayaran')
-@section('page_subtitle', 'Pantau transaksi, status pembayaran, metode, dan booking terkait.')
+@section('title', 'Payments - JasaKu')
+@section('page_title', 'Payments')
+@section('page_subtitle', 'Monitor transactions, payment status, payment methods, and related bookings.')
 
 @section('content')
 @php
@@ -140,7 +140,7 @@
         <div class="admin-breadcrumb">
             <a href="{{ provider_route('provider.dashboard') }}">Dashboard</a>
             <span>&rsaquo;</span>
-            <strong>Pembayaran</strong>
+            <strong>Payments</strong>
         </div>
     </div>
 
@@ -160,25 +160,25 @@
         <div class="admin-booking-summary-card pink">
             <span>Total Payment</span>
             <strong>{{ number_format((int) ($summary['total'] ?? 0)) }}</strong>
-            <small>Transaksi sesuai filter</small>
+            <small>Transactions based on the active filters</small>
         </div>
 
         <div class="admin-booking-summary-card yellow">
             <span>Revenue</span>
             <strong>Rp{{ number_format((float) ($summary['amount'] ?? 0), 0, ',', '.') }}</strong>
-            <small>Total nominal pembayaran</small>
+            <small>Total payment amount</small>
         </div>
 
         <div class="admin-booking-summary-card blue">
             <span>Paid</span>
             <strong>{{ number_format((int) ($summary['paid'] ?? 0)) }}</strong>
-            <small>Pembayaran selesai</small>
+            <small>Completed payments</small>
         </div>
 
         <div class="admin-booking-summary-card orange">
             <span>Pending</span>
             <strong>{{ number_format((int) ($summary['pending'] ?? 0)) }}</strong>
-            <small>Unpaid atau pending</small>
+            <small>Unpaid or pending payments</small>
         </div>
     </div>
 
@@ -196,7 +196,7 @@
                         <em>Rp{{ number_format((float) ($item['amount'] ?? 0), 0, ',', '.') }}</em>
                     </div>
                 @empty
-                    <p class="admin-empty-inline">Belum ada data status pembayaran.</p>
+                    <p class="admin-empty-inline">No payment status data yet.</p>
                 @endforelse
             </div>
         </div>
@@ -214,14 +214,14 @@
                         <em>Rp{{ number_format((float) ($item['amount'] ?? 0), 0, ',', '.') }}</em>
                     </div>
                 @empty
-                    <p class="admin-empty-inline">Belum ada data tipe pembayaran.</p>
+                    <p class="admin-empty-inline">No payment type data yet.</p>
                 @endforelse
             </div>
         </div>
     </div>
 
     <div class="admin-booking-card">
-        <div class="admin-booking-tabs">
+        <div class="admin-booking-tabs provider-payment-tabs">
             @foreach ($paymentStatuses as $key => $label)
                 <a href="{{ provider_route('provider.payments.index', $queryFor(['status' => $key])) }}"
                     class="admin-booking-tab {{ ($currentStatus === $key || ($key === 'all' && empty($currentStatus))) ? 'active' : '' }}">
@@ -255,7 +255,7 @@
                 </label>
 
                 <button type="submit" class="admin-booking-mobile-search-submit" aria-label="Search payment">
-                    Cari
+                    Search
                 </button>
 
                 <button type="button"
@@ -378,8 +378,8 @@
                 </article>
             @empty
                 <div class="admin-booking-mobile-empty">
-                    <strong>Belum ada pembayaran.</strong>
-                    <p>Coba ubah keyword, tanggal, tipe, atau status pembayaran.</p>
+                    <strong>No payments yet.</strong>
+                    <p>Try changing the keyword, date, type, or payment status.</p>
                 </div>
             @endforelse
         </div>
@@ -550,8 +550,8 @@
                                         </svg>
                                     </span>
 
-                                    <strong>Belum ada pembayaran.</strong>
-                                    <p>Coba ubah keyword, tanggal, tipe, atau status pembayaran.</p>
+                                    <strong>No payments yet.</strong>
+                                    <p>Try changing the keyword, date, type, or payment status.</p>
                                 </div>
                             </td>
                         </tr>

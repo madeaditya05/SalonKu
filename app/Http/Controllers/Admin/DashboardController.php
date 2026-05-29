@@ -40,7 +40,7 @@ class DashboardController extends Controller
     public function index(Request $request)
     {
         if (Auth::user()->role !== 'admin') {
-            abort(403, 'Anda tidak memiliki akses ke halaman admin.');
+            abort(403, 'You do not have access to the admin page.');
         }
 
         $allowedTabs = ['overview', 'sales', 'order', 'report'];
@@ -66,7 +66,7 @@ class DashboardController extends Controller
     public function export(string $format)
     {
         if (Auth::user()->role !== 'admin') {
-            abort(403, 'Anda tidak memiliki akses ke halaman admin.');
+            abort(403, 'You do not have access to the admin page.');
         }
 
         $format = strtolower($format);
