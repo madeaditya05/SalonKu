@@ -102,6 +102,8 @@ export function BranchDetailContent({
     const canContinue = Boolean(canContinueToPayment);
     const dateOptions = nextDateOptions();
     const hasSelectedServices = selectedServiceIds.length > 0;
+    const hasStaffOptions = staffs.length > 0;
+    const hasVisibleSlots = visibleSlots.length > 0;
     const hasScheduled = selectedServices.length > 0 && selectedServices.every((service) => service.isScheduledEnabled);
     const hasQueue = selectedServices.length > 0 && selectedServices.every((service) => service.isQueueEnabled);
     const galleryImages = fallbackGallery(uniqueImages([
@@ -400,9 +402,9 @@ export function BranchDetailContent({
                         <h2>Staff Options</h2>
                         <div className="hotel-section-divider" />
 
-                        {availabilityLoading && hasSelectedServices ? (
+                        {availabilityLoading && hasSelectedServices && !hasStaffOptions ? (
                             <div className="branch-inline-empty">Checking matching staff...</div>
-                        ) : hasSelectedServices && staffs.length === 0 ? (
+                        ) : hasSelectedServices && !hasStaffOptions ? (
                             <div className="branch-inline-empty">No staff are available for this service yet.</div>
                         ) : (
                             <div className="branch-staff-grid">
@@ -451,20 +453,33 @@ export function BranchDetailContent({
                                     ))}
                                 </div>
 
-                                {availabilityLoading && hasSelectedServices ? (
+                                {availabilityLoading && hasSelectedServices && !hasVisibleSlots ? (
                                     <div className="branch-inline-empty">Calculating slots...</div>
                                 ) : !hasSelectedServices ? (
                                     <div className="branch-inline-empty">Choose services to see the schedule.</div>
-                                ) : visibleSlots.length === 0 ? (
+                                ) : !hasVisibleSlots ? (
                                     <div className="branch-inline-empty">No slots are available for this selection yet.</div>
                                 ) : (
                                     <div className="branch-slot-grid">
-                                        {visibleSlots.map((slot) => (
-                                            <button className={startTime === slot.time ? 'active' : ''} type="button" key={`${slot.time}-${slot.staff_id}`} onClick={() => setStartTime(slot.time)}>
-                                                <strong>{slot.time}</strong>
-                                                <span>{slot.staff_name}</span>
-                                            </button>
-                                        ))}
+                                        {visibleSlots.map((slot) => {
+                                            const expired = Boolean(slot.expired);
+                                            const active = startTime === slot.time && !expired;
+
+                                            return (
+                                                <button
+                                                    className={active ? 'active' : ''}
+                                                    type="button"
+                                                    disabled={expired}
+                                                    key={`${slot.time}-${slot.staff_id}`}
+                                                    onClick={() => {
+                                                        if (!expired) setStartTime(slot.time);
+                                                    }}
+                                                >
+                                                    <strong>{slot.time}</strong>
+                                                    <span>{expired ? 'Passed' : slot.staff_name}</span>
+                                                </button>
+                                            );
+                                        })}
                                     </div>
                                 )}
                             </>

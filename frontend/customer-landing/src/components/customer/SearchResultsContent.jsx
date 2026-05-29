@@ -526,7 +526,7 @@ export function SearchResultsContent({
         setLocating(true);
 
         try {
-            await useCurrentLocation();
+            await useCurrentLocation({ refreshResults: true });
         } finally {
             setLocating(false);
         }

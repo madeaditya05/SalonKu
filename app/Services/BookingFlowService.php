@@ -173,9 +173,18 @@ class BookingFlowService
     {
         $duration = $this->totals($services)['total_duration'];
         $eligibleStaff = $this->eligibleStaff($branch, $services, $date, $staffId);
+        $activeBookings = Booking::query()
+            ->whereIn('staff_id', $eligibleStaff->pluck('id'))
+            ->whereDate('booking_date', $date)
+            ->whereIn('status', self::ACTIVE_BOOKING_STATUSES)
+            ->get()
+            ->groupBy('staff_id');
         $slots = [];
+        $now = now();
 
         foreach ($eligibleStaff as $staff) {
+            $staffBookings = $activeBookings->get($staff->id, collect());
+
             foreach ($this->workingWindows($branch, $staff, $date) as $window) {
                 $cursor = Carbon::parse($date . ' ' . $window['start']);
                 $windowEnd = Carbon::parse($date . ' ' . $window['end']);
@@ -184,7 +193,7 @@ class BookingFlowService
                     $start = $cursor->format('H:i');
                     $end = $cursor->copy()->addMinutes($duration)->format('H:i');
 
-                    if (! $this->hasStaffConflict($staff, $date, $start, $duration)) {
+                    if ($cursor->gt($now) && ! $this->slotConflictsWithBookings($staffBookings, $date, $start, $duration)) {
                         $slots[] = [
                             'time' => $start,
                             'staff_id' => $staff->id,
@@ -238,6 +247,12 @@ class BookingFlowService
             if (Carbon::parse($bookingDate)->isPast() && Carbon::parse($bookingDate)->isBefore(now()->startOfDay())) {
                 throw ValidationException::withMessages([
                     'booking_date' => 'Tanggal booking tidak boleh di masa lalu.',
+                ]);
+            }
+
+            if (Carbon::parse($bookingDate . ' ' . $startTime)->lte(now())) {
+                throw ValidationException::withMessages([
+                    'start_time' => 'Jam booking sudah lewat. Pilih jam berikutnya.',
                 ]);
             }
 
@@ -422,6 +437,10 @@ class BookingFlowService
         $slotStart = Carbon::parse($date . ' ' . $startTime);
         $slotEnd = $slotStart->copy()->addMinutes($duration);
 
+        if ($slotStart->lte(now())) {
+            return false;
+        }
+
         $insideWorkingWindow = collect($this->workingWindows($branch, $staff, $date))
             ->contains(function (array $window) use ($date, $slotStart, $slotEnd) {
                 $windowStart = Carbon::parse($date . ' ' . $window['start']);
@@ -435,28 +454,34 @@ class BookingFlowService
 
     public function hasStaffConflict(ProviderStaff $staff, string $date, string $startTime, int $duration): bool
     {
-        $requestedStart = Carbon::parse($date . ' ' . $startTime);
-        $requestedEnd = $requestedStart->copy()->addMinutes($duration);
-
-        return Booking::query()
+        $bookings = Booking::query()
             ->where('staff_id', $staff->id)
             ->whereDate('booking_date', $date)
             ->whereIn('status', self::ACTIVE_BOOKING_STATUSES)
-            ->get()
-            ->contains(function (Booking $booking) use ($date, $requestedStart, $requestedEnd) {
-                $bookingStartValue = $booking->start_time ?: $booking->booking_time;
+            ->get();
 
-                if (! $bookingStartValue) {
-                    return false;
-                }
+        return $this->slotConflictsWithBookings($bookings, $date, $startTime, $duration);
+    }
 
-                $bookingStart = Carbon::parse($date . ' ' . $bookingStartValue);
-                $bookingEnd = $booking->estimated_end_time
-                    ? Carbon::parse($date . ' ' . $booking->estimated_end_time)
-                    : $bookingStart->copy()->addMinutes((int) ($booking->total_duration ?: 30));
+    private function slotConflictsWithBookings(Collection $bookings, string $date, string $startTime, int $duration): bool
+    {
+        $requestedStart = Carbon::parse($date . ' ' . $startTime);
+        $requestedEnd = $requestedStart->copy()->addMinutes($duration);
 
-                return $requestedStart->lt($bookingEnd) && $requestedEnd->gt($bookingStart);
-            });
+        return $bookings->contains(function (Booking $booking) use ($date, $requestedStart, $requestedEnd) {
+            $bookingStartValue = $booking->start_time ?: $booking->booking_time;
+
+            if (! $bookingStartValue) {
+                return false;
+            }
+
+            $bookingStart = Carbon::parse($date . ' ' . $bookingStartValue);
+            $bookingEnd = $booking->estimated_end_time
+                ? Carbon::parse($date . ' ' . $booking->estimated_end_time)
+                : $bookingStart->copy()->addMinutes((int) ($booking->total_duration ?: 30));
+
+            return $requestedStart->lt($bookingEnd) && $requestedEnd->gt($bookingStart);
+        });
     }
 
     public function bookingRelations(): array
@@ -525,6 +550,12 @@ class BookingFlowService
             }
 
             $booking->update($updates);
+            $booking->loadMissing('payment');
+
+            if (in_array($status, ['cancelled', 'no_show'], true) && $booking->payment && ! in_array($booking->payment->status, ['paid', 'refunded'], true)) {
+                $booking->payment->update(['status' => 'failed']);
+                $booking->update(['payment_status' => 'failed']);
+            }
 
             return $booking->refresh()->load($this->bookingRelations());
         });
@@ -566,6 +597,10 @@ class BookingFlowService
 
     private function workingWindows(ProviderBranch $branch, ProviderStaff $staff, string $date): array
     {
+        if (! $this->branchWorksOnDate($branch, $date)) {
+            return [];
+        }
+
         $dayAliases = $this->dayAliases(Carbon::parse($date));
         $schedules = $staff->schedules
             ->filter(function ($schedule) use ($dayAliases) {
@@ -575,10 +610,6 @@ class BookingFlowService
             ->values();
 
         if ($schedules->isEmpty()) {
-            if (! $this->branchWorksOnDate($branch, $date)) {
-                return [];
-            }
-
             return [[
                 'start' => $this->shortTime($branch->working_start_hour ?: '09:00'),
                 'end' => $this->shortTime($branch->working_end_hour ?: '18:00'),
