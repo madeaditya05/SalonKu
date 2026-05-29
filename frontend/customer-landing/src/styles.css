@@ -961,6 +961,14 @@ svg {
     border-color: var(--primary);
 }
 
+.slot-grid button:disabled {
+    color: #8a8f9a;
+    background: #f2f3f5;
+    border-color: #d9dde4;
+    box-shadow: none;
+    transform: none;
+}
+
 .slot-grid span {
     overflow: hidden;
     font-size: 12px;
@@ -4187,6 +4195,13 @@ body,
     border: 1px solid #eaded6;
     border-radius: 10px;
     text-align: left;
+}
+
+.branch-slot-grid button:disabled {
+    color: #8a8f9a;
+    background: #f2f3f5;
+    border-color: #d9dde4;
+    box-shadow: none;
 }
 
 .branch-slot-grid strong {
@@ -9689,6 +9704,12 @@ body {
     border-radius: 12px;
 }
 
+.hotel-detail-page .branch-slot-grid button:disabled {
+    color: #8a8f9a;
+    background: #f2f3f5;
+    border-color: #d9dde4;
+}
+
 .hotel-detail-page .branch-inline-empty {
     color: #747681;
     background: #f7f7f9;
@@ -11761,6 +11782,16 @@ body {
     box-shadow: 0 18px 36px rgba(47, 158, 115, 0.22);
 }
 
+.booking-success-mark.is-pending {
+    background: #f59e0b;
+    box-shadow: 0 18px 36px rgba(245, 158, 11, 0.22);
+}
+
+.booking-success-mark.is-failed {
+    background: #dc2626;
+    box-shadow: 0 18px 36px rgba(220, 38, 38, 0.18);
+}
+
 .booking-success-empty {
     display: grid;
     justify-items: center;
@@ -11980,6 +12011,12 @@ body {
     border-radius: 12px;
 }
 
+.midtrans-empty-instruction.is-error {
+    color: #991b1b;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+}
+
 .midtrans-empty-instruction p {
     margin: 0;
 }
@@ -12069,6 +12106,21 @@ body {
     background: var(--review-purple);
     border-radius: 999px;
     box-shadow: 0 18px 36px rgba(87, 68, 215, 0.22);
+}
+
+.my-bookings-mark.is-pending {
+    background: #f59e0b;
+    box-shadow: 0 18px 36px rgba(245, 158, 11, 0.22);
+}
+
+.my-bookings-mark.is-paid {
+    background: #2f9e73;
+    box-shadow: 0 18px 36px rgba(47, 158, 115, 0.22);
+}
+
+.my-bookings-mark.is-cancelled {
+    background: #dc2626;
+    box-shadow: 0 18px 36px rgba(220, 38, 38, 0.18);
 }
 
 .my-bookings-stats {

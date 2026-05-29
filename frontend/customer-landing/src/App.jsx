@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, Navigate, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
     cancelCustomerBooking,
@@ -40,7 +40,10 @@ const bookingRefreshMs = 10000;
 const findServiceRoute = '/findservice';
 const serviceRoute = (branchId) => (branchId ? `${findServiceRoute}/${branchId}/services` : findServiceRoute);
 const deviceLocationRadiusKm = 25;
+const deviceLocationMaxAccuracyMeters = deviceLocationRadiusKm * 1000;
+const deviceLocationDraftMaxAgeMs = 10 * 60 * 1000;
 const pastBookingDateMessage = 'Service is not available before today. Choose today or a later date.';
+const locationAccuracyMessage = 'Location accuracy is low. Turn on precise location or type your city manually.';
 const dateInputPattern = /^\d{4}-\d{2}-\d{2}$/;
 const midtransPaymentChannels = [
     { id: 'qris', label: 'QRIS', detail: 'Scan QR from any QRIS-ready wallet or mobile banking app.' },
@@ -150,6 +153,27 @@ function normalizeDraftBookingType(value) {
     return value === 'queue' ? 'queue' : 'scheduled';
 }
 
+function normalizeSearchCoordinates(value) {
+    const coordinates = plainObject(value);
+
+    if (!coordinates) return null;
+
+    const lat = Number(coordinates.lat);
+    const lng = Number(coordinates.lng);
+    const accuracy = Number(coordinates.accuracy);
+    const timestamp = Number(coordinates.timestamp);
+
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
+
+    return {
+        lat,
+        lng,
+        ...(Number.isFinite(accuracy) ? { accuracy } : {}),
+        ...(Number.isFinite(timestamp) ? { timestamp } : {}),
+    };
+}
+
 function readBookingDraft() {
     const draft = plainObject(readStoredJson(bookingDraftStorageKey));
 
@@ -158,27 +182,41 @@ function readBookingDraft() {
     const bookingDate = normalizeDraftBookingDate(draft.bookingDate);
     const storedDateWasPast = isPastBookingDate(draft.bookingDate);
     const branchQueryParams = { ...(plainObject(draft.branchQueryParams) || {}) };
+    const selectedLocation = plainObject(draft.selectedLocation);
+    const searchCoordinates = normalizeSearchCoordinates(draft.searchCoordinates);
+    const currentLocationDraft = isCurrentLocationLabel(draft.locationQuery) || isCurrentLocationLabel(selectedLocation?.label);
+    const updatedAt = Number(draft.updatedAt || 0);
+    const draftAge = Number.isFinite(updatedAt) ? Date.now() - updatedAt : Infinity;
+    const staleDeviceLocation = currentLocationDraft && (
+        !searchCoordinates
+        || !locationCoordinatesArePrecise(searchCoordinates)
+        || draftAge > deviceLocationDraftMaxAgeMs
+    );
+    const normalizedSelectedLocation = selectedLocation && currentLocationDraft
+        ? { ...selectedLocation, label: 'Current location' }
+        : selectedLocation;
+    const normalizedLocationQuery = currentLocationDraft ? 'Current location' : safeString(draft.locationQuery);
 
     if (isPastBookingDate(branchQueryParams.booking_date)) {
         delete branchQueryParams.booking_date;
     }
 
     return {
-        selectedLocation: plainObject(draft.selectedLocation),
-        selectedBranch: plainObject(draft.selectedBranch),
-        services: safeArray(draft.services),
-        staffs: safeArray(draft.staffs),
-        selectedServiceIds: safeArray(draft.selectedServiceIds),
+        selectedLocation: staleDeviceLocation ? null : normalizedSelectedLocation,
+        selectedBranch: staleDeviceLocation ? null : plainObject(draft.selectedBranch),
+        services: staleDeviceLocation ? [] : safeArray(draft.services),
+        staffs: staleDeviceLocation ? [] : safeArray(draft.staffs),
+        selectedServiceIds: staleDeviceLocation ? [] : safeArray(draft.selectedServiceIds),
         bookingType: normalizeDraftBookingType(draft.bookingType),
-        selectedStaffId: safeString(draft.selectedStaffId),
+        selectedStaffId: staleDeviceLocation ? '' : safeString(draft.selectedStaffId),
         bookingDate,
-        startTime: storedDateWasPast ? '' : safeString(draft.startTime),
+        startTime: storedDateWasPast || staleDeviceLocation ? '' : safeString(draft.startTime),
         paymentType: normalizeDraftPaymentType(draft.paymentType),
         notes: safeString(draft.notes),
-        locationQuery: safeString(draft.locationQuery),
-        searchCoordinates: plainObject(draft.searchCoordinates),
+        locationQuery: staleDeviceLocation ? '' : normalizedLocationQuery,
+        searchCoordinates: staleDeviceLocation ? null : searchCoordinates,
         serviceCategory: safeString(draft.serviceCategory) || 'all',
-        branchQueryParams,
+        branchQueryParams: staleDeviceLocation ? {} : branchQueryParams,
     };
 }
 
@@ -294,9 +332,38 @@ function findMatchingLocation(locations, keyword) {
 function isDeviceLocationKeyword(keyword) {
     const normalizedKeyword = normalizeSearchText(keyword);
 
-    return normalizedKeyword.startsWith('current location')
-        || normalizedKeyword.startsWith('current location')
-        || ['near me', 'current location', 'device location'].includes(normalizedKeyword);
+    return isCurrentLocationLabel(normalizedKeyword)
+        || ['near me', 'device location', 'lokasi saya', 'lokasi saat ini'].includes(normalizedKeyword);
+}
+
+function isCurrentLocationLabel(value) {
+    const normalizedValue = normalizeSearchText(value);
+
+    return normalizedValue.startsWith('current location')
+        || normalizedValue.startsWith('lokasi saat ini');
+}
+
+function locationCoordinatesArePrecise(coordinates) {
+    const accuracy = Number(coordinates?.accuracy);
+
+    return Number.isFinite(accuracy) && accuracy <= deviceLocationMaxAccuracyMeters;
+}
+
+function normalizeDevicePosition(position) {
+    const lat = Number(position?.coords?.latitude);
+    const lng = Number(position?.coords?.longitude);
+    const accuracy = Number(position?.coords?.accuracy);
+    const timestamp = Number(position?.timestamp || Date.now());
+
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
+
+    return {
+        lat,
+        lng,
+        accuracy: Number.isFinite(accuracy) ? accuracy : Infinity,
+        timestamp,
+    };
 }
 
 function getDeviceCoordinates() {
@@ -306,18 +373,46 @@ function getDeviceCoordinates() {
             return;
         }
 
-        navigator.geolocation.getCurrentPosition(
-            (position) => resolve({
-                lat: position.coords.latitude,
-                lng: position.coords.longitude,
-            }),
-            () => resolve(null),
-            {
-                enableHighAccuracy: true,
-                maximumAge: 60000,
-                timeout: 10000,
-            }
-        );
+        const attempts = [
+            { enableHighAccuracy: true, maximumAge: 0, timeout: 16000 },
+            { enableHighAccuracy: false, maximumAge: 0, timeout: 9000 },
+        ];
+        let bestCoordinates = null;
+
+        function runAttempt(index = 0) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const coordinates = normalizeDevicePosition(position);
+
+                    if (coordinates && (!bestCoordinates || coordinates.accuracy < bestCoordinates.accuracy)) {
+                        bestCoordinates = coordinates;
+                    }
+
+                    if (coordinates && locationCoordinatesArePrecise(coordinates)) {
+                        resolve(coordinates);
+                        return;
+                    }
+
+                    if (index + 1 < attempts.length) {
+                        runAttempt(index + 1);
+                        return;
+                    }
+
+                    resolve(bestCoordinates && locationCoordinatesArePrecise(bestCoordinates) ? bestCoordinates : null);
+                },
+                () => {
+                    if (index + 1 < attempts.length) {
+                        runAttempt(index + 1);
+                        return;
+                    }
+
+                    resolve(bestCoordinates && locationCoordinatesArePrecise(bestCoordinates) ? bestCoordinates : null);
+                },
+                attempts[index]
+            );
+        }
+
+        runAttempt();
     });
 }
 
@@ -331,22 +426,6 @@ function locationBranchParams(location) {
     };
 
     return Object.fromEntries(Object.entries(params).filter(([, value]) => Boolean(value)));
-}
-
-function branchLocationName(branch) {
-    if (!branch) return '';
-
-    return branch.locationLabel
-        || [branch.city, branch.state, branch.country].filter(Boolean).join(', ')
-        || branch.address
-        || '';
-}
-
-function currentLocationName(branches = []) {
-    const nearestBranch = branches.find((branch) => branch.distanceKm !== undefined && branch.distanceKm !== null) || branches[0];
-    const locationName = branchLocationName(nearestBranch);
-
-    return locationName ? `Current location - ${locationName}` : 'Current location';
 }
 
 function firstName(name) {
@@ -392,21 +471,61 @@ function paymentStatusLabel(status) {
         unpaid: 'Unpaid',
         failed: 'Failed',
         refunded: 'Refunded',
+        cancelled: 'Cancelled',
     };
 
     return labels[status] || statusLabel(status);
 }
 
+const cancelledBookingStatuses = ['cancelled', 'customer_cancelled', 'provider_cancelled', 'no_show'];
+const finalBookingStatuses = [...cancelledBookingStatuses, 'completed', 'order_completed'];
+
+function bookingIsCancelled(booking) {
+    return cancelledBookingStatuses.includes(booking?.status);
+}
+
 function bookingDisplayStatus(booking) {
     const payment = booking?.payment || {};
+    const bookingStatus = booking?.status || 'pending';
     const paymentType = payment.payment_type || booking?.payment_type || 'pay_at_salon';
     const paymentStatus = payment.status || booking?.payment_status || '';
+
+    if (finalBookingStatuses.includes(bookingStatus)) {
+        return bookingStatus;
+    }
 
     if (paymentType !== 'pay_at_salon' && ['pending', 'unpaid'].includes(paymentStatus)) {
         return 'pending_payment';
     }
 
-    return booking?.status || 'pending';
+    return bookingStatus;
+}
+
+function bookingEffectivePaymentStatus(booking) {
+    if (bookingIsCancelled(booking)) return 'cancelled';
+
+    const payment = booking?.payment || {};
+
+    return payment.status || booking?.payment_status || 'pending';
+}
+
+function bookingHeroVisual(booking) {
+    const effectivePaymentStatus = bookingEffectivePaymentStatus(booking);
+    const displayStatus = bookingDisplayStatus(booking);
+
+    if (bookingIsCancelled(booking) || effectivePaymentStatus === 'failed') {
+        return { icon: 'x', state: 'is-cancelled' };
+    }
+
+    if (effectivePaymentStatus === 'paid') {
+        return { icon: 'check', state: 'is-paid' };
+    }
+
+    if (displayStatus === 'pending_payment' || ['pending', 'unpaid'].includes(effectivePaymentStatus)) {
+        return { icon: 'clock', state: 'is-pending' };
+    }
+
+    return { icon: 'calendar', state: 'is-default' };
 }
 
 function bookingServiceItems(booking) {
@@ -526,6 +645,19 @@ function normalizeStaff(staff, index = 0) {
     };
 }
 
+function stableStaffList(staffList) {
+    return [...staffList].sort((left, right) => {
+        const leftId = Number(left.id);
+        const rightId = Number(right.id);
+
+        if (Number.isFinite(leftId) && Number.isFinite(rightId) && leftId !== rightId) {
+            return leftId - rightId;
+        }
+
+        return String(left.name || '').localeCompare(String(right.name || ''));
+    });
+}
+
 function bookingServicesText(booking) {
     const services = bookingServiceItems(booking);
 
@@ -540,6 +672,47 @@ function sameId(left, right) {
     return String(left) === String(right);
 }
 
+function availabilityCacheKey(branchId, serviceIds, bookingType, bookingDate, staffId = '') {
+    const servicesKey = [...serviceIds].map(String).sort().join(',');
+
+    return [branchId || '', servicesKey, bookingType || '', bookingDate || '', staffId || 'any'].join('|');
+}
+
+function slotDateTime(dateValue, timeValue) {
+    const dateMatch = String(dateValue || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    const timeMatch = String(timeValue || '').match(/^(\d{1,2}):(\d{2})/);
+
+    if (!dateMatch || !timeMatch) return null;
+
+    return new Date(
+        Number(dateMatch[1]),
+        Number(dateMatch[2]) - 1,
+        Number(dateMatch[3]),
+        Number(timeMatch[1]),
+        Number(timeMatch[2]),
+        0,
+        0
+    );
+}
+
+function slotIsExpired(dateValue, timeValue, referenceDate = new Date()) {
+    const slotTime = slotDateTime(dateValue, timeValue);
+
+    return Boolean(slotTime && slotTime <= referenceDate);
+}
+
+function staffHasSelectedServiceSkills(staff, serviceIds) {
+    const skills = Array.isArray(staff?.skills) ? staff.skills : [];
+    const skillIds = skills
+        .map((skill) => skill?.id ?? skill?.service_id ?? skill)
+        .filter((id) => id !== undefined && id !== null)
+        .map(String);
+
+    if (skillIds.length === 0) return true;
+
+    return serviceIds.every((serviceId) => skillIds.includes(String(serviceId)));
+}
+
 function App() {
     useLocalizedCustomerText();
 
@@ -549,7 +722,7 @@ function App() {
     const [locations, setLocations] = useState([]);
     const [branches, setBranches] = useState([]);
     const [services, setServices] = useState(savedBookingDraft.services || []);
-    const [staffs, setStaffs] = useState(savedBookingDraft.staffs || []);
+    const [staffs, setStaffs] = useState(stableStaffList(savedBookingDraft.staffs || []));
     const [selectedLocation, setSelectedLocation] = useState(savedBookingDraft.selectedLocation || null);
     const [selectedBranch, setSelectedBranch] = useState(savedBookingDraft.selectedBranch || null);
     const [selectedServiceIds, setSelectedServiceIds] = useState(savedBookingDraft.selectedServiceIds || []);
@@ -566,15 +739,47 @@ function App() {
     const [branchQueryParams, setBranchQueryParams] = useState(savedBookingDraft.branchQueryParams || {});
     const [catalogRefreshTick, setCatalogRefreshTick] = useState(0);
     const [availabilityRefreshTick, setAvailabilityRefreshTick] = useState(0);
+    const [clockTick, setClockTick] = useState(() => Date.now());
+    const isReviewBookingRoute = location.pathname === '/booking/payment';
+
+    useEffect(() => {
+        const frame = window.requestAnimationFrame(() => {
+            window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+        });
+
+        return () => window.cancelAnimationFrame(frame);
+    }, [location.pathname, location.search]);
+
+    useEffect(() => {
+        const refreshClock = () => setClockTick(Date.now());
+        const interval = window.setInterval(refreshClock, 60000);
+
+        window.addEventListener('focus', refreshClock);
+        document.addEventListener('visibilitychange', refreshClock);
+
+        return () => {
+            window.clearInterval(interval);
+            window.removeEventListener('focus', refreshClock);
+            document.removeEventListener('visibilitychange', refreshClock);
+        };
+    }, []);
 
     const [isBooting, setBooting] = useState(true);
     const [isLoadingBranches, setLoadingBranches] = useState(false);
     const [isLoadingBranch, setLoadingBranch] = useState(false);
     const [availability, setAvailability] = useState(null);
     const [availabilityLoading, setAvailabilityLoading] = useState(false);
+    const availabilityRequestRef = useRef(0);
+    const availabilityKeyRef = useRef('');
     const [bookingLoading, setBookingLoading] = useState(false);
     const [bookingError, setBookingError] = useState('');
     const [bookingSuccess, setBookingSuccess] = useState(null);
+    const [paymentSetup, setPaymentSetup] = useState({
+        bookingId: null,
+        channel: 'qris',
+        status: 'idle',
+        error: '',
+    });
 
     const [authUser, setAuthUser] = useState(null);
     const [authToken, setAuthToken] = useState('');
@@ -595,6 +800,17 @@ function App() {
     const [customerBookings, setCustomerBookings] = useState([]);
     const [bookingsLoading, setBookingsLoading] = useState(false);
     const selectedBranchId = selectedBranch?.id || null;
+    const activeAvailabilityKey = useMemo(() => (
+        selectedBranchId && selectedServiceIds.length > 0
+            ? availabilityCacheKey(
+                selectedBranchId,
+                selectedServiceIds,
+                bookingType,
+                bookingType === 'scheduled' ? bookingDate : todayInputValue(),
+                selectedStaffId
+            )
+            : ''
+    ), [bookingDate, bookingType, selectedBranchId, selectedServiceIds, selectedStaffId]);
 
     useEffect(() => {
         if (bookingSuccess) return;
@@ -679,6 +895,7 @@ function App() {
         setAvailability(null);
         setBookingError('');
         setBookingSuccess(null);
+        setPaymentSetup({ bookingId: null, channel: 'qris', status: 'idle', error: '' });
         clearBookingDraft();
         clearPaymentDraft();
     }
@@ -731,13 +948,20 @@ function App() {
 
             const nextBranch = normalizeBranch(detail);
             const nextServices = (detail.services || []).map(normalizeService);
-            const nextStaffs = (detail.staff || []).map(normalizeStaff);
+            const nextStaffs = stableStaffList((detail.staff || []).map(normalizeStaff));
             const nextServiceIds = new Set(nextServices.map((service) => String(service.id)));
 
             setSelectedBranch(nextBranch);
             setServices(nextServices);
             setStaffs(nextStaffs);
-            setSelectedServiceIds((current) => current.filter((id) => nextServiceIds.has(String(id))));
+            setSelectedServiceIds((current) => {
+                const nextSelectedIds = current.filter((id) => nextServiceIds.has(String(id)));
+
+                return nextSelectedIds.length === current.length
+                    && nextSelectedIds.every((id, index) => sameId(id, current[index]))
+                    ? current
+                    : nextSelectedIds;
+            });
             setServiceCategory((current) => {
                 if (current === 'all') return current;
                 return nextServices.some((service) => service.category === current) ? current : 'all';
@@ -758,14 +982,25 @@ function App() {
     }, [isLoadingBranch, refreshSelectedBranch, selectedBranchId, services.length]);
 
     const refreshAvailability = useCallback(async (options = {}) => {
-        if (!selectedBranchId || selectedServiceIds.length === 0) {
+        const requestId = availabilityRequestRef.current + 1;
+        availabilityRequestRef.current = requestId;
+
+        if (!selectedBranchId || selectedServiceIds.length === 0 || !activeAvailabilityKey) {
             setAvailability(null);
+            availabilityKeyRef.current = '';
+            setAvailabilityLoading(false);
             return null;
         }
 
         const { quiet = false } = options;
+        const keyChanged = availabilityKeyRef.current !== activeAvailabilityKey;
 
-        if (!quiet) setAvailabilityLoading(true);
+        if (keyChanged) {
+            setAvailability(null);
+            availabilityKeyRef.current = '';
+        }
+
+        if (!quiet || keyChanged) setAvailabilityLoading(true);
 
         try {
             const data = await checkBookingAvailability({
@@ -773,17 +1008,29 @@ function App() {
                 service_ids: selectedServiceIds,
                 booking_type: bookingType,
                 booking_date: bookingType === 'scheduled' ? bookingDate : undefined,
+                staff_id: selectedStaffId || undefined,
             });
 
-            setAvailability(data);
+            if (requestId !== availabilityRequestRef.current) {
+                return null;
+            }
+
+            availabilityKeyRef.current = activeAvailabilityKey;
+            setAvailability({ ...data, _key: activeAvailabilityKey, received_at: Date.now() });
             return data;
         } catch {
-            setAvailability(null);
+            if (requestId === availabilityRequestRef.current && (keyChanged || !quiet)) {
+                setAvailability(null);
+                availabilityKeyRef.current = '';
+            }
+
             return null;
         } finally {
-            if (!quiet) setAvailabilityLoading(false);
+            if (requestId === availabilityRequestRef.current) {
+                setAvailabilityLoading(false);
+            }
         }
-    }, [bookingDate, bookingType, selectedBranchId, selectedServiceIds]);
+    }, [activeAvailabilityKey, bookingDate, bookingType, selectedBranchId, selectedServiceIds, selectedStaffId]);
 
     useEffect(() => {
         let mounted = true;
@@ -792,7 +1039,7 @@ function App() {
             try {
                 const [locationResult, branchResult] = await Promise.allSettled([
                     getLocations({ per_page: 100 }),
-                    getBranches({ per_page: 100 }),
+                    getBranches({ per_page: 100, ...(savedBookingDraft.branchQueryParams || {}) }),
                 ]);
 
                 if (!mounted) return;
@@ -931,31 +1178,46 @@ function App() {
         return services.filter((service) => service.category === serviceCategory);
     }, [services, serviceCategory]);
 
-    const eligibleStaff = useMemo(() => {
-        const apiStaff = availability?.eligible_staff || [];
-        return apiStaff.length > 0 ? apiStaff.map(normalizeStaff) : [];
-    }, [availability]);
+    const fallbackEligibleStaff = useMemo(() => {
+        if (selectedServiceIds.length === 0) return staffs;
+
+        return staffs.filter((staff) => staff.status !== 'offline' && staffHasSelectedServiceSkills(staff, selectedServiceIds));
+    }, [selectedServiceIds, staffs]);
 
     const staffOptions = useMemo(() => {
         if (selectedServiceIds.length > 0) {
-            return eligibleStaff;
+            return fallbackEligibleStaff;
         }
 
         return staffs;
-    }, [eligibleStaff, selectedServiceIds, staffs]);
+    }, [fallbackEligibleStaff, selectedServiceIds, staffs]);
 
-    const availableSlots = availability?.available_slots || [];
+    const availabilityMatchesSelection = Boolean(activeAvailabilityKey && availability?._key === activeAvailabilityKey);
+    const isAvailabilityResolving = Boolean(activeAvailabilityKey) && (!availabilityMatchesSelection || availabilityLoading);
+    const availableSlots = availabilityMatchesSelection ? (availability?.available_slots || []) : [];
+    const queueEstimation = availabilityMatchesSelection ? availability?.queue_estimation : null;
+    const slotReferenceDate = useMemo(() => new Date(clockTick), [clockTick]);
     const visibleSlots = useMemo(() => {
         const staffId = selectedStaffId ? Number(selectedStaffId) : null;
         const slots = staffId ? availableSlots.filter((slot) => Number(slot.staff_id) === staffId) : availableSlots;
         const unique = new Map();
 
         slots.forEach((slot) => {
-            if (!unique.has(slot.time)) unique.set(slot.time, slot);
+            if (!unique.has(slot.time)) {
+                unique.set(slot.time, {
+                    ...slot,
+                    expired: slotIsExpired(bookingDate, slot.time, slotReferenceDate),
+                });
+            }
         });
 
-        return Array.from(unique.values()).slice(0, 18);
-    }, [availableSlots, selectedStaffId]);
+        const sortedSlots = Array.from(unique.values());
+        const expiredSlots = sortedSlots.filter((slot) => slot.expired);
+        const availableFutureSlots = sortedSlots.filter((slot) => !slot.expired);
+        const visibleExpiredSlots = bookingDate === todayInputValue() ? expiredSlots.slice(-4) : expiredSlots;
+
+        return [...visibleExpiredSlots, ...availableFutureSlots].slice(0, 18);
+    }, [availableSlots, bookingDate, selectedStaffId, slotReferenceDate]);
 
     useEffect(() => {
         if (document.hidden) return;
@@ -964,36 +1226,42 @@ function App() {
     }, [availabilityRefreshTick, refreshAvailability]);
 
     useEffect(() => {
-        if (!availability || !selectedStaffId || selectedServiceIds.length === 0) {
+        if (!selectedStaffId || selectedServiceIds.length === 0) {
             return;
         }
 
-        const selectedStaffStillEligible = eligibleStaff.some((staff) => String(staff.id) === String(selectedStaffId));
+        const selectedStaffStillEligible = staffOptions.some((staff) => String(staff.id) === String(selectedStaffId));
 
         if (!selectedStaffStillEligible) {
             setSelectedStaffId('');
         }
-    }, [availability, eligibleStaff, selectedServiceIds, selectedStaffId]);
+    }, [selectedServiceIds, selectedStaffId, staffOptions]);
 
     useEffect(() => {
+        if (isReviewBookingRoute) {
+            return;
+        }
+
         if (bookingType !== 'scheduled') {
             setStartTime('');
             return;
         }
 
-        if (!availability || availabilityLoading) {
+        if (!availabilityMatchesSelection || isAvailabilityResolving) {
             return;
         }
 
-        if (visibleSlots.length === 0) {
+        const nextAvailableSlot = visibleSlots.find((slot) => !slot.expired);
+
+        if (!nextAvailableSlot) {
             if (startTime) setStartTime('');
             return;
         }
 
-        if (!visibleSlots.some((slot) => slot.time === startTime)) {
-            setStartTime(visibleSlots[0].time);
+        if (!visibleSlots.some((slot) => slot.time === startTime && !slot.expired)) {
+            setStartTime(nextAvailableSlot.time);
         }
-    }, [availability, availabilityLoading, bookingType, visibleSlots, startTime]);
+    }, [availabilityMatchesSelection, bookingType, isAvailabilityResolving, isReviewBookingRoute, startTime, visibleSlots]);
 
     async function loadBranches(params = {}) {
         setSearchError('');
@@ -1004,6 +1272,7 @@ function App() {
         setSelectedServiceIds([]);
         setSelectedStaffId('');
         setAvailability(null);
+        setBookingSuccess(null);
         navigate(findServiceRoute);
 
         return refreshCatalog(params);
@@ -1016,23 +1285,6 @@ function App() {
         setSearchError(isPastBookingDate(nextDate) ? pastBookingDateMessage : '');
     }
 
-    async function resolveCurrentLocationLabel(coordinates) {
-        if (!coordinates) return 'Current location';
-
-        try {
-            const results = await getBranches({
-                per_page: 100,
-                lat: coordinates.lat,
-                lng: coordinates.lng,
-                radius_km: deviceLocationRadiusKm,
-            });
-
-            return currentLocationName(results.map(normalizeBranch));
-        } catch {
-            return 'Current location';
-        }
-    }
-
     async function submitLocation(event) {
         event.preventDefault();
         const formData = new FormData(event.currentTarget);
@@ -1042,6 +1294,15 @@ function App() {
         const selectedBookingDate = String(formData.get('booking_date') || '').trim();
         let latitude = String(formData.get('lat') || '').trim();
         let longitude = String(formData.get('lng') || '').trim();
+        const hiddenCoordinatesArePrecise = Boolean(
+            latitude
+            && longitude
+            && searchCoordinates
+            && locationCoordinatesArePrecise(searchCoordinates)
+            && String(searchCoordinates.lat) === latitude
+            && String(searchCoordinates.lng) === longitude
+        );
+        let preciseCoordinates = hiddenCoordinatesArePrecise ? searchCoordinates : null;
 
         if (isPastBookingDate(selectedBookingDate)) {
             setSearchError(pastBookingDateMessage);
@@ -1068,31 +1329,42 @@ function App() {
 
         if (selectedBookingDate) setBookingDate(selectedBookingDate);
 
-        if ((!latitude || !longitude) && (!keyword || usesDeviceLocation)) {
+        if ((!latitude || !longitude || !hiddenCoordinatesArePrecise) && (!keyword || usesDeviceLocation)) {
             const coordinates = await getDeviceCoordinates();
 
             if (coordinates) {
                 latitude = String(coordinates.lat);
                 longitude = String(coordinates.lng);
+                preciseCoordinates = coordinates;
+            } else {
+                setSearchCoordinates(null);
+                setSelectedLocation({ label: 'Current location' });
+                setLocationQuery('Current location');
+                setSearchError(locationAccuracyMessage);
+                setBranchQueryParams({});
+                setBranches([]);
+                navigate(findServiceRoute);
+                return;
             }
         }
 
         if (latitude && longitude) {
             const locationLabel = usesDeviceLocation || !keyword ? 'Current location' : keyword;
+            const locationCoordinates = preciseCoordinates || normalizeSearchCoordinates({ lat: latitude, lng: longitude });
 
             setLocationQuery(locationLabel);
-            setSearchCoordinates({ lat: latitude, lng: longitude });
-            setSelectedLocation({ label: locationLabel, lat: latitude, lng: longitude });
-            const loadedBranches = await loadBranches({
+            setSearchCoordinates(locationCoordinates);
+            setSelectedLocation({ label: locationLabel, ...(locationCoordinates || { lat: latitude, lng: longitude }) });
+            await loadBranches({
                 lat: latitude,
                 lng: longitude,
                 radius_km: deviceLocationRadiusKm,
                 ...scheduleParams,
             });
-            const resolvedLocationLabel = usesDeviceLocation || !keyword ? currentLocationName(loadedBranches) : locationLabel;
+            const resolvedLocationLabel = usesDeviceLocation || !keyword ? 'Current location' : locationLabel;
 
             setLocationQuery(resolvedLocationLabel);
-            setSelectedLocation({ label: resolvedLocationLabel, lat: latitude, lng: longitude });
+            setSelectedLocation({ label: resolvedLocationLabel, ...(locationCoordinates || { lat: latitude, lng: longitude }) });
             return;
         }
 
@@ -1110,9 +1382,11 @@ function App() {
         await loadBranches({ ...(shouldSearchKeyword ? { search: keyword } : {}), ...scheduleParams });
     }
 
-    async function useCurrentLocation() {
+    async function useCurrentLocation(options = {}) {
+        const { refreshResults = false } = options;
         const loadingLabel = 'Finding location...';
 
+        setSearchError('');
         setLocationQuery(loadingLabel);
         setSelectedLocation({ label: loadingLabel });
 
@@ -1122,21 +1396,48 @@ function App() {
             setSearchCoordinates(null);
             setLocationQuery('Current location');
             setSelectedLocation({ label: 'Current location' });
+            setSearchError(locationAccuracyMessage);
+            if (refreshResults) {
+                setBranchQueryParams({});
+                setSelectedBranch(null);
+                setBranches([]);
+                setServices([]);
+                setStaffs([]);
+                setSelectedServiceIds([]);
+                setSelectedStaffId('');
+                setAvailability(null);
+                setBookingSuccess(null);
+                navigate(findServiceRoute);
+            }
             return null;
         }
 
-        const currentCoordinates = { lat: coordinates.lat, lng: coordinates.lng };
-        const resolvedLocationLabel = await resolveCurrentLocationLabel(currentCoordinates);
+        const currentCoordinates = coordinates;
+        const resolvedLocationLabel = 'Current location';
 
         setSearchCoordinates(currentCoordinates);
         setLocationQuery(resolvedLocationLabel);
         setSelectedLocation({ label: resolvedLocationLabel, ...currentCoordinates });
 
+        if (refreshResults) {
+            const selectedBookingDate = isPastBookingDate(bookingDate) ? todayInputValue() : (bookingDate || todayInputValue());
+
+            if (selectedBookingDate !== bookingDate) {
+                setBookingDate(selectedBookingDate);
+            }
+
+            await loadBranches({
+                lat: currentCoordinates.lat,
+                lng: currentCoordinates.lng,
+                radius_km: deviceLocationRadiusKm,
+                ...(selectedBookingDate ? { booking_date: selectedBookingDate } : {}),
+            });
+        }
+
         return currentCoordinates;
     }
 
     async function chooseBranch(branch) {
-        setLoadingBranch(true);
         setSelectedBranch(branch);
         setSelectedServiceIds([]);
         setSelectedStaffId('');
@@ -1146,15 +1447,13 @@ function App() {
         navigate(serviceRoute(branch.id));
 
         try {
-            const detail = await refreshSelectedBranch(branch.id);
+            const detail = await refreshSelectedBranch(branch.id, { quiet: true });
 
             if (!detail) {
                 setSelectedBranch(branch);
             }
         } catch {
             setSelectedBranch(branch);
-        } finally {
-            setLoadingBranch(false);
         }
     }
 
@@ -1268,6 +1567,12 @@ function App() {
 
         setBookingLoading(true);
         setBookingError('');
+        setPaymentSetup({
+            bookingId: null,
+            channel: options.paymentChannel || 'qris',
+            status: 'idle',
+            error: '',
+        });
 
         try {
             const response = await createCustomerBooking(authToken, {
@@ -1281,25 +1586,58 @@ function App() {
                 coupon_code: options.couponCode || undefined,
                 notes: notes || undefined,
             });
-            let nextBooking = response.data;
-
-            if (paymentType !== 'pay_at_salon' && nextBooking?.id) {
-                const paymentResponse = await createBookingPayment(authToken, nextBooking.id, {
-                    payment_channel: options.paymentChannel || 'qris',
-                });
-
-                nextBooking = paymentResponse.data || nextBooking;
-            }
+            const nextBooking = response.data;
 
             clearBookingDraft();
             clearPaymentDraft();
             setBookingSuccess(nextBooking);
-            await loadCustomerBookings(authToken);
-            navigate('/booking/success');
+            navigate('/booking/success', { replace: true });
+
+            if (paymentType !== 'pay_at_salon' && nextBooking?.id) {
+                void prepareBookingPayment(nextBooking.id, options.paymentChannel || 'qris', authToken);
+            } else {
+                void loadCustomerBookings(authToken, { quiet: true });
+            }
         } catch (error) {
             setBookingError(error.message || 'Booking could not be created.');
         } finally {
             setBookingLoading(false);
+        }
+    }
+
+    async function prepareBookingPayment(bookingId, channel = 'qris', token = authToken) {
+        if (!bookingId || !token) return null;
+
+        setPaymentSetup({ bookingId, channel, status: 'loading', error: '' });
+
+        try {
+            const paymentResponse = await createBookingPayment(token, bookingId, {
+                payment_channel: channel,
+            });
+            const updatedBooking = paymentResponse.data || null;
+
+            if (updatedBooking) {
+                setBookingSuccess((current) => (
+                    current && sameId(current.id, updatedBooking.id)
+                        ? updatedBooking
+                        : current
+                ));
+            }
+
+            setPaymentSetup({ bookingId, channel, status: 'ready', error: '' });
+            await loadCustomerBookings(token, { quiet: true });
+
+            return updatedBooking;
+        } catch (error) {
+            setPaymentSetup({
+                bookingId,
+                channel,
+                status: 'error',
+                error: error.message || 'Payment instructions could not be generated.',
+            });
+            await loadCustomerBookings(token, { quiet: true });
+
+            return null;
         }
     }
 
@@ -1354,11 +1692,12 @@ function App() {
     }
 
     const selectedStaff = selectedStaffId
-        ? (eligibleStaff.find((staff) => String(staff.id) === String(selectedStaffId)) || staffs.find((staff) => String(staff.id) === String(selectedStaffId)))
+        ? (staffOptions.find((staff) => String(staff.id) === String(selectedStaffId)) || staffs.find((staff) => String(staff.id) === String(selectedStaffId)))
         : null;
     const selectedBranchServiceRoute = serviceRoute(selectedBranch?.id);
     const hasBookingBasics = Boolean(selectedBranch) && selectedServiceIds.length > 0;
-    const canContinueToPayment = hasBookingBasics && (bookingType === 'queue' || Boolean(startTime));
+    const hasSelectableStartTime = Boolean(startTime) && visibleSlots.some((slot) => slot.time === startTime && !slot.expired);
+    const canContinueToPayment = hasBookingBasics && (bookingType === 'queue' || hasSelectableStartTime);
     const summary = (
         <BookingSummary
             branch={selectedBranch}
@@ -1456,7 +1795,7 @@ function App() {
                         element={(
                             <SearchResultsContent
                                 branches={branches}
-                                isLoading={isLoadingBranches || isLoadingBranch}
+                                isLoading={isLoadingBranches}
                                 selectedBranch={selectedBranch}
                                 selectedLocation={selectedLocation}
                                 chooseBranch={chooseBranch}
@@ -1499,11 +1838,11 @@ function App() {
                                 selectedStaffId={selectedStaffId}
                                 setSelectedStaffId={setSelectedStaffId}
                                 selectedStaff={selectedStaff}
-                                availabilityLoading={availabilityLoading}
+                                availabilityLoading={isAvailabilityResolving}
                                 visibleSlots={visibleSlots}
                                 startTime={startTime}
                                 setStartTime={setStartTime}
-                                queueEstimation={availability?.queue_estimation}
+                                queueEstimation={queueEstimation}
                                 canContinueToPayment={canContinueToPayment}
                                 totals={totals}
                             />
@@ -1512,62 +1851,23 @@ function App() {
 
                     <Route
                         path="/booking/mode"
-                        element={(
-                            <BookingGuard condition={hasBookingBasics} redirectTo={selectedBranchServiceRoute}>
-                                <BookingRouteLayout activeStep={1} summary={summary} backTo={selectedBranchServiceRoute} nextTo="/booking/staff">
-                                    <ModeStep bookingType={bookingType} setBookingType={setBookingType} selectedServices={selectedServices} />
-                                </BookingRouteLayout>
-                            </BookingGuard>
-                        )}
+                        element={<Navigate to={selectedBranchServiceRoute} replace />}
                     />
 
                     <Route
                         path="/booking/staff"
-                        element={(
-                            <BookingGuard condition={hasBookingBasics} redirectTo={selectedBranchServiceRoute}>
-                                <BookingRouteLayout activeStep={2} summary={summary} backTo="/booking/mode" nextTo="/booking/schedule">
-                                    <StaffStep
-                                        staffs={staffOptions}
-                                        selectedStaffId={selectedStaffId}
-                                        setSelectedStaffId={setSelectedStaffId}
-                                        availabilityLoading={availabilityLoading}
-                                        hasSelectedServices={selectedServiceIds.length > 0}
-                                    />
-                                </BookingRouteLayout>
-                            </BookingGuard>
-                        )}
+                        element={<Navigate to={selectedBranchServiceRoute} replace />}
                     />
 
                     <Route
                         path="/booking/schedule"
-                        element={(
-                            <BookingGuard condition={hasBookingBasics} redirectTo={selectedBranchServiceRoute}>
-                                <BookingRouteLayout
-                                    activeStep={3}
-                                    summary={summary}
-                                    backTo="/booking/staff"
-                                    nextTo="/booking/payment"
-                                    nextDisabled={!canContinueToPayment}
-                                >
-                                    <ScheduleStep
-                                        bookingType={bookingType}
-                                        bookingDate={bookingDate}
-                                        setBookingDate={setBookingDate}
-                                        startTime={startTime}
-                                        setStartTime={setStartTime}
-                                        visibleSlots={visibleSlots}
-                                        availabilityLoading={availabilityLoading}
-                                        queueEstimation={availability?.queue_estimation}
-                                    />
-                                </BookingRouteLayout>
-                            </BookingGuard>
-                        )}
+                        element={<Navigate to={canContinueToPayment ? '/booking/payment' : selectedBranchServiceRoute} replace />}
                     />
 
                     <Route
                         path="/booking/payment"
                         element={(
-                            <BookingGuard condition={canContinueToPayment} redirectTo={hasBookingBasics ? '/booking/schedule' : selectedBranchServiceRoute}>
+                            <BookingGuard condition={hasBookingBasics} redirectTo={selectedBranchServiceRoute}>
                                 <ReviewStep
                                     authUser={authUser}
                                     branch={selectedBranch}
@@ -1599,6 +1899,8 @@ function App() {
                                 loading={bookingsLoading}
                                 openBookingsPanel={openBookingsPanel}
                                 onPaymentRefresh={refreshPaymentForBooking}
+                                paymentSetup={paymentSetup}
+                                onPaymentSetupRetry={(booking, channel) => prepareBookingPayment(booking.id, channel, authToken)}
                             />
                         )}
                     />
@@ -1760,7 +2062,7 @@ function ServiceRoutePage({
         return <Navigate to={findServiceRoute} replace />;
     }
 
-    const isPreparingBranch = (!isCurrentBranch && !loadFailed) || (isCurrentBranch && isLoadingBranch && allServices.length === 0);
+    const isPreparingBranch = !isCurrentBranch && !loadFailed;
 
     if (isPreparingBranch) {
         return (
@@ -1807,7 +2109,7 @@ function ServiceRoutePage({
     );
 }
 
-function BookingSuccess({ booking, loading = false, openBookingsPanel, onPaymentRefresh }) {
+function BookingSuccess({ booking, loading = false, openBookingsPanel, onPaymentRefresh, paymentSetup = {}, onPaymentSetupRetry }) {
     const [checkingPayment, setCheckingPayment] = useState(false);
 
     async function checkPaymentStatus() {
@@ -1880,15 +2182,51 @@ function BookingSuccess({ booking, loading = false, openBookingsPanel, onPayment
         || 'Salon address is not available';
     const staffName = booking.staff?.full_name || booking.staff?.name || booking.staff?.email || 'Any Available Staff';
     const payableAmount = Number(booking.total_price || booking.amount || payment.amount || 0);
-    const paymentAmount = Number(payment.amount ?? (booking.payment_status === 'paid' ? payableAmount : 0));
     const serviceCount = services.length || 1;
     const statusKey = bookingDisplayStatus(booking);
     const status = statusLabel(statusKey);
-    const paymentStatus = paymentStatusLabel(payment.status || booking.payment_status || 'pending');
     const paymentType = payment.payment_type || booking.payment_type || 'pay_at_salon';
-    const nextStepText = paymentType === 'pay_at_salon'
-        ? 'Visit the salon on schedule and pay directly on site.'
-        : payment.status === 'paid' || booking.payment_status === 'paid'
+    const isBookingCancelled = bookingIsCancelled(booking);
+    const paymentAmount = isBookingCancelled ? 0 : Number(payment.amount ?? (booking.payment_status === 'paid' ? payableAmount : 0));
+    const rawPaymentStatus = bookingEffectivePaymentStatus(booking);
+    const paymentStatus = paymentStatusLabel(rawPaymentStatus);
+    const hasSettledPayment = rawPaymentStatus === 'paid';
+    const needsOnlinePayment = paymentType !== 'pay_at_salon' && !hasSettledPayment && !isBookingCancelled;
+    const paymentSetupApplies = paymentSetup?.bookingId && sameId(paymentSetup.bookingId, booking.id);
+    const paymentSetupStatus = paymentSetupApplies ? paymentSetup.status : 'idle';
+    const paymentSetupError = paymentSetupApplies ? paymentSetup.error : '';
+    const paymentSetupChannel = paymentSetupApplies ? paymentSetup.channel : payment.payment_channel;
+    const hasPaymentInstruction = Boolean(payment.qr_url || payment.payment_code || payment.midtrans_order_id);
+    const isPreparingPayment = needsOnlinePayment && paymentSetupStatus === 'loading' && !hasPaymentInstruction;
+    const paymentSetupFailed = needsOnlinePayment && paymentSetupStatus === 'error' && !hasPaymentInstruction;
+    const paymentFailed = needsOnlinePayment && rawPaymentStatus === 'failed';
+    const heroTitle = isBookingCancelled
+        ? 'Booking Cancelled'
+        : needsOnlinePayment
+        ? paymentSetupFailed ? 'Payment Setup Failed' : paymentFailed ? 'Payment Failed' : isPreparingPayment ? 'Preparing Payment' : 'Payment Pending'
+        : 'Booking Successful';
+    const heroDescription = isBookingCancelled
+        ? 'This booking has been cancelled. No payment is required.'
+        : needsOnlinePayment
+        ? paymentSetupFailed
+            ? 'Your booking has been created, but payment instructions could not be generated yet.'
+            : isPreparingPayment
+                ? 'Your booking has been created. Payment instructions are being prepared.'
+                : paymentFailed
+            ? 'Your booking has been created, but the payment could not be completed.'
+            : 'Your booking has been created. Complete payment to secure your salon visit.'
+        : 'Your booking has been created. Save this code for salon check-in.';
+    const heroIcon = isBookingCancelled ? 'x' : needsOnlinePayment ? (paymentFailed ? 'info' : 'clock') : 'check';
+    const heroState = isBookingCancelled ? 'is-failed' : needsOnlinePayment ? (paymentFailed || paymentSetupFailed ? 'is-failed' : 'is-pending') : 'is-success';
+    const nextStepText = isBookingCancelled
+            ? 'Payment flow stopped because the booking was cancelled.'
+        : paymentType === 'pay_at_salon'
+            ? 'Visit the salon on schedule and pay directly on site.'
+        : paymentSetupFailed
+            ? 'Payment instructions could not be generated. Try again from the payment card below.'
+            : isPreparingPayment
+                ? 'Preparing payment instructions. You can stay on this page while we connect to Midtrans.'
+        : hasSettledPayment
             ? 'Payment has been received. Visit the salon at your scheduled booking time.'
             : 'Payment is being recorded. Keep your booking code for salon check-in.';
 
@@ -1901,11 +2239,11 @@ function BookingSuccess({ booking, loading = false, openBookingsPanel, onPayment
                         <span />
                         <strong>Booking Status</strong>
                     </nav>
-                    <h1>Booking Successful</h1>
-                    <p>Your booking has been created. Save this code for salon check-in.</p>
+                    <h1>{heroTitle}</h1>
+                    <p>{heroDescription}</p>
                 </div>
-                <div className="booking-success-mark" aria-hidden="true">
-                    <Icon name="check" size={46} />
+                <div className={`booking-success-mark ${heroState}`} aria-hidden="true">
+                    <Icon name={heroIcon} size={46} />
                 </div>
             </section>
 
@@ -1928,6 +2266,11 @@ function BookingSuccess({ booking, loading = false, openBookingsPanel, onPayment
                             payment={payment}
                             onCheckStatus={checkPaymentStatus}
                             checking={checkingPayment}
+                            setupStatus={paymentSetupStatus}
+                            setupError={paymentSetupError}
+                            setupChannel={paymentSetupChannel}
+                            onRetrySetup={onPaymentSetupRetry ? () => onPaymentSetupRetry(booking, paymentSetupChannel || 'qris') : null}
+                            cancelled={isBookingCancelled}
                         />
                         <div className="booking-success-actions">
                             <button className="btn btn-primary" type="button" onClick={openBookingsPanel}>View My Bookings</button>
@@ -2022,7 +2365,16 @@ function BookingSuccess({ booking, loading = false, openBookingsPanel, onPayment
     );
 }
 
-function PaymentInstructionCard({ payment = {}, onCheckStatus, checking = false }) {
+function PaymentInstructionCard({
+    payment = {},
+    onCheckStatus,
+    checking = false,
+    setupStatus = 'idle',
+    setupError = '',
+    setupChannel = 'qris',
+    onRetrySetup = null,
+    cancelled = false,
+}) {
     const paymentType = payment.payment_type || 'pay_at_salon';
     const status = payment.status || 'pending';
     const isOnlinePayment = paymentType !== 'pay_at_salon';
@@ -2030,23 +2382,58 @@ function PaymentInstructionCard({ payment = {}, onCheckStatus, checking = false 
 
     if (!isOnlinePayment) return null;
 
+    const hasInstruction = Boolean(payment.qr_url || payment.payment_code);
+    const isSettingUp = setupStatus === 'loading' && !hasInstruction;
+    const setupFailed = setupStatus === 'error' && !hasInstruction;
     const channelLabel = payment.payment_code_label
-        || String(payment.payment_channel || 'Midtrans').replaceAll('_', ' ').toUpperCase();
+        || String(payment.payment_channel || setupChannel || 'Midtrans').replaceAll('_', ' ').toUpperCase();
     const expiryLabel = payment.expiry_time
         ? `${formatDate(payment.expiry_time)}, ${formatTime(payment.expiry_time)}`
         : 'Follow the expiry time shown by your payment app.';
+    const statusClass = cancelled || setupFailed ? 'failed' : status;
+    const statusText = cancelled
+        ? 'Cancelled'
+        : isSettingUp
+        ? 'Preparing'
+        : setupFailed
+            ? 'Needs Retry'
+            : paymentStatusLabel(status);
+    const headingText = isPaid
+        ? 'Payment Received'
+        : cancelled
+            ? 'Payment Cancelled'
+        : isSettingUp
+            ? 'Preparing instructions'
+            : setupFailed
+                ? 'Payment setup failed'
+                : channelLabel;
 
     return (
         <section className="midtrans-instruction-card">
             <header>
                 <div>
                     <span>Midtrans Payment</span>
-                    <h3>{isPaid ? 'Payment Received' : channelLabel}</h3>
+                    <h3>{headingText}</h3>
                 </div>
-                <b className={`midtrans-status is-${status}`}>{paymentStatusLabel(status)}</b>
+                <b className={`midtrans-status is-${statusClass}`}>{statusText}</b>
             </header>
 
-            {payment.qr_url ? (
+            {cancelled ? (
+                <div className="midtrans-empty-instruction is-error">
+                    <Icon name="x" size={28} />
+                    <p>This booking has been cancelled. No payment is required.</p>
+                </div>
+            ) : isSettingUp ? (
+                <div className="midtrans-empty-instruction">
+                    <Icon name="clock" size={28} />
+                    <p>Preparing payment instructions with Midtrans. This can take a moment on sandbox.</p>
+                </div>
+            ) : setupFailed ? (
+                <div className="midtrans-empty-instruction is-error">
+                    <Icon name="info" size={28} />
+                    <p>{setupError || 'Payment instructions could not be generated yet.'}</p>
+                </div>
+            ) : payment.qr_url ? (
                 <div className="midtrans-live-qr">
                     <img src={payment.qr_url} alt="QRIS payment code" />
                     <div>
@@ -2071,13 +2458,17 @@ function PaymentInstructionCard({ payment = {}, onCheckStatus, checking = false 
             ) : (
                 <div className="midtrans-empty-instruction">
                     <Icon name="info" size={28} />
-                    <p>Payment instruction has not been generated yet.</p>
+                    <p>Payment instructions have not been generated yet.</p>
                 </div>
             )}
 
             <footer>
-                <span>Expires: {expiryLabel}</span>
-                {onCheckStatus && (
+                <span>{cancelled ? 'Payment flow stopped because the booking was cancelled.' : isSettingUp ? 'Connecting to Midtrans...' : setupFailed ? 'Retry payment setup to generate a new instruction.' : `Expires: ${expiryLabel}`}</span>
+                {!cancelled && (setupFailed || (!hasInstruction && onRetrySetup && !isSettingUp)) ? (
+                    <button type="button" onClick={onRetrySetup} disabled={isSettingUp}>
+                        Retry Payment Setup
+                    </button>
+                ) : !cancelled && onCheckStatus && (
                     <button type="button" onClick={onCheckStatus} disabled={checking || isPaid}>
                         {checking ? 'Checking...' : isPaid ? 'Paid' : 'Check Status'}
                     </button>
@@ -2118,6 +2509,8 @@ function ModeStep({ bookingType, setBookingType, selectedServices }) {
 }
 
 function StaffStep({ staffs, selectedStaffId, setSelectedStaffId, availabilityLoading, hasSelectedServices }) {
+    const hasStaffOptions = staffs.length > 0;
+
     return (
         <section className="step-section">
             <div className="section-head">
@@ -2128,9 +2521,9 @@ function StaffStep({ staffs, selectedStaffId, setSelectedStaffId, availabilityLo
                 </div>
             </div>
 
-            {availabilityLoading && <div className="empty-state">Checking eligible staff...</div>}
-
-            {!availabilityLoading && hasSelectedServices && staffs.length === 0 ? (
+            {availabilityLoading && !hasStaffOptions ? (
+                <div className="empty-state">Checking eligible staff...</div>
+            ) : hasSelectedServices && !hasStaffOptions ? (
                 <div className="empty-state">No staff member has all skills for this service yet.</div>
             ) : (
                 <div className="staff-grid">
@@ -2198,18 +2591,31 @@ function ScheduleStep({ bookingType, bookingDate, setBookingDate, startTime, set
                         <input type="date" min={todayInputValue()} value={bookingDate} onChange={(event) => setBookingDate(event.target.value)} />
                     </label>
 
-                    {availabilityLoading ? (
+                    {availabilityLoading && visibleSlots.length === 0 ? (
                         <div className="empty-state">Calculating slots...</div>
                     ) : visibleSlots.length === 0 ? (
                         <div className="empty-state">No slots are available for this selection yet.</div>
                     ) : (
                         <div className="slot-grid">
-                            {visibleSlots.map((slot) => (
-                                <button className={startTime === slot.time ? 'active' : ''} type="button" key={`${slot.time}-${slot.staff_id}`} onClick={() => setStartTime(slot.time)}>
-                                    <strong>{slot.time}</strong>
-                                    <span>{slot.staff_name}</span>
-                                </button>
-                            ))}
+                            {visibleSlots.map((slot) => {
+                                const expired = Boolean(slot.expired);
+                                const active = startTime === slot.time && !expired;
+
+                                return (
+                                    <button
+                                        className={active ? 'active' : ''}
+                                        type="button"
+                                        disabled={expired}
+                                        key={`${slot.time}-${slot.staff_id}`}
+                                        onClick={() => {
+                                            if (!expired) setStartTime(slot.time);
+                                        }}
+                                    >
+                                        <strong>{slot.time}</strong>
+                                        <span>{expired ? 'Passed' : slot.staff_name}</span>
+                                    </button>
+                                );
+                            })}
                         </div>
                     )}
                 </>
@@ -2344,18 +2750,7 @@ function ReviewStep({ authUser, branch, services, bookingType, staff, bookingDat
         setCouponFeedback({ type: '', text: '' });
     }
 
-    if (bookingSuccess) {
-        return (
-            <section className="booking-review-page">
-                <div className="booking-payment-success">
-                    <span><Icon name="check" size={34} /></span>
-                    <h1>Booking Successful</h1>
-                    <p>Your booking code: <strong>{bookingSuccess.booking_code}</strong></p>
-                    <button className="btn btn-primary" type="button" onClick={openBookingsPanel}>View My Bookings</button>
-                </div>
-            </section>
-        );
-    }
+    if (bookingSuccess) return <Navigate to="/booking/success" replace />;
 
     return (
         <section className="booking-review-page">
@@ -2929,7 +3324,21 @@ function MyBookingDetailPage({ authUser, authToken, bookings, loading, onRefresh
 
         try {
             await onCancel(booking.id);
-            setBookingDetail((current) => ({ ...(current || booking), status: 'cancelled' }));
+            setBookingDetail((current) => {
+                const source = current || booking;
+
+                return {
+                    ...source,
+                    status: 'cancelled',
+                    payment_status: source.payment_status === 'paid' ? source.payment_status : 'failed',
+                    payment: source.payment
+                        ? {
+                            ...source.payment,
+                            status: source.payment.status === 'paid' ? source.payment.status : 'failed',
+                        }
+                        : source.payment,
+                };
+            });
             await onRefresh?.();
         } finally {
             setCancelLoading(false);
@@ -2982,12 +3391,14 @@ function MyBookingDetailPage({ authUser, authToken, bookings, loading, onRefresh
     const services = bookingServiceItems(booking);
     const payment = booking.payment || {};
     const paymentType = payment.payment_type || booking.payment_type || 'pay_at_salon';
-    const paymentStatus = payment.status || booking.payment_status || 'pending';
-    const paymentAmount = Number(payment.amount ?? 0);
+    const isBookingCancelled = bookingIsCancelled(booking);
+    const paymentStatus = bookingEffectivePaymentStatus(booking);
+    const paymentAmount = isBookingCancelled ? 0 : Number(payment.amount ?? 0);
     const totalAmount = Number(booking.total_price || booking.amount || payment.amount || 0);
     const staffName = booking.staff?.full_name || booking.staff?.name || booking.staff?.email || 'Any Available Staff';
     const bookingTime = booking.start_time || booking.booking_time;
     const displayStatus = bookingDisplayStatus(booking);
+    const heroVisual = bookingHeroVisual(booking);
 
     return (
         <section className="booking-review-page my-bookings-page my-booking-detail-page">
@@ -3003,7 +3414,9 @@ function MyBookingDetailPage({ authUser, authToken, bookings, loading, onRefresh
                     <h1>Booking Detail</h1>
                     <p>View this booking visit information, services, staff, and payment status.</p>
                 </div>
-                <div className="my-bookings-mark" aria-hidden="true"><Icon name="calendar" size={42} /></div>
+                <div className={`my-bookings-mark ${heroVisual.state}`} aria-hidden="true">
+                    <Icon name={heroVisual.icon} size={42} />
+                </div>
             </section>
 
             <div className="booking-review-layout my-booking-detail-layout">
@@ -3021,6 +3434,7 @@ function MyBookingDetailPage({ authUser, authToken, bookings, loading, onRefresh
                             payment={payment}
                             onCheckStatus={checkCurrentPaymentStatus}
                             checking={checkingPayment}
+                            cancelled={isBookingCancelled}
                         />
                         <div className="booking-success-actions">
                             <Link className="btn btn-outline" to="/my-bookings">Back</Link>
