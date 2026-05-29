@@ -8,6 +8,167 @@
     }
 }
 
+/* Final admin mobile tab and search/filter alignment */
+@media (max-width: 640px) {
+    body.admin-body .admin-dashboard-tabs,
+    body.admin-body .admin-booking-tabs {
+        display: flex !important;
+        align-items: center !important;
+        gap: 8px !important;
+        width: 100% !important;
+        padding: 0 0 10px !important;
+        overflow-x: auto !important;
+        overflow-y: hidden !important;
+        overscroll-behavior-x: contain !important;
+        -webkit-overflow-scrolling: touch !important;
+        scrollbar-width: none !important;
+    }
+
+    body.admin-body .admin-dashboard-tabs::-webkit-scrollbar,
+    body.admin-body .admin-booking-tabs::-webkit-scrollbar {
+        display: none !important;
+    }
+
+    body.admin-body .admin-dashboard-tab,
+    body.admin-body .admin-booking-tab {
+        flex: 0 0 auto !important;
+        width: auto !important;
+        min-width: max-content !important;
+        min-height: 38px !important;
+        height: 38px !important;
+        padding: 0 14px !important;
+        justify-content: center !important;
+        white-space: nowrap !important;
+        text-align: center !important;
+    }
+
+    body.admin-body .admin-booking-filter-row,
+    body.admin-body .admin-services-page .admin-booking-filter-row,
+    body.admin-body .admin-category-page .admin-booking-filter-row,
+    body.admin-body .admin-coupon-page .admin-booking-filter-row,
+    body.admin-body .admin-people-page .admin-booking-filter-row,
+    body.admin-body .admin-ticket-filter-row {
+        display: grid !important;
+        grid-template-columns: minmax(0, 1fr) 52px 64px !important;
+        align-items: center !important;
+        gap: 6px !important;
+        overflow: visible !important;
+    }
+
+    body.admin-body .admin-booking-filter-row .admin-booking-field.search {
+        grid-column: 1 !important;
+        display: block !important;
+        width: 100% !important;
+        min-width: 0 !important;
+    }
+
+    body.admin-body .admin-booking-filter-row .admin-booking-search-box {
+        width: 100% !important;
+        height: 36px !important;
+        border-radius: 10px !important;
+    }
+
+    body.admin-body .admin-booking-filter-row .admin-booking-mobile-search-submit {
+        grid-column: 2 !important;
+        width: 52px !important;
+        min-width: 52px !important;
+        height: 36px !important;
+        min-height: 36px !important;
+        padding: 0 !important;
+        border-radius: 10px !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        white-space: nowrap !important;
+        font-size: 11px !important;
+        font-weight: 700 !important;
+        line-height: 1 !important;
+    }
+
+    body.admin-body .admin-booking-filter-row .admin-booking-mobile-filter-toggle {
+        grid-column: 3 !important;
+        width: 64px !important;
+        min-width: 64px !important;
+        height: 36px !important;
+        min-height: 36px !important;
+        padding: 0 !important;
+        border-radius: 10px !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        white-space: nowrap !important;
+        font-size: 11px !important;
+        font-weight: 700 !important;
+        line-height: 1 !important;
+    }
+
+    body.admin-body .admin-booking-filter-panel.is-expanded .admin-booking-filter-row,
+    body.admin-body .admin-services-page .admin-booking-filter-panel.is-expanded .admin-booking-filter-row,
+    body.admin-body .admin-category-page .admin-booking-filter-panel.is-expanded .admin-booking-filter-row,
+    body.admin-body .admin-coupon-page .admin-booking-filter-panel.is-expanded .admin-booking-filter-row,
+    body.admin-body .admin-people-page .admin-booking-filter-panel.is-expanded .admin-booking-filter-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+
+    body.admin-body .admin-booking-filter-panel.is-expanded .admin-booking-filter-row .admin-booking-field.search {
+        grid-column: 1 / -1 !important;
+    }
+
+    body.admin-body .admin-booking-filter-panel.is-expanded .admin-booking-filter-row .admin-booking-mobile-search-submit {
+        grid-column: 1 !important;
+        width: 100% !important;
+        min-width: 0 !important;
+    }
+
+    body.admin-body .admin-booking-filter-panel.is-expanded .admin-booking-filter-row .admin-booking-mobile-filter-toggle {
+        grid-column: 2 !important;
+        width: 100% !important;
+        min-width: 0 !important;
+    }
+
+    body.admin-body .admin-booking-filter-panel.is-expanded .admin-booking-filter-buttons {
+        grid-column: 1 / -1 !important;
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 8px !important;
+        width: 100% !important;
+    }
+
+    body.admin-body .admin-booking-filter-panel.is-expanded .admin-booking-filter-buttons a,
+    body.admin-body .admin-booking-filter-panel.is-expanded .admin-booking-filter-buttons button {
+        width: 100% !important;
+        min-height: 36px !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        white-space: nowrap !important;
+    }
+}
+
+@media (max-width: 380px) {
+    body.admin-body .admin-booking-filter-row,
+    body.admin-body .admin-services-page .admin-booking-filter-row,
+    body.admin-body .admin-category-page .admin-booking-filter-row,
+    body.admin-body .admin-coupon-page .admin-booking-filter-row,
+    body.admin-body .admin-people-page .admin-booking-filter-row,
+    body.admin-body .admin-ticket-filter-row {
+        grid-template-columns: minmax(0, 1fr) 46px 56px !important;
+        gap: 5px !important;
+    }
+
+    body.admin-body .admin-booking-filter-row .admin-booking-mobile-search-submit {
+        width: 46px !important;
+        min-width: 46px !important;
+        font-size: 10px !important;
+    }
+
+    body.admin-body .admin-booking-filter-row .admin-booking-mobile-filter-toggle {
+        width: 56px !important;
+        min-width: 56px !important;
+        font-size: 10px !important;
+    }
+}
+
 @media (max-width: 992px) {
     body.admin-sidebar-collapsed .admin-sidebar {
         width: min(292px, calc(100vw - 28px));
@@ -627,5 +788,162 @@
         padding: 0 7px;
         border-radius: 999px;
         font-size: 11px;
+    }
+}
+
+/* FINAL: admin mobile tab strips and search/filter bars */
+@media (max-width: 640px) {
+    body.admin-body .admin-dashboard-tabs,
+    body.admin-body .admin-booking-tabs {
+        display: flex !important;
+        align-items: center !important;
+        gap: 8px !important;
+        width: 100% !important;
+        padding: 0 0 10px !important;
+        overflow-x: auto !important;
+        overflow-y: hidden !important;
+        overscroll-behavior-x: contain !important;
+        -webkit-overflow-scrolling: touch !important;
+        scrollbar-width: none !important;
+    }
+
+    body.admin-body .admin-dashboard-tabs::-webkit-scrollbar,
+    body.admin-body .admin-booking-tabs::-webkit-scrollbar {
+        display: none !important;
+    }
+
+    body.admin-body .admin-dashboard-tab,
+    body.admin-body .admin-booking-tab {
+        flex: 0 0 auto !important;
+        width: auto !important;
+        min-width: max-content !important;
+        min-height: 38px !important;
+        height: 38px !important;
+        padding: 0 14px !important;
+        justify-content: center !important;
+        white-space: nowrap !important;
+        text-align: center !important;
+    }
+
+    body.admin-body .admin-booking-filter-row,
+    body.admin-body .admin-services-page .admin-booking-filter-row,
+    body.admin-body .admin-category-page .admin-booking-filter-row,
+    body.admin-body .admin-coupon-page .admin-booking-filter-row,
+    body.admin-body .admin-people-page .admin-booking-filter-row,
+    body.admin-body .admin-ticket-filter-row {
+        display: grid !important;
+        grid-template-columns: minmax(0, 1fr) 52px 64px !important;
+        align-items: center !important;
+        gap: 6px !important;
+        overflow: visible !important;
+    }
+
+    body.admin-body .admin-booking-filter-row .admin-booking-field.search {
+        grid-column: 1 !important;
+        display: block !important;
+        width: 100% !important;
+        min-width: 0 !important;
+    }
+
+    body.admin-body .admin-booking-filter-row .admin-booking-search-box {
+        width: 100% !important;
+        height: 36px !important;
+        border-radius: 10px !important;
+    }
+
+    body.admin-body .admin-booking-filter-row .admin-booking-mobile-search-submit {
+        grid-column: 2 !important;
+        width: 52px !important;
+        min-width: 52px !important;
+        height: 36px !important;
+        min-height: 36px !important;
+        padding: 0 !important;
+        border-radius: 10px !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        white-space: nowrap !important;
+        font-size: 11px !important;
+        font-weight: 700 !important;
+        line-height: 1 !important;
+    }
+
+    body.admin-body .admin-booking-filter-row .admin-booking-mobile-filter-toggle {
+        grid-column: 3 !important;
+        width: 64px !important;
+        min-width: 64px !important;
+        height: 36px !important;
+        min-height: 36px !important;
+        padding: 0 !important;
+        border-radius: 10px !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        white-space: nowrap !important;
+        font-size: 11px !important;
+        font-weight: 700 !important;
+        line-height: 1 !important;
+    }
+
+    body.admin-body .admin-booking-filter-panel.is-expanded .admin-booking-filter-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+
+    body.admin-body .admin-booking-filter-panel.is-expanded .admin-booking-filter-row .admin-booking-field.search {
+        grid-column: 1 / -1 !important;
+    }
+
+    body.admin-body .admin-booking-filter-panel.is-expanded .admin-booking-filter-row .admin-booking-mobile-search-submit {
+        grid-column: 1 !important;
+        width: 100% !important;
+        min-width: 0 !important;
+    }
+
+    body.admin-body .admin-booking-filter-panel.is-expanded .admin-booking-filter-row .admin-booking-mobile-filter-toggle {
+        grid-column: 2 !important;
+        width: 100% !important;
+        min-width: 0 !important;
+    }
+
+    body.admin-body .admin-booking-filter-panel.is-expanded .admin-booking-filter-buttons {
+        grid-column: 1 / -1 !important;
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 8px !important;
+        width: 100% !important;
+    }
+
+    body.admin-body .admin-booking-filter-panel.is-expanded .admin-booking-filter-buttons a,
+    body.admin-body .admin-booking-filter-panel.is-expanded .admin-booking-filter-buttons button {
+        width: 100% !important;
+        min-height: 36px !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        white-space: nowrap !important;
+    }
+}
+
+@media (max-width: 380px) {
+    body.admin-body .admin-booking-filter-row,
+    body.admin-body .admin-services-page .admin-booking-filter-row,
+    body.admin-body .admin-category-page .admin-booking-filter-row,
+    body.admin-body .admin-coupon-page .admin-booking-filter-row,
+    body.admin-body .admin-people-page .admin-booking-filter-row,
+    body.admin-body .admin-ticket-filter-row {
+        grid-template-columns: minmax(0, 1fr) 46px 56px !important;
+        gap: 5px !important;
+    }
+
+    body.admin-body .admin-booking-filter-row .admin-booking-mobile-search-submit {
+        width: 46px !important;
+        min-width: 46px !important;
+        font-size: 10px !important;
+    }
+
+    body.admin-body .admin-booking-filter-row .admin-booking-mobile-filter-toggle {
+        width: 56px !important;
+        min-width: 56px !important;
+        font-size: 10px !important;
     }
 }

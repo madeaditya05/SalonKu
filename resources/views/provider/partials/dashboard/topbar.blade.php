@@ -90,11 +90,11 @@
             <div class="notification-popover" data-notification-popover>
                 <div class="notification-popover-head">
                     <div>
-                        <strong>Notifikasi</strong>
-                        <span data-notification-subtitle>Memuat...</span>
+                        <strong>Notifications</strong>
+                        <span data-notification-subtitle>Loading...</span>
                     </div>
 
-                    <button type="button" data-notification-read-all>Tandai dibaca</button>
+                    <button type="button" data-notification-read-all>Mark all read</button>
                 </div>
 
                 <div class="notification-list" data-notification-list></div>

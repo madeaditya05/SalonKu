@@ -1,7 +1,79 @@
 document.addEventListener('DOMContentLoaded', function () {
+    initRoleFilters();
     initRolePermissionForm();
     initRoleDeleteConfirm();
 });
+
+function initRoleFilters() {
+    const searchInput = document.querySelector('[data-role-search]');
+    const statusFilter = document.querySelector('[data-role-status-filter]');
+    const branchFilter = document.querySelector('[data-role-branch-filter]');
+    const resetButton = document.querySelector('[data-role-filter-reset]');
+    const emptyState = document.querySelector('[data-role-filter-empty]');
+    const rows = Array.from(document.querySelectorAll('[data-role-row]'));
+
+    if (!rows.length) {
+        return;
+    }
+
+    function normalized(value) {
+        return String(value || '').trim().toLowerCase();
+    }
+
+    function applyFilters() {
+        const keyword = normalized(searchInput?.value);
+        const status = normalized(statusFilter?.value);
+        const branch = String(branchFilter?.value || '');
+        let visibleCount = 0;
+
+        rows.forEach(function (row) {
+            const label = normalized(row.dataset.roleLabel);
+            const rowStatus = normalized(row.dataset.roleStatus);
+            const rowBranch = String(row.dataset.roleBranch || '');
+            const matchesKeyword = keyword === '' || label.includes(keyword);
+            const matchesStatus = status === '' || rowStatus === status;
+            const matchesBranch = branch === '' || rowBranch === branch;
+            const isVisible = matchesKeyword && matchesStatus && matchesBranch;
+
+            row.classList.toggle('is-hidden', !isVisible);
+
+            if (isVisible && row.tagName === 'TR') {
+                visibleCount += 1;
+            }
+        });
+
+        if (emptyState) {
+            emptyState.classList.toggle('is-hidden', visibleCount > 0);
+        }
+    }
+
+    [searchInput, statusFilter, branchFilter].forEach(function (control) {
+        if (control) {
+            control.addEventListener('input', applyFilters);
+            control.addEventListener('change', applyFilters);
+        }
+    });
+
+    if (resetButton) {
+        resetButton.addEventListener('click', function () {
+            if (searchInput) {
+                searchInput.value = '';
+            }
+
+            if (statusFilter) {
+                statusFilter.value = '';
+            }
+
+            if (branchFilter) {
+                branchFilter.value = '';
+            }
+
+            applyFilters();
+        });
+    }
+
+    applyFilters();
+}
 
 function initRolePermissionForm() {
     const form = document.getElementById('roleForm');

@@ -46,14 +46,14 @@ class ProfileController extends Controller
             'bio' => ['nullable', 'string', 'max:500'],
             'avatar' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
         ], [
-            'name.required' => 'Nama admin wajib diisi.',
-            'email.required' => 'Email admin wajib diisi.',
-            'email.email' => 'Format email belum valid.',
-            'email.unique' => 'Email sudah digunakan akun lain.',
-            'username.unique' => 'Username sudah digunakan akun lain.',
-            'avatar.image' => 'Foto profile harus berupa gambar.',
-            'avatar.mimes' => 'Format foto profile harus jpg, jpeg, png, atau webp.',
-            'avatar.max' => 'Ukuran foto profile maksimal 2MB.',
+            'name.required' => 'Admin name is required.',
+            'email.required' => 'Admin email is required.',
+            'email.email' => 'The email format is invalid.',
+            'email.unique' => 'This email is already used by another account.',
+            'username.unique' => 'This username is already used by another account.',
+            'avatar.image' => 'Profile photo must be an image.',
+            'avatar.mimes' => 'Profile photo format must be jpg, jpeg, png, or webp.',
+            'avatar.max' => 'Profile photo size must not exceed 2MB.',
         ]);
 
         DB::beginTransaction();
@@ -90,13 +90,13 @@ class ProfileController extends Controller
 
             return redirect()
                 ->route('admin.profile')
-                ->with('success', 'Profile admin berhasil diperbarui.');
+                ->with('success', 'Admin profile has been updated.');
         } catch (\Throwable $e) {
             DB::rollBack();
 
             return back()
                 ->withInput()
-                ->with('error', 'Profile admin gagal diperbarui. ' . $e->getMessage());
+                ->with('error', 'Admin profile could not be updated. ' . $e->getMessage());
         }
     }
 
@@ -108,15 +108,15 @@ class ProfileController extends Controller
             'current_password' => ['required', 'string'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
         ], [
-            'current_password.required' => 'Password lama wajib diisi.',
-            'password.required' => 'Password baru wajib diisi.',
-            'password.min' => 'Password baru minimal 8 karakter.',
-            'password.confirmed' => 'Konfirmasi password tidak sama.',
+            'current_password.required' => 'Current password is required.',
+            'password.required' => 'New password is required.',
+            'password.min' => 'New password must be at least 8 characters.',
+            'password.confirmed' => 'Password confirmation does not match.',
         ]);
 
         if (! Hash::check($validated['current_password'], $user->password)) {
             return back()
-                ->withErrors(['current_password' => 'Password lama tidak sesuai.'])
+                ->withErrors(['current_password' => 'Current password is incorrect.'])
                 ->withInput();
         }
 
@@ -128,14 +128,14 @@ class ProfileController extends Controller
 
         return redirect()
             ->route('admin.profile')
-            ->with('success', 'Password admin berhasil diperbarui.');
+            ->with('success', 'Admin password has been updated.');
     }
 
     private function adminUser(): User
     {
         $user = Auth::user();
 
-        abort_if(! $user || $user->role !== 'admin', 403, 'Akses ditolak.');
+        abort_if(! $user || $user->role !== 'admin', 403, 'Access denied.');
 
         return $user;
     }

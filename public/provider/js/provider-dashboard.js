@@ -150,7 +150,7 @@ function initProviderSidebar() {
     if (menuScroll) {
         menuScroll.addEventListener('scroll', saveSidebarScroll);
 
-        sidebar.querySelectorAll('a.sidebar-link, .sidebar-current-menu, .sidebar-submenu a').forEach(function (link) {
+        sidebar.querySelectorAll('a.admin-menu-item, .admin-current-link, .admin-submenu a').forEach(function (link) {
             link.addEventListener('click', function () {
                 saveSidebarScroll();
 
@@ -193,8 +193,8 @@ function initProviderSidebarSearch() {
         return;
     }
 
-    const menuItems = Array.from(nav.querySelectorAll('.sidebar-menu-item'));
-    const sections = Array.from(nav.querySelectorAll('[data-sidebar-section]'));
+    const menuItems = Array.from(nav.querySelectorAll('.admin-menu-search-item'));
+    const sections = Array.from(nav.querySelectorAll('[data-section-title]'));
 
     function normalizeText(value) {
         return String(value || '').toLowerCase().trim();
@@ -202,17 +202,17 @@ function initProviderSidebarSearch() {
 
     function getItemText(item) {
         const text = item.innerText || '';
-        const keywords = item.dataset.menuKeywords || '';
+        const keywords = item.dataset.keywords || '';
         return normalizeText(text + ' ' + keywords);
     }
 
     function showAll() {
         menuItems.forEach(function (item) {
-            item.classList.remove('sidebar-search-hidden');
+            item.classList.remove('search-hidden');
         });
 
         sections.forEach(function (section) {
-            section.classList.remove('sidebar-search-hidden');
+            section.classList.remove('search-hidden');
         });
 
         if (emptyState) {
@@ -241,12 +241,12 @@ function initProviderSidebarSearch() {
         menuItems.forEach(function (item) {
             const isMatch = getItemText(item).includes(keyword);
 
-            item.classList.toggle('sidebar-search-hidden', !isMatch);
+            item.classList.toggle('search-hidden', !isMatch);
 
             if (isMatch) {
                 visibleCount += 1;
 
-                const group = item.closest('.sidebar-group');
+                const group = item.closest('.admin-menu-group');
 
                 if (group) {
                     group.classList.add('open');
@@ -255,7 +255,7 @@ function initProviderSidebarSearch() {
         });
 
         sections.forEach(function (section) {
-            section.classList.add('sidebar-search-hidden');
+            section.classList.add('search-hidden');
         });
 
         if (emptyState) {
@@ -293,7 +293,7 @@ function initProviderSidebarSearch() {
 function initProviderSubmenus() {
     document.querySelectorAll('[data-submenu-toggle]').forEach(function (button) {
         button.addEventListener('click', function () {
-            const group = button.closest('.sidebar-group');
+            const group = button.closest('.admin-menu-group');
 
             if (!group) return;
 

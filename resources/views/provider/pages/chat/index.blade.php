@@ -10,13 +10,18 @@
 @section('content')
 @php
     $authUser = request()->user();
+    $search = trim((string) request()->query('search', ''));
+    $threadQuery = fn ($thread) => array_filter([
+        'thread' => $thread->id,
+        'search' => $search ?: null,
+    ]);
     $adminTicketStatus = $adminThread->ticket_status ?? 'none';
     $ticketLabels = [
-        'none' => 'Belum diajukan',
-        'pending' => 'Menunggu approval',
-        'approved' => 'Disetujui',
-        'rejected' => 'Ditolak',
-        'closed' => 'Chat diakhiri',
+        'none' => 'Not Submitted',
+        'pending' => 'Pending Approval',
+        'approved' => 'Approved',
+        'rejected' => 'Rejected',
+        'closed' => 'Chat Ended',
     ];
 
     $otherParticipant = function ($thread) use ($authUser) {
@@ -55,20 +60,23 @@
     $threadInitial = fn ($thread) => strtoupper(substr($threadTitle($thread), 0, 1) ?: 'C');
     $activeIsAdmin = $activeThread && $threadIsAdmin($activeThread);
     $isRoomOpen = $activeThread && $activeThreadCanChat;
+    $activeChatTotal = $threads->count();
+    $supportSummaryValue = match ($adminTicketStatus) {
+        'pending' => 'Pending',
+        'approved' => 'Active',
+        'rejected' => 'Rejected',
+        'closed' => 'Ended',
+        default => '-',
+    };
 @endphp
 
-<section class="support-chat-page support-chat-provider support-chat-modern {{ $isRoomOpen ? 'has-active-room' : 'is-chat-list' }}" data-support-chat>
-    <div class="support-chat-head modern">
-        <div>
-            <h1>Messages</h1>
-
-            <div class="support-chat-breadcrumb">
-                <a href="{{ provider_route('provider.dashboard') }}">Dashboard</a>
-                <span>&rsaquo;</span>
-                <strong>Chat</strong>
-            </div>
+<section class="support-chat-page support-chat-admin support-chat-modern {{ $isRoomOpen ? 'has-active-room' : 'is-chat-list' }}" data-support-chat>
+    <div class="support-chat-route">
+        <div class="support-chat-breadcrumb">
+            <a href="{{ provider_route('provider.dashboard') }}">Dashboard</a>
+            <span>&rsaquo;</span>
+            <strong>Chat</strong>
         </div>
-
     </div>
 
     @if (session('success'))
@@ -82,17 +90,23 @@
     <div class="support-chat-shell support-chat-shell-modern">
         <aside class="support-chat-list support-chat-directory">
             <div class="support-directory-head">
-                <label class="support-chat-search compact">
+                <form method="GET" action="{{ provider_route('provider.chat.index') }}" class="support-chat-search compact">
                     <svg viewBox="0 0 24 24" fill="none">
                         <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/>
                         <path d="M21 21L16.7 16.7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                     </svg>
-                    <input type="text" placeholder="Search" data-chat-search>
-                </label>
+                    <input type="text" name="search" value="{{ $search }}" placeholder="Search" data-chat-search>
+                </form>
 
                 <div class="support-message-tabs">
-                    <span class="active">All</span>
-                    <a href="{{ provider_route('provider.tickets.index') }}">Support Help</a>
+                    <a href="{{ provider_route('provider.chat.index', array_filter(['list' => 1, 'search' => $search ?: null])) }}" class="active">
+                        <span>All</span>
+                        <b>{{ number_format($activeChatTotal) }}</b>
+                    </a>
+                    <a href="{{ provider_route('provider.tickets.index') }}">
+                        <span>Support Help</span>
+                        <b>{{ $supportSummaryValue }}</b>
+                    </a>
                 </div>
             </div>
 
@@ -107,12 +121,12 @@
                         $preview = $lastMessage
                             ? ($previewBody !== ''
                                 ? \Illuminate\Support\Str::limit($previewBody, 48)
-                                : ($lastMessage->attachment_path ? 'Mengirim gambar' : ''))
-                            : \Illuminate\Support\Str::limit($thread->ticket_subject ?: 'Mulai percakapan', 48);
+                                : ($lastMessage->attachment_path ? 'Sent an image' : ''))
+                            : \Illuminate\Support\Str::limit($thread->ticket_subject ?: 'Start a conversation', 48);
                     @endphp
 
                     <a
-                        href="{{ provider_route('provider.chat.index', ['thread' => $thread->id]) }}"
+                        href="{{ provider_route('provider.chat.index', $threadQuery($thread)) }}"
                         class="support-thread-item {{ $isActive ? 'active' : '' }}"
                         data-thread-id="{{ $thread->id }}"
                         data-chat-row
@@ -125,7 +139,7 @@
                                 <strong>{{ $threadTitle($thread) }}</strong>
                                 @if ($isAdminThread)
                                     <span class="support-admin-chip">Admin</span>
-                                    <span class="support-verified-check" title="Akun admin resmi" aria-label="Akun admin resmi">
+                                    <span class="support-verified-check" title="Official admin account" aria-label="Official admin account">
                                         <svg viewBox="0 0 20 20" fill="none">
                                             <circle cx="10" cy="10" r="9" fill="currentColor"/>
                                             <path d="M6 10.2l2.5 2.5L14.2 7" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -133,11 +147,11 @@
                                     </span>
                                 @endif
                             </span>
-                            <small>
-                                {{ $threadSubtitle($thread) }}
-                                @unless ($isAdminThread)
-                                    <span class="support-ticket-mini approved">{{ $threadBadge($thread) }}</span>
-                                @endunless
+                            <small class="support-thread-subline">
+                                <span class="support-thread-subtitle">{{ $threadSubtitle($thread) }}</span>
+                                <span class="support-ticket-mini {{ $isAdminThread ? ($thread->ticket_status ?? 'approved') : 'approved' }}">
+                                    {{ $isAdminThread ? ($ticketLabels[$thread->ticket_status ?? 'approved'] ?? 'Support') : $threadBadge($thread) }}
+                                </span>
                             </small>
                             <em class="support-thread-last" data-thread-last>
                                 {{ $preview }}
@@ -151,14 +165,14 @@
                     </a>
                 @empty
                     <div class="support-chat-empty compact">
-                        <strong>Belum ada chat aktif</strong>
-                        <span>Pilih kontak internal atau buka Support Help.</span>
+                        <strong>No active chats yet</strong>
+                        <span>Select an internal contact or open Support Help.</span>
                     </div>
                 @endforelse
             </div>
 
             <div class="support-contact-section">
-                <span>Start internal chat</span>
+                <span>Internal Contacts</span>
 
                 @forelse ($internalContacts as $contact)
                     <form
@@ -166,7 +180,7 @@
                         action="{{ provider_route('provider.chat.internal.start') }}"
                         class="support-contact-form"
                         data-chat-row
-                        data-chat-label="{{ \Illuminate\Support\Str::lower($contact->name . ' ' . ($contact->providerBranch?->branch_name ?? 'provider pusat')) }}"
+                        data-chat-label="{{ \Illuminate\Support\Str::lower($contact->name . ' ' . ($contact->providerBranch?->branch_name ?? 'main provider')) }}"
                     >
                         @csrf
                         <input type="hidden" name="contact_user_id" value="{{ $contact->id }}">
@@ -176,28 +190,41 @@
 
                             <span class="support-thread-copy">
                                 <strong>{{ $contact->name }}</strong>
-                                <small>{{ $contact->providerBranch?->branch_name ?? 'Provider pusat' }}</small>
-                                <em class="support-thread-last">Buka percakapan</em>
+                                <small>{{ $contact->providerBranch?->branch_name ?? 'Main Provider' }}</small>
+                                <em class="support-thread-last">Open conversation</em>
                             </span>
                         </button>
                     </form>
                 @empty
                     <div class="support-chat-empty compact">
-                        <strong>Tidak ada kontak</strong>
-                        <span>Kontak internal akan muncul setelah akun cabang dibuat.</span>
+                        <strong>No contacts</strong>
+                        <span>Internal contacts will appear after branch accounts are created.</span>
                     </div>
                 @endforelse
             </div>
         </aside>
 
         <div class="support-chat-panel support-chat-conversation">
-            @if ($activeThread && $activeThreadCanChat)
+            @if ($activeThread)
+                @php
+                    $activeRoomStatus = $activeThread->ticket_status ?? 'approved';
+                    $activeRoomTitle = $threadTitle($activeThread);
+                    $activeRoomInitial = $threadInitial($activeThread);
+                    $activeRoomSubtitle = $threadSubtitle($activeThread);
+
+                    if (! $activeIsAdmin) {
+                        $activeOther = $otherParticipant($activeThread);
+                        $activeBranchName = $activeOther?->providerBranch?->branch_name ?: 'Provider internal';
+                        $activeRoomSubtitle = $activeBranchName . ' | ' . ($activeOther?->email ?? '-');
+                    }
+                @endphp
+
                 <div class="support-chat-panel-head modern">
                     <a
                         href="{{ provider_route('provider.chat.index', ['list' => 1]) }}"
                         class="support-chat-back"
-                        title="Kembali ke daftar chat"
-                        aria-label="Kembali ke daftar chat"
+                        title="Back to chat list"
+                        aria-label="Back to chat list"
                     >
                         <svg viewBox="0 0 24 24" fill="none">
                             <path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -206,37 +233,39 @@
                     </a>
 
                     <div class="support-chat-person">
-                        <span class="support-avatar large support-room-avatar is-active">
-                            <span>{{ $threadInitial($activeThread) }}</span>
+                        <span class="support-avatar large support-room-avatar {{ $activeThreadCanChat ? 'is-active' : 'is-inactive' }}">
+                            <span>{{ $activeRoomInitial }}</span>
                         </span>
 
                         <div>
-                            <span class="support-identity-line support-room-title-row">
-                                <strong>{{ $threadTitle($activeThread) }}</strong>
-                                @if ($activeIsAdmin)
-                                    <span class="support-admin-chip">Admin</span>
-                                    <span class="support-verified-check" title="Akun admin resmi" aria-label="Akun admin resmi">
-                                        <svg viewBox="0 0 20 20" fill="none">
-                                            <circle cx="10" cy="10" r="9" fill="currentColor"/>
-                                            <path d="M6 10.2l2.5 2.5L14.2 7" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                                        </svg>
-                                    </span>
-                                @endif
-                                <span class="support-room-status is-active" role="img" title="Aktif" aria-label="Aktif"></span>
+                            <span class="support-room-title-row">
+                                <strong>{{ $activeRoomTitle }}</strong>
+                                <span
+                                    class="support-room-status {{ $activeThreadCanChat ? 'is-active' : 'is-inactive' }}"
+                                    role="img"
+                                    title="{{ $activeThreadCanChat ? 'Active' : 'Inactive' }}"
+                                    aria-label="{{ $activeThreadCanChat ? 'Active' : 'Inactive' }}"
+                                ></span>
                             </span>
                             <span class="support-room-subtitle">
                                 <svg viewBox="0 0 24 24" fill="none">
-                                    <path d="M21 15a4 4 0 0 1-4 4H8l-5 4V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4v8Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
-                                    <path d="M8 9h8M8 13h5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                    <path d="M4 4h16v16H4z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                                    <path d="m4 7 8 6 8-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                                 </svg>
-                                {{ $threadSubtitle($activeThread) }}
+                                {{ $activeRoomSubtitle }}
                             </span>
                         </div>
                     </div>
 
+                    <div class="support-chat-tags">
+                        <span class="support-ticket-badge {{ $activeRoomStatus }}" data-thread-status="{{ $activeThread->id }}">
+                            {{ $activeIsAdmin ? ($ticketLabels[$activeRoomStatus] ?? ucfirst($activeRoomStatus)) : 'Internal' }}
+                        </span>
+                    </div>
+
                     <div class="support-chat-actions">
                         @if ($activeIsAdmin)
-                            <a href="{{ provider_route('provider.tickets.index') }}" title="Support Help" aria-label="Buka support help">
+                            <a href="{{ provider_route('provider.tickets.index') }}" title="Support Help" aria-label="Open support help">
                                 <svg viewBox="0 0 24 24" fill="none">
                                     <path d="M4 5h16v14H4z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
                                     <path d="M8 9h8M8 13h5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -246,6 +275,39 @@
                     </div>
                 </div>
 
+                @if (! $activeThreadCanChat)
+                    <div class="support-ticket-review">
+                        <div class="support-ticket-card">
+                            <span class="support-ticket-kicker">Chat Ticket</span>
+                            <h2>{{ $activeThread->ticket_subject ?: 'Provider chat request' }}</h2>
+                            <p>Ticket submission and approval are managed from the Support Help menu.</p>
+
+                            <dl class="support-ticket-meta">
+                                <div>
+                                    <dt>Submitted</dt>
+                                    <dd>{{ $activeThread->ticket_requested_at?->format('d M Y H:i') ?? '-' }}</dd>
+                                </div>
+
+                                <div>
+                                    <dt>Status</dt>
+                                    <dd>{{ $ticketLabels[$activeRoomStatus] ?? ucfirst($activeRoomStatus) }}</dd>
+                                </div>
+                            </dl>
+
+                            @if (in_array($activeRoomStatus, ['rejected', 'closed'], true) && $activeThread->ticket_rejection_reason)
+                                <div class="support-ticket-note">
+                                    {{ $activeThread->ticket_rejection_reason }}
+                                </div>
+                            @endif
+
+                            <div class="support-ticket-actions">
+                                <a href="{{ provider_route('provider.tickets.index') }}" class="support-ticket-primary support-ticket-link">
+                                    Open Support Help
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                @else
                 <div class="support-chat-messages modern" data-chat-messages>
                     @forelse ($messages as $message)
                         <div
@@ -261,7 +323,7 @@
                                         <strong>{{ $message['sender_name'] }}</strong>
                                         @if (($message['sender_role'] ?? '') === 'admin')
                                             <span class="support-admin-badge">Admin</span>
-                                            <span class="support-verified-check support-message-check" title="Akun admin resmi" aria-label="Akun admin resmi">
+                                            <span class="support-verified-check support-message-check" title="Official admin account" aria-label="Official admin account">
                                                 <svg viewBox="0 0 20 20" fill="none">
                                                     <circle cx="10" cy="10" r="9" fill="currentColor"/>
                                                     <path d="M6 10.2l2.5 2.5L14.2 7" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -274,7 +336,7 @@
 
                                 @if (! empty($message['attachment']) && ($message['attachment']['type'] ?? '') === 'image')
                                     <a href="{{ $message['attachment']['url'] }}" class="support-message-image" target="_blank" rel="noopener">
-                                        <img src="{{ $message['attachment']['url'] }}" alt="{{ $message['attachment']['name'] ?: 'Gambar chat' }}">
+                                        <img src="{{ $message['attachment']['url'] }}" alt="{{ $message['attachment']['name'] ?: 'Chat image' }}">
                                     </a>
                                 @endif
 
@@ -303,8 +365,8 @@
                                     <path d="M8 9h8M8 13h5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                                 </svg>
                             </span>
-                            <strong>Belum ada pesan</strong>
-                            <span>Tulis pesan pertama untuk memulai percakapan.</span>
+                            <strong>No messages yet</strong>
+                            <span>Write the first message to start the conversation.</span>
                         </div>
                     @endforelse
                 </div>
@@ -318,7 +380,7 @@
                             </svg>
                         </button>
 
-                        <button type="button" title="Kirim gambar" data-chat-image-trigger>
+                        <button type="button" title="Send image" data-chat-image-trigger>
                             <svg viewBox="0 0 24 24" fill="none">
                                 <rect x="4" y="5" width="16" height="14" rx="2" stroke="currentColor" stroke-width="2"/>
                                 <circle cx="9" cy="10" r="1.5" fill="currentColor"/>
@@ -336,11 +398,11 @@
                     </div>
 
                     <div class="support-compose-field">
-                        <textarea name="body" rows="1" placeholder="Tulis pesan..." maxlength="2000" data-chat-input></textarea>
+                        <textarea name="body" rows="1" placeholder="Write a message..." maxlength="2000" data-chat-input></textarea>
 
                         <div class="support-file-preview is-hidden" data-chat-file-preview>
                             <span data-chat-file-name></span>
-                            <button type="button" title="Hapus gambar" aria-label="Hapus gambar" data-chat-file-clear>
+                            <button type="button" title="Remove image" aria-label="Remove image" data-chat-file-clear>
                                 <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
                                     <path d="M18 6 6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                                 </svg>
@@ -348,30 +410,25 @@
                         </div>
                     </div>
 
-                    <button type="submit" title="Kirim pesan">
+                    <button type="submit" title="Send message">
                         <svg viewBox="0 0 24 24" fill="none">
                             <path d="M22 2L11 13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                             <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                         </svg>
-                        <span>Kirim</span>
+                        <span>Send</span>
                     </button>
                 </form>
+                @endif
             @else
-                <div class="support-chat-empty full modern support-provider-empty">
+                <div class="support-chat-empty full modern">
                     <span class="support-empty-icon" aria-hidden="true">
                         <svg viewBox="0 0 24 24" fill="none">
                             <path d="M21 15a4 4 0 0 1-4 4H8l-5 4V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4v8Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
                             <path d="M8 9h8M8 13h5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                         </svg>
                     </span>
-                    <strong>Pilih Chat</strong>
-                    <span>Pilih kontak internal di kiri, atau buka Support Help untuk bantuan admin.</span>
-
-                    <div class="support-ticket-actions support-provider-empty-actions">
-                        <a href="{{ provider_route('provider.tickets.index') }}" class="support-ticket-primary support-ticket-link">
-                            Buka Support Help
-                        </a>
-                    </div>
+                    <strong>Select a chat</strong>
+                    <span>Select an internal contact on the left, or open Support Help for admin assistance.</span>
                 </div>
             @endif
         </div>

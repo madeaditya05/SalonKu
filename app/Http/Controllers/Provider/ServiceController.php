@@ -158,7 +158,7 @@ class ServiceController extends Controller
 
         if ($step === 'gallery' && !session()->has('service_branch_draft')) {
             return provider_route_redirect('provider.services.create', ['step' => 'branch'])
-                ->with('error', 'Pilih Branch dulu, lalu klik Continue.');
+                ->with('error', 'Select a branch first, then click Continue.');
         }
 
         $data = $this->formData();
@@ -183,7 +183,7 @@ class ServiceController extends Controller
         ]);
 
         return provider_route_redirect('provider.services.create', ['step' => 'branch'])
-            ->with('success', 'Service Information berhasil disimpan sementara.');
+            ->with('success', 'Service information has been saved temporarily.');
     }
 
     public function continueBranch(Request $request)
@@ -200,19 +200,19 @@ class ServiceController extends Controller
         ]);
 
         return provider_route_redirect('provider.services.create', ['step' => 'gallery'])
-            ->with('success', 'Branch Information berhasil disimpan sementara.');
+            ->with('success', 'Branch information has been saved temporarily.');
     }
 
     public function store(Request $request)
     {
         if (!session()->has('service_draft')) {
             return provider_route_redirect('provider.services.create')
-                ->with('error', 'Service Information belum diisi.');
+                ->with('error', 'Service information has not been completed.');
         }
 
         if (!session()->has('service_branch_draft')) {
             return provider_route_redirect('provider.services.create', ['step' => 'branch'])
-                ->with('error', 'Branch Information belum diisi.');
+                ->with('error', 'Branch information has not been completed.');
         }
 
         $galleryData = $this->validateGallery($request);
@@ -257,8 +257,8 @@ class ServiceController extends Controller
             'status' => 'active',
 
             /*
-             * Kolom verify_status di services tidak dipakai lagi untuk tampilan My Service.
-             * Status verifikasi sekarang diambil dari provider_profiles.document_status.
+             * The verify_status column in services is no longer used for the My Service display.
+             * Verification status is now loaded from provider_profiles.document_status.
              * Ini tetap diisi hanya supaya aman kalau kolom masih required/default lama.
              */
             'verify_status' => 'pending',
@@ -270,7 +270,7 @@ class ServiceController extends Controller
         ]);
 
         return provider_route_redirect('provider.services.index')
-            ->with('success', 'Service berhasil ditambahkan.');
+            ->with('success', 'Service has been added.');
     }
 
     public function edit(Request $request, Service $service)
@@ -328,7 +328,7 @@ class ServiceController extends Controller
                 'service' => $service->id,
                 'step' => 'branch',
             ])
-            ->with('success', 'Service Information berhasil diperbarui.');
+            ->with('success', 'Service information has been updated.');
     }
 
     public function updateBranch(Request $request, Service $service)
@@ -361,7 +361,7 @@ class ServiceController extends Controller
                 'service' => $service->id,
                 'step' => 'gallery',
             ])
-            ->with('success', 'Branch Information berhasil diperbarui.');
+            ->with('success', 'Branch information has been updated.');
     }
 
     public function updateGallery(Request $request, Service $service)
@@ -386,7 +386,7 @@ class ServiceController extends Controller
         ]);
 
         return provider_route_redirect('provider.services.index')
-            ->with('success', 'Service berhasil diperbarui.');
+            ->with('success', 'Service has been updated.');
     }
 
     public function toggleStatus(Service $service)
@@ -398,7 +398,7 @@ class ServiceController extends Controller
         ]);
 
         return provider_route_redirect('provider.services.index')
-            ->with('success', 'Status service berhasil diperbarui.');
+            ->with('success', 'Service status has been updated.');
     }
 
     public function destroy(Service $service)
@@ -412,7 +412,7 @@ class ServiceController extends Controller
         $service->delete();
 
         return provider_route_redirect('provider.services.index')
-            ->with('success', 'Service berhasil dihapus.');
+            ->with('success', 'Service has been deleted.');
     }
 
     private function validateServiceInformation(Request $request): array
@@ -528,7 +528,7 @@ class ServiceController extends Controller
     private function validBranchIds(array $branchIds): array
     {
         if ($this->branchId() !== null) {
-            abort_if($this->branchId() < 1, 403, 'Akun cabang belum terhubung ke branch.');
+            abort_if($this->branchId() < 1, 403, 'Branch account is not connected to a branch yet.');
 
             return [$this->branchId()];
         }

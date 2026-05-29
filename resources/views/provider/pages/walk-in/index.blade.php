@@ -2,7 +2,7 @@
 
 @section('title', 'Walk-in - JasaKu')
 @section('page_title', 'Walk-in')
-@section('page_subtitle', 'Input customer offline dan masukkan langsung ke antrian provider.')
+@section('page_subtitle', 'Register offline customers and add them directly to the provider queue.')
 
 @section('content')
 @php
@@ -21,12 +21,12 @@
     $selectedPaymentType = old('payment_type', 'pay_at_salon');
 
     $formatMoney = fn ($value) => 'Rp' . number_format((float) ($value ?? 0), 0, ',', '.');
-    $formatDuration = fn ($value) => (int) ($value ?? 0) > 0 ? (int) $value . ' menit' : 'Durasi -';
+    $formatDuration = fn ($value) => (int) ($value ?? 0) > 0 ? (int) $value . ' minutes' : 'Duration -';
 
     $paymentTypes = [
-        'pay_at_salon' => 'Bayar di tempat',
-        'dp' => 'Bayar DP',
-        'full_payment' => 'Bayar penuh',
+        'pay_at_salon' => 'Pay at salon',
+        'dp' => 'Down payment',
+        'full_payment' => 'Full payment',
     ];
 @endphp
 
@@ -45,7 +45,7 @@
                     <path d="M4 12h16"></path>
                     <path d="M4 18h10"></path>
                 </svg>
-                Antrian
+                Queue
             </a>
 
             <a class="admin-category-add-button secondary" href="{{ provider_route('provider.bookings.index', ['date_from' => $todayDate, 'date_to' => $todayDate]) }}">
@@ -55,7 +55,7 @@
                     <path d="M5 5h14v16H5z"></path>
                     <path d="M3 10h18"></path>
                 </svg>
-                Bookings Hari Ini
+                Today Bookings
             </a>
 
             <a class="admin-category-add-button" href="{{ provider_route('provider.calendar.index', ['date' => $todayDate]) }}">
@@ -65,7 +65,7 @@
                     <path d="M16 3v3"></path>
                     <path d="M5 6h14v15H5z"></path>
                 </svg>
-                Kalender
+                Calendar
             </a>
         </div>
     </div>
@@ -90,27 +90,27 @@
 
     <div class="admin-booking-summary-grid">
         <div class="admin-booking-summary-card pink">
-            <span>Branch Aktif</span>
+            <span>Active Branches</span>
             <strong>{{ number_format($branches->count()) }}</strong>
-            <small>Lokasi penerima walk-in</small>
+            <small>Locations that can accept walk-in customers</small>
         </div>
 
         <div class="admin-booking-summary-card yellow">
-            <span>Service Tersedia</span>
+            <span>Available Services</span>
             <strong>{{ number_format($services->count()) }}</strong>
-            <small>Pilihan yang bisa masuk antrian</small>
+            <small>Services that can be added to the queue</small>
         </div>
 
         <div class="admin-booking-summary-card blue">
-            <span>Staff Aktif</span>
+            <span>Active Staff</span>
             <strong>{{ number_format($staffs->count()) }}</strong>
-            <small>Bisa dipilih atau any available</small>
+            <small>Can be selected manually or assigned automatically</small>
         </div>
 
         <div class="admin-booking-summary-card orange">
-            <span>Service Dipilih</span>
+            <span>Selected Services</span>
             <strong>{{ number_format(count($selectedServiceIds)) }}</strong>
-            <small>Terisi setelah validasi form</small>
+            <small>Filled after form validation</small>
         </div>
     </div>
 
@@ -120,13 +120,13 @@
                 Input Walk-in
             </a>
             <a href="{{ provider_route('provider.queue.index') }}" class="admin-booking-tab">
-                Antrian Aktif
+                Active Queue
             </a>
             <a href="{{ provider_route('provider.bookings.index', ['date_from' => $todayDate, 'date_to' => $todayDate]) }}" class="admin-booking-tab">
                 Bookings
             </a>
             <a href="{{ provider_route('provider.calendar.index', ['date' => $todayDate]) }}" class="admin-booking-tab">
-                Kalender Staff
+                Staff Calendar
             </a>
         </div>
 
@@ -137,7 +137,7 @@
                     <path d="M4 12h16"></path>
                     <path d="M4 18h10"></path>
                 </svg>
-                Antrian
+                Queue
             </a>
 
             <a class="admin-category-add-button" href="{{ provider_route('provider.bookings.index', ['date_from' => $todayDate, 'date_to' => $todayDate]) }}">
@@ -159,13 +159,13 @@
 
                 <div class="provider-walkin-form-grid two">
                     <label class="provider-walkin-field">
-                        <span>Nama Customer <b>*</b></span>
+                        <span>Customer Name <b>*</b></span>
                         <input name="customer_name" value="{{ old('customer_name') }}" autocomplete="name" required>
                         @error('customer_name') <small>{{ $message }}</small> @enderror
                     </label>
 
                     <label class="provider-walkin-field">
-                        <span>Nomor HP</span>
+                        <span>Phone Number</span>
                         <input name="customer_phone" value="{{ old('customer_phone') }}" inputmode="tel" autocomplete="tel">
                         @error('customer_phone') <small>{{ $message }}</small> @enderror
                     </label>
@@ -173,19 +173,19 @@
             </fieldset>
 
             <fieldset class="provider-walkin-section">
-                <legend>Lokasi & Staff</legend>
+                <legend>Location & Staff</legend>
 
                 <div class="provider-walkin-form-grid two">
                     <label class="provider-walkin-field">
                         <span>Branch <b>*</b></span>
                         <select name="branch_id" required>
-                            <option value="">Pilih branch</option>
+                            <option value="">Select branch</option>
                             @forelse ($branches as $branch)
                                 <option value="{{ $branch->id }}" @selected($selectedBranchId === (string) $branch->id)>
                                     {{ $branch->branch_name }}
                                 </option>
                             @empty
-                                <option value="" disabled>Belum ada branch aktif</option>
+                                <option value="" disabled>No active branch yet</option>
                             @endforelse
                         </select>
                         @error('branch_id') <small>{{ $message }}</small> @enderror
@@ -211,11 +211,11 @@
 
                 <div class="provider-walkin-section-head">
                     <div>
-                        <strong>Pilih Service</strong>
-                        <span>{{ number_format($services->count()) }} service tersedia</span>
+                        <strong>Select Services</strong>
+                        <span>{{ number_format($services->count()) }} services available</span>
                     </div>
 
-                    <span class="admin-booking-status info">{{ number_format(count($selectedServiceIds)) }} dipilih</span>
+                    <span class="admin-booking-status info">{{ number_format(count($selectedServiceIds)) }} selected</span>
                 </div>
 
                 @error('service_ids') <small class="provider-walkin-error">{{ $message }}</small> @enderror
@@ -255,15 +255,15 @@
                         </label>
                     @empty
                         <div class="admin-category-mobile-empty admin-booking-mobile-empty provider-walkin-empty">
-                            <strong>Belum ada service aktif.</strong>
-                            <p>Tambahkan service terlebih dahulu sebelum membuat walk-in.</p>
+                            <strong>No active services yet.</strong>
+                            <p>Add a service first before creating a walk-in queue entry.</p>
                         </div>
                     @endforelse
                 </div>
             </fieldset>
 
             <fieldset class="provider-walkin-section">
-                <legend>Pembayaran</legend>
+                <legend>Payment</legend>
 
                 <div class="provider-walkin-form-grid two">
                     <label class="provider-walkin-field">
@@ -279,7 +279,7 @@
                     </label>
 
                     <label class="provider-walkin-field">
-                        <span>Catatan</span>
+                        <span>Notes</span>
                         <textarea name="notes">{{ old('notes') }}</textarea>
                         @error('notes') <small>{{ $message }}</small> @enderror
                     </label>
@@ -292,7 +292,7 @@
                         <path d="m12 19-7-7 7-7"></path>
                         <path d="M19 12H5"></path>
                     </svg>
-                    Kembali
+                    Back
                 </a>
 
                 <button class="admin-category-add-button" type="submit">
@@ -300,7 +300,7 @@
                         <path d="M12 5v14"></path>
                         <path d="M5 12h14"></path>
                     </svg>
-                    Masukkan ke Antrian
+                    Add to Queue
                 </button>
             </div>
         </form>

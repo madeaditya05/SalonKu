@@ -13,7 +13,7 @@ class ServiceController extends Controller
     public function index(Request $request)
     {
         if (! Auth::check() || Auth::user()->role !== 'admin') {
-            abort(403, 'Akses ditolak.');
+            abort(403, 'Access denied.');
         }
 
         $search = trim((string) $request->get('search', ''));
@@ -138,13 +138,13 @@ class ServiceController extends Controller
     public function toggleStatus(Service $service)
     {
         if (! Auth::check() || Auth::user()->role !== 'admin') {
-            abort(403, 'Akses ditolak.');
+            abort(403, 'Access denied.');
         }
 
         $service->update([
             'status' => $service->status === 'active' ? 'inactive' : 'active',
         ]);
 
-        return back()->with('success', 'Status service berhasil diubah.');
+        return back()->with('success', 'Service status has been updated.');
     }
 }

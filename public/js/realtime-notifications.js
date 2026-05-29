@@ -34,7 +34,7 @@
     const normalizeNotification = (notification) => ({
         id: Number(notification?.id || 0),
         type: notification?.type || 'general',
-        title: notification?.title || 'Notifikasi',
+        title: notification?.title || 'Notification',
         body: notification?.body || '',
         url: notification?.url || '',
         data: notification?.data || {},
@@ -61,6 +61,9 @@
         let notifications = [];
         let unreadCount = 0;
         let realtimeClient = null;
+        let isSyncing = false;
+        let latestChatNotificationId = 0;
+        let isSyncingChatNotifications = false;
 
         const setOpen = (isOpen) => {
             root.classList.toggle('is-open', isOpen);
@@ -84,8 +87,8 @@
             }
 
             subtitle.textContent = unreadCount > 0
-                ? `${compactCount(unreadCount)} belum dibaca`
-                : 'Semua sudah dibaca';
+                ? `${compactCount(unreadCount)} unread`
+                : 'All caught up';
         };
 
         const setReadAllState = () => {
@@ -129,7 +132,7 @@
 
             const empty = document.createElement('div');
             empty.className = 'notification-empty';
-            empty.textContent = message || 'Belum ada notifikasi.';
+            empty.textContent = message || 'No notifications yet.';
             list.appendChild(empty);
         };
 
@@ -138,7 +141,7 @@
 
             const loading = document.createElement('div');
             loading.className = 'notification-loading';
-            loading.textContent = 'Memuat notifikasi...';
+            loading.textContent = 'Loading notifications...';
             list.appendChild(loading);
         };
 
@@ -188,7 +191,7 @@
             title.textContent = notification.title;
 
             const body = document.createElement('span');
-            body.textContent = notification.body || 'Klik untuk melihat detail.';
+            body.textContent = notification.body || 'Click to view details.';
 
             const time = document.createElement('time');
             time.textContent = notification.time || '';
@@ -218,7 +221,7 @@
 
         const render = () => {
             if (notifications.length === 0) {
-                renderEmpty('Belum ada notifikasi.');
+                renderEmpty('No notifications yet.');
                 setSubtitle();
                 setReadAllState();
                 return;
@@ -236,7 +239,15 @@
         const addNotification = (rawNotification, nextUnreadCount) => {
             const notification = normalizeNotification(rawNotification);
 
+            window.dispatchEvent(new CustomEvent('app:notification-created', {
+                detail: {
+                    notification,
+                    unread_count: nextUnreadCount,
+                },
+            }));
+
             if (isChatNotification(notification)) {
+                latestChatNotificationId = Math.max(latestChatNotificationId, Number(notification.id || 0));
                 incrementSidebarChatBadge(notification);
                 setBadge(nextUnreadCount);
                 setSubtitle();
@@ -257,27 +268,130 @@
             render();
         };
 
+        const fetchNotificationPayload = async () => {
+            const response = await fetch(config.indexUrl, {
+                headers: {
+                    Accept: 'application/json',
+                },
+                credentials: 'same-origin',
+            });
+
+            if (!response.ok) {
+                throw new Error('Cannot load notifications.');
+            }
+
+            return response.json();
+        };
+
+        const applyNotificationPayload = (payload, announceNew = false) => {
+            const nextNotifications = (payload.notifications || []).map(normalizeNotification);
+
+            if (announceNew) {
+                const existingIds = new Set(notifications.map((notification) => notification.id));
+                const newNotifications = nextNotifications
+                    .filter((notification) => notification.id && !existingIds.has(notification.id))
+                    .reverse();
+
+                newNotifications.forEach((notification) => {
+                    addNotification(notification, payload.unread_count);
+                });
+
+                if (newNotifications.length > 0) {
+                    return;
+                }
+            }
+
+            notifications = nextNotifications;
+            setBadge(payload.unread_count);
+            render();
+        };
+
         const loadNotifications = async () => {
             renderLoading();
 
             try {
-                const response = await fetch(config.indexUrl, {
-                    headers: {
-                        Accept: 'application/json',
-                    },
-                });
-
-                if (!response.ok) {
-                    throw new Error('Cannot load notifications.');
-                }
-
-                const payload = await response.json();
-                notifications = (payload.notifications || []).map(normalizeNotification);
-                setBadge(payload.unread_count);
-                render();
+                applyNotificationPayload(await fetchNotificationPayload());
             } catch (error) {
                 setBadge(0);
-                renderEmpty('Notifikasi belum bisa dimuat.');
+                renderEmpty('Notifications could not be loaded yet.');
+            }
+        };
+
+        const syncNotifications = async () => {
+            if (isSyncing) {
+                return;
+            }
+
+            isSyncing = true;
+
+            try {
+                applyNotificationPayload(await fetchNotificationPayload(), true);
+            } catch (error) {
+                // Realtime websocket may be unavailable locally; polling will retry quietly.
+            } finally {
+                isSyncing = false;
+            }
+        };
+
+        const chatNotificationsUrl = () => {
+            const url = new URL(config.indexUrl, window.location.origin);
+            url.searchParams.set('include_chat', '1');
+
+            return url.toString();
+        };
+
+        const fetchChatNotificationPayload = async () => {
+            const response = await fetch(chatNotificationsUrl(), {
+                headers: {
+                    Accept: 'application/json',
+                },
+                credentials: 'same-origin',
+            });
+
+            if (!response.ok) {
+                throw new Error('Cannot load chat notifications.');
+            }
+
+            return response.json();
+        };
+
+        const primeChatNotificationCursor = async () => {
+            try {
+                const payload = await fetchChatNotificationPayload();
+                latestChatNotificationId = Math.max(
+                    0,
+                    ...(payload.notifications || []).map((notification) => Number(notification.id || 0))
+                );
+            } catch (error) {
+                // The normal notification center still works if chat polling cannot start yet.
+            }
+        };
+
+        const syncChatNotifications = async () => {
+            if (isSyncingChatNotifications) {
+                return;
+            }
+
+            isSyncingChatNotifications = true;
+
+            try {
+                const payload = await fetchChatNotificationPayload();
+                const chatNotifications = (payload.notifications || [])
+                    .map(normalizeNotification)
+                    .filter((notification) => isChatNotification(notification))
+                    .sort((first, second) => Number(first.id || 0) - Number(second.id || 0));
+
+                chatNotifications.forEach((notification) => {
+                    if (!notification.id || notification.id <= latestChatNotificationId) {
+                        return;
+                    }
+
+                    addNotification(notification, payload.unread_count);
+                });
+            } catch (error) {
+                // Realtime is primary; polling quietly covers local websocket gaps.
+            } finally {
+                isSyncingChatNotifications = false;
             }
         };
 
@@ -379,6 +493,9 @@
 
         loadNotifications();
         bootRealtime();
+        primeChatNotificationCursor();
+        window.setInterval(syncNotifications, Number(config.pollInterval || 3000));
+        window.setInterval(syncChatNotifications, Number(config.chatPollInterval || 3000));
     };
 
     roots.forEach(setupNotificationRoot);

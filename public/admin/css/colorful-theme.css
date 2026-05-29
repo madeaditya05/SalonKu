@@ -238,23 +238,24 @@ body.admin-body .admin-dashboard-table-card {
 }
 
 body.admin-body .admin-metric-card:nth-child(1) {
-    background-color: var(--admin-pink) !important;
-    border-color: var(--admin-pink) !important;
+    background-color: var(--admin-pink-soft) !important;
 }
 
 body.admin-body .admin-metric-card:nth-child(2) {
-    background-color: var(--admin-amber) !important;
-    border-color: var(--admin-amber) !important;
+    background-color: var(--admin-amber-soft) !important;
 }
 
 body.admin-body .admin-metric-card:nth-child(3) {
-    background-color: var(--admin-orange) !important;
-    border-color: var(--admin-orange) !important;
+    background-color: var(--admin-blue) !important;
 }
 
 body.admin-body .admin-metric-card {
-    border: 2px solid transparent !important;
-    border-top-width: 4px !important;
+    border: 0 !important;
+    box-shadow: none !important;
+}
+
+body.admin-body .admin-metric-card::before {
+    display: none !important;
 }
 
 body.admin-body .admin-metric-card,
@@ -283,6 +284,58 @@ body.admin-body .admin-metric-card .admin-mini-chart span {
 body.admin-body .admin-metric-card .admin-mini-chart span::before,
 body.admin-body .admin-metric-card .admin-mini-chart span.active::before {
     background-color: var(--admin-dark) !important;
+}
+
+body.admin-body .admin-booking-summary-card,
+body.admin-body .admin-insight-card,
+body.admin-body .support-chat-admin .support-chat-summary-card {
+    border: 0 !important;
+    box-shadow: none !important;
+}
+
+body.admin-body .admin-booking-summary-card::before,
+body.admin-body .admin-insight-card::before,
+body.admin-body .support-chat-admin .support-chat-summary-card::before {
+    display: none !important;
+}
+
+body.admin-body .admin-booking-summary-card.pink,
+body.admin-body .admin-insight-card:nth-child(4n + 1),
+body.admin-body .support-chat-admin .support-chat-summary-card.pink {
+    background: var(--admin-pink-soft) !important;
+}
+
+body.admin-body .admin-booking-summary-card.yellow,
+body.admin-body .admin-insight-card:nth-child(4n + 2),
+body.admin-body .support-chat-admin .support-chat-summary-card.yellow {
+    background: var(--admin-amber-soft) !important;
+}
+
+body.admin-body .admin-booking-summary-card.blue,
+body.admin-body .admin-insight-card:nth-child(4n + 3),
+body.admin-body .support-chat-admin .support-chat-summary-card.blue {
+    background: var(--admin-blue) !important;
+}
+
+body.admin-body .admin-booking-summary-card.orange,
+body.admin-body .admin-insight-card:nth-child(4n),
+body.admin-body .support-chat-admin .support-chat-summary-card.orange {
+    background: var(--admin-orange) !important;
+}
+
+body.admin-body .admin-booking-summary-card,
+body.admin-body .admin-booking-summary-card span,
+body.admin-body .admin-booking-summary-card strong,
+body.admin-body .admin-booking-summary-card small,
+body.admin-body .admin-insight-card,
+body.admin-body .admin-insight-card span,
+body.admin-body .admin-insight-card strong,
+body.admin-body .admin-insight-card small,
+body.admin-body .support-chat-admin .support-chat-summary-card,
+body.admin-body .support-chat-admin .support-chat-summary-card span,
+body.admin-body .support-chat-admin .support-chat-summary-card strong,
+body.admin-body .support-chat-admin .support-chat-summary-card small {
+    color: var(--admin-dark) !important;
 }
 
 body.admin-body .admin-dashboard-tabs,
@@ -695,4 +748,47 @@ body.admin-body .support-chat-admin .support-chat-actions a:hover,
 body.admin-body .support-chat-admin .support-compose-tools button:hover,
 body.admin-body .support-chat-admin .support-chat-back:hover {
     box-shadow: none !important;
+}
+
+/* Final admin summary tile parity */
+body.admin-body .admin-booking-summary-card,
+body.admin-body .admin-insight-card,
+body.admin-body .admin-metric-card,
+body.admin-body .support-chat-admin .support-chat-summary-card {
+    border: 0 !important;
+    box-shadow: none !important;
+}
+
+body.admin-body .admin-booking-summary-card::before,
+body.admin-body .admin-insight-card::before,
+body.admin-body .admin-metric-card::before,
+body.admin-body .support-chat-admin .support-chat-summary-card::before {
+    display: none !important;
+}
+
+body.admin-body .admin-booking-summary-card.pink,
+body.admin-body .admin-metric-card:nth-child(1),
+body.admin-body .admin-insight-card:nth-child(4n + 1),
+body.admin-body .support-chat-admin .support-chat-summary-card.pink {
+    background: var(--admin-pink-soft) !important;
+}
+
+body.admin-body .admin-booking-summary-card.yellow,
+body.admin-body .admin-metric-card:nth-child(2),
+body.admin-body .admin-insight-card:nth-child(4n + 2),
+body.admin-body .support-chat-admin .support-chat-summary-card.yellow {
+    background: var(--admin-amber-soft) !important;
+}
+
+body.admin-body .admin-booking-summary-card.blue,
+body.admin-body .admin-metric-card:nth-child(3),
+body.admin-body .admin-insight-card:nth-child(4n + 3),
+body.admin-body .support-chat-admin .support-chat-summary-card.blue {
+    background: var(--admin-blue) !important;
+}
+
+body.admin-body .admin-booking-summary-card.orange,
+body.admin-body .admin-insight-card:nth-child(4n),
+body.admin-body .support-chat-admin .support-chat-summary-card.orange {
+    background: var(--admin-orange) !important;
 }

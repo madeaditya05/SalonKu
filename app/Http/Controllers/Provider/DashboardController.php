@@ -164,15 +164,15 @@ class DashboardController extends Controller
             ],
             [
                 'icon' => 'booking',
-                'title' => 'Total Booking',
-                'value' => number_format($totalBookings, 0, ',', '.'),
+                'title' => 'Total Bookings',
+                'value' => number_format($totalBookings),
                 'raw_value' => $totalBookings,
                 'change' => $this->changeMeta($totalBookings, $previousBookings),
             ],
             [
                 'icon' => 'completed',
-                'title' => 'Completed Booking',
-                'value' => number_format($completedBookings, 0, ',', '.'),
+                'title' => 'Completed Bookings',
+                'value' => number_format($completedBookings),
                 'raw_value' => $completedBookings,
                 'change' => $this->changeMeta($completedBookings, $previousCompletedBookings),
             ],
@@ -372,17 +372,17 @@ class DashboardController extends Controller
             'buckets' => $buckets->map(function (array $bucket) use ($maxValue) {
                 $bucket['bars'] = [
                     'completed' => [
-                        'label' => 'Completed Booking',
+                        'label' => 'Completed Bookings',
                         'value' => (int) $bucket['completed_booking'],
                         'height' => $this->barHeight((int) $bucket['completed_booking'], $maxValue),
                     ],
                     'pending' => [
-                        'label' => 'Pending Booking',
+                        'label' => 'Pending Bookings',
                         'value' => (int) $bucket['pending_booking'],
                         'height' => $this->barHeight((int) $bucket['pending_booking'], $maxValue),
                     ],
                     'cancelled' => [
-                        'label' => 'Cancelled Booking',
+                        'label' => 'Cancelled Bookings',
                         'value' => (int) $bucket['cancelled_booking'],
                         'height' => $this->barHeight((int) $bucket['cancelled_booking'], $maxValue),
                     ],
@@ -537,7 +537,7 @@ class DashboardController extends Controller
             'items' => $items->map(function (array $item) use ($maxBooking) {
                 $item['width'] = $maxBooking > 0 ? max(8, round(($item['total_booking'] / $maxBooking) * 100)) : 0;
                 $item['revenue_label'] = $this->rupiah($item['revenue']);
-                $item['rating_label'] = $item['rating'] > 0 ? number_format($item['rating'], 1, ',', '.') : '-';
+                $item['rating_label'] = $item['rating'] > 0 ? number_format($item['rating'], 1) : '-';
 
                 return $item;
             })->all(),
@@ -601,7 +601,7 @@ class DashboardController extends Controller
 
         return [
             'direction' => $direction,
-            'label' => $prefix . number_format($percentage, 1, ',', '.') . '% vs previous',
+            'label' => $prefix . number_format($percentage, 1) . '% vs previous',
         ];
     }
 
@@ -634,7 +634,7 @@ class DashboardController extends Controller
         return [
             'has_data' => $total > 0,
             'total' => $total,
-            'total_label' => number_format($total, 0, ',', '.'),
+            'total_label' => number_format($total),
             'items' => $items->all(),
             'gradient' => $total > 0 ? "conic-gradient({$gradient})" : 'conic-gradient(#efe8e2 0 100%)',
         ];
@@ -662,7 +662,7 @@ class DashboardController extends Controller
 
     private function rupiah(float|int $value): string
     {
-        return 'Rp' . number_format((float) $value, 0, ',', '.');
+        return 'Rp' . number_format((float) $value);
     }
 
     private function shortRupiah(float|int $value): string
@@ -670,15 +670,15 @@ class DashboardController extends Controller
         $value = (float) $value;
 
         if ($value >= 1_000_000_000) {
-            return 'Rp' . number_format($value / 1_000_000_000, 2, ',', '.') . ' M';
+            return 'Rp' . number_format($value / 1_000_000_000, 2) . 'B';
         }
 
         if ($value >= 1_000_000) {
-            return 'Rp' . number_format($value / 1_000_000, 2, ',', '.') . ' jt';
+            return 'Rp' . number_format($value / 1_000_000, 2) . 'M';
         }
 
         if ($value >= 1_000) {
-            return 'Rp' . number_format($value / 1_000, 0, ',', '.') . ' rb';
+            return 'Rp' . number_format($value / 1_000) . 'K';
         }
 
         return $this->rupiah($value);

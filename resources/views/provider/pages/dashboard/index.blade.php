@@ -2,12 +2,12 @@
 
 @section('title', 'Provider Dashboard - JasaKu')
 @section('page_title', 'Dashboard')
-@section('page_subtitle', 'Analytics performa booking, pembayaran, layanan, dan staff.')
+@section('page_subtitle', 'Performance analytics for bookings, payments, services, and staff operations.')
 
 @section('content')
 @php
-    $rupiah = fn ($amount) => 'Rp' . number_format((float) $amount, 0, ',', '.');
-    $number = fn ($value) => number_format((float) $value, 0, ',', '.');
+    $rupiah = fn ($amount) => 'Rp' . number_format((float) $amount);
+    $number = fn ($value) => number_format((float) $value);
     $summaryCards = collect($summaryCards ?? []);
     $chartBuckets = collect($revenueChart['buckets'] ?? [])->values();
     $miniBuckets = $chartBuckets->count() > 6 ? $chartBuckets->slice(-6)->values() : $chartBuckets;
@@ -76,22 +76,22 @@
         [
             'label' => 'Branches',
             'value' => $number($stats['branches_count'] ?? 0),
-            'note' => 'Lokasi layanan aktif',
+            'note' => 'Active service locations',
         ],
         [
             'label' => 'Services',
             'value' => $number($stats['services_count'] ?? 0),
-            'note' => 'Menu layanan tersedia',
+            'note' => 'Available service menu items',
         ],
         [
             'label' => 'Staff',
             'value' => $number($stats['staff_count'] ?? 0),
-            'note' => 'Tim operasional',
+            'note' => 'Operational team members',
         ],
         [
             'label' => 'Plan',
             'value' => $currentPlan['name'] ?? 'Life Time',
-            'note' => $currentPlan['description'] ?? 'Subscription aktif',
+            'note' => $currentPlan['description'] ?? 'Active subscription',
         ],
     ];
 @endphp
@@ -178,7 +178,7 @@
     <div class="admin-dashboard-chart-grid">
         <div class="admin-chart-card">
             <div class="admin-chart-head">
-                <h3>Revenue forecast</h3>
+                <h3>Revenue Forecast</h3>
 
                 <div class="admin-chart-actions">
                     <button type="button">
@@ -361,7 +361,7 @@
                 <h3>Booking Summary</h3>
 
                 <div class="admin-table-tools">
-                    <a href="{{ provider_route('provider.bookings.index') }}">View all</a>
+                    <a href="{{ provider_route('provider.bookings.index') }}">View All</a>
                 </div>
             </div>
 
@@ -402,16 +402,16 @@
                 </div>
 
                 <div class="admin-chart-legend">
-                    <span><i class="green"></i> Completed Booking</span>
-                    <span><i class="purple"></i> Pending Booking</span>
-                    <span><i class="orange"></i> Cancelled Booking</span>
+                    <span><i class="green"></i> Completed Bookings</span>
+                    <span><i class="purple"></i> Pending Bookings</span>
+                    <span><i class="orange"></i> Cancelled Bookings</span>
                 </div>
             @endif
         </div>
 
         <div class="admin-chart-card admin-panel-card">
             <div class="admin-chart-head">
-                <h3>Best Selling Services</h3>
+                <h3>Best-Selling Services</h3>
 
                 <div class="admin-chart-actions">
                     <a href="{{ provider_route('provider.services.index') }}">Services</a>
@@ -473,7 +473,7 @@
             <table>
                 <thead>
                     <tr>
-                        <th>Staff name</th>
+                        <th>Staff Name</th>
                         <th>Bookings</th>
                         <th>Rating</th>
                         <th>Revenue</th>

@@ -203,10 +203,10 @@ class ProviderController extends Controller
         app(AppNotificationService::class)->createForUsers(
             app(AppNotificationService::class)->providerRecipients((int) $user->id),
             'provider.status.' . $newStatus,
-            $newStatus === 'active' ? 'Akun provider aktif' : 'Akun provider dinonaktifkan',
+            $newStatus === 'active' ? 'Provider account active' : 'Provider account deactivated',
             $newStatus === 'active'
-                ? 'Admin mengaktifkan akun provider kamu.'
-                : 'Admin menonaktifkan akun provider kamu.',
+                ? 'Admin activated your provider account.'
+                : 'Admin deactivated your provider account.',
             route('provider.dashboard'),
             [
                 'provider_id' => (int) $user->id,
@@ -215,7 +215,7 @@ class ProviderController extends Controller
             (int) request()->user()?->id
         );
 
-        return back()->with('success', 'Status akun provider berhasil diperbarui.');
+        return back()->with('success', 'Provider account status has been updated.');
     }
 
     public function updateDocumentStatus(Request $request, User $user)
@@ -249,12 +249,12 @@ class ProviderController extends Controller
         ];
         $statusLabel = $statusLabels[$validated['document_status']] ?? ucfirst($validated['document_status']);
         $documentNote = trim((string) ($validated['document_note'] ?? ''));
-        $body = $documentNote !== '' ? $documentNote : "Status dokumen provider diperbarui menjadi {$statusLabel}.";
+        $body = $documentNote !== '' ? $documentNote : "Provider document status has been updated to {$statusLabel}.";
 
         app(AppNotificationService::class)->createForUsers(
             app(AppNotificationService::class)->providerRecipients((int) $user->id, 'profile'),
             'provider.document.' . $validated['document_status'],
-            'Status dokumen diperbarui',
+            'Document status updated',
             $body,
             route('provider.profile'),
             [
@@ -264,7 +264,7 @@ class ProviderController extends Controller
             (int) $request->user()?->id
         );
 
-        return back()->with('success', 'Status dokumen provider berhasil diperbarui.');
+        return back()->with('success', 'Provider document status has been updated.');
     }
 
     public function destroy(User $user)
@@ -290,6 +290,6 @@ class ProviderController extends Controller
 
         return redirect()
             ->route('admin.providers.index')
-            ->with('success', 'Provider berhasil dihapus.');
+            ->with('success', 'Provider has been deleted.');
     }
 }

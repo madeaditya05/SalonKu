@@ -243,7 +243,7 @@
 
                         <textarea
                             name="document_note"
-                            placeholder="Catatan admin jika dokumen ditolak"
+                            placeholder="Admin note if documents are rejected"
                         >{{ $profile->document_note ?? '' }}</textarea>
 
                         <button type="submit">

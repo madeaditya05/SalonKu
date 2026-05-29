@@ -1,8 +1,8 @@
 @extends('provider.layouts.dashboard')
 
-@section('title', 'Staffs - Provider Dashboard')
-@section('page_title', 'Staffs')
-@section('page_subtitle', 'Manage semua staff provider kamu.')
+@section('title', 'Staff - Provider Dashboard')
+@section('page_title', 'Staff')
+@section('page_subtitle', 'Manage staff, branches, roles, contact details, and operational status.')
 
 @push('styles')
     <link rel="stylesheet" href="{{ asset('provider/css/staff.css') }}">
@@ -10,35 +10,179 @@
 
 @section('content')
 @php
-    $staffs = $staffs ?? collect();
+    use Illuminate\Support\Str;
+
+    $staffCollection = $staffs ?? collect();
     $categories = $categories ?? collect();
     $branches = $branches ?? collect();
+
+    $hasPaginator = is_object($staffCollection)
+        && method_exists($staffCollection, 'links')
+        && method_exists($staffCollection, 'firstItem');
+    $firstItem = $hasPaginator ? ($staffCollection->firstItem() ?? 0) : 0;
+    $lastItem = $hasPaginator ? ($staffCollection->lastItem() ?? 0) : (is_countable($staffCollection) ? count($staffCollection) : 0);
+    $totalItem = $hasPaginator ? $staffCollection->total() : (is_countable($staffCollection) ? count($staffCollection) : 0);
+
+    $filters = $filters ?? [
+        'status' => request('status', 'all'),
+        'search' => request('search', $search ?? ''),
+        'per_page' => request('per_page', $perPage ?? 10),
+        'branch_id' => request('branch_id', 'all'),
+        'category_id' => request('category_id', 'all'),
+        'sort_by' => request('sort_by', 'created_at'),
+        'sort_direction' => request('sort_direction', 'desc'),
+    ];
+
+    $summary = $summary ?? [
+        'total' => $totalItem,
+        'active' => 0,
+        'inactive' => 0,
+        'branches' => 0,
+    ];
+
+    $statusCounts = $statusCounts ?? [
+        'all' => $summary['total'] ?? $totalItem,
+        'active' => $summary['active'] ?? 0,
+        'inactive' => $summary['inactive'] ?? 0,
+    ];
+
+    $statusTabs = [
+        'all' => 'All Staff',
+        'active' => 'Active',
+        'inactive' => 'Inactive',
+    ];
+
+    $currentStatus = $filters['status'] ?? 'all';
+    $sortBy = $sortBy ?? ($filters['sort_by'] ?? 'created_at');
+    $sortDirection = $sortDirection ?? ($filters['sort_direction'] ?? 'desc');
+
+    $cleanQuery = function (array $query) {
+        return collect($query)
+            ->reject(function ($value, $key) {
+                if ($value === null || $value === '') {
+                    return true;
+                }
+
+                if (in_array($key, ['status', 'branch_id', 'category_id'], true) && $value === 'all') {
+                    return true;
+                }
+
+                if ($key === 'sort_by' && $value === 'created_at') {
+                    return true;
+                }
+
+                if ($key === 'sort_direction' && $value === 'desc') {
+                    return true;
+                }
+
+                if ($key === 'per_page' && (int) $value === 10) {
+                    return true;
+                }
+
+                return false;
+            })
+            ->all();
+    };
+
+    $queryFor = fn (array $overrides = []) => $cleanQuery(array_merge($filters, $overrides));
+    $sortQueryFor = function (string $key) use ($queryFor, $sortBy, $sortDirection) {
+        $nextDirection = $sortBy === $key && $sortDirection === 'asc' ? 'desc' : 'asc';
+
+        return $queryFor([
+            'sort_by' => $key,
+            'sort_direction' => $nextDirection,
+        ]);
+    };
+    $sortIconClass = fn (string $key, string $direction) => $sortBy === $key && $sortDirection === $direction ? 'active' : '';
+
+    $statusLabel = fn ($value) => ucfirst($value ?: 'active');
+    $statusClass = fn ($value) => ($value ?? 'active') === 'active' ? 'success' : 'danger';
+
+    $formatDate = function ($value) {
+        if (empty($value)) {
+            return '-';
+        }
+
+        try {
+            return \Carbon\Carbon::parse($value)->format('d M Y');
+        } catch (\Throwable $exception) {
+            return '-';
+        }
+    };
+
+    $staffNameFor = fn ($staff) => $staff->full_name ?: trim(($staff->first_name ?? '') . ' ' . ($staff->last_name ?? ''));
+    $staffInitial = fn ($staff, $name) => strtoupper(substr((string) ($name ?: $staff->email ?: 'S'), 0, 1));
+
+    $staffImageUrl = function ($staff) {
+        $image = $staff->image ?? null;
+
+        if (empty($image)) {
+            return null;
+        }
+
+        $image = ltrim((string) $image, '/');
+
+        if (Str::startsWith($image, ['http://', 'https://'])) {
+            return $image;
+        }
+
+        if (Str::startsWith($image, 'storage/')) {
+            return asset($image);
+        }
+
+        return asset('storage/' . $image);
+    };
+
+    $phoneText = fn ($staff) => trim(($staff->country_code ?? '') . ($staff->phone_number ?? '')) ?: '-';
+    $locationText = fn ($staff) => collect([
+        $staff->city_id ?? null,
+        $staff->state_id ?? null,
+        $staff->country_id ?? null,
+    ])->filter()->values()->implode(', ');
+
+    $branchNameFor = fn ($staff) => $staff->branch->branch_name
+        ?? optional($branches->firstWhere('id', $staff->branch_id))->branch_name
+        ?? '-';
+    $categoryNameFor = fn ($staff) => $staff->category->name
+        ?? optional($categories->firstWhere('id', $staff->category_id))->name
+        ?? '-';
+    $roleNameFor = fn ($staff) => $staff->providerRole->role_name ?? 'Default staff';
+    $genderLabel = fn ($value) => $value ? ucfirst($value) : 'Gender -';
+
+    $selectedBranchName = function ($id) use ($branches) {
+        if ($id === 'all' || $id === null || $id === '') {
+            return null;
+        }
+
+        return optional($branches->firstWhere('id', (int) $id))->branch_name;
+    };
+
+    $selectedCategoryName = function ($id) use ($categories) {
+        if ($id === 'all' || $id === null || $id === '') {
+            return null;
+        }
+
+        return optional($categories->firstWhere('id', (int) $id))->name;
+    };
+
+    $hasMobileAdvancedFilters = (($filters['branch_id'] ?? 'all') !== 'all')
+        || (($filters['category_id'] ?? 'all') !== 'all')
+        || ((int) ($filters['per_page'] ?? 10) !== 10);
 @endphp
 
-<section class="provider-staff-page">
-    <div class="staff-index-header">
-        <div>
-            <h1>Staffs</h1>
-
-            <div class="staff-breadcrumb">
-                <span>Dashboard</span>
-                <span>›</span>
-                <strong>Staffs</strong>
-            </div>
+<section class="admin-category-page admin-booking-page provider-staff-category-page">
+    <div class="admin-booking-route admin-category-route provider-staff-route">
+        <div class="admin-breadcrumb">
+            <a href="{{ provider_route('provider.dashboard') }}">Dashboard</a>
+            <span>&rsaquo;</span>
+            <strong>Staff</strong>
         </div>
 
-        <div class="staff-header-actions">
-            <button type="button" class="staff-filter-btn">
-                <svg viewBox="0 0 24 24">
-                    <path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3"/>
-                    <path d="M1 14h6M9 8h6M17 16h6"/>
-                </svg>
-                Filter
-            </button>
-
-            <button type="button" class="staff-add-btn" id="staffAddBtn">
-                <svg viewBox="0 0 24 24">
-                    <path d="M12 5v14M5 12h14"/>
+        <div class="provider-staff-actions provider-staff-actions-desktop">
+            <button type="button" class="admin-category-add-button" data-staff-add>
+                <svg viewBox="0 0 24 24" fill="none">
+                    <path d="M12 5v14"></path>
+                    <path d="M5 12h14"></path>
                 </svg>
                 Add Staff
             </button>
@@ -46,116 +190,351 @@
     </div>
 
     @if (session('success'))
-        <div class="staff-alert success">
+        <div class="admin-booking-alert success">
             {{ session('success') }}
         </div>
     @endif
 
     @if (session('error'))
-        <div class="staff-alert error">
+        <div class="admin-booking-alert danger">
             {{ session('error') }}
         </div>
     @endif
 
     @if ($errors->any())
-        <div class="staff-alert error">
-            Ada data yang belum valid. Silakan cek form kembali.
+        <div class="admin-booking-alert danger">
+            {{ $errors->first() }}
         </div>
     @endif
 
-    <div class="staff-data-card">
-        <div class="staff-data-toolbar">
-            <div class="staff-length-control">
-                <span>Show</span>
-
-                <select id="staffEntriesSelect">
-                    <option value="10">10</option>
-                    <option value="25">25</option>
-                    <option value="50">50</option>
-                    <option value="100">100</option>
-                </select>
-
-                <span>entries</span>
-            </div>
-
-            <div class="staff-search-control">
-                <svg viewBox="0 0 24 24">
-                    <circle cx="11" cy="11" r="7"/>
-                    <path d="m21 21-4.3-4.3"/>
-                </svg>
-
-                <input type="text" id="staffSearchInput" placeholder="Search staff">
-            </div>
+    <div class="admin-booking-summary-grid">
+        <div class="admin-booking-summary-card pink">
+            <span>Total Staff</span>
+            <strong>{{ number_format((int) ($summary['total'] ?? 0)) }}</strong>
+            <small>Data based on the active filters</small>
         </div>
 
-        <div class="staff-table-responsive">
-            <table class="staff-datatable" id="staffTable">
+        <div class="admin-booking-summary-card yellow">
+            <span>Active</span>
+            <strong>{{ number_format((int) ($summary['active'] ?? 0)) }}</strong>
+            <small>Staff ready to receive bookings</small>
+        </div>
+
+        <div class="admin-booking-summary-card blue">
+            <span>Assigned Branches</span>
+            <strong>{{ number_format((int) ($summary['branches'] ?? 0)) }}</strong>
+            <small>Branches with active staff in this list</small>
+        </div>
+
+        <div class="admin-booking-summary-card orange">
+            <span>Inactive</span>
+            <strong>{{ number_format((int) ($summary['inactive'] ?? 0)) }}</strong>
+            <small>Temporarily inactive staff</small>
+        </div>
+    </div>
+
+    <div class="admin-booking-card category-card provider-staff-category-card">
+        <div class="admin-booking-tabs provider-staff-tabs">
+            @foreach ($statusTabs as $key => $label)
+                <a href="{{ provider_route('provider.staffs.index', $queryFor(['status' => $key])) }}"
+                   class="admin-booking-tab {{ ($currentStatus === $key || ($key === 'all' && empty($currentStatus))) ? 'active' : '' }}">
+                    {{ $label }}
+                </a>
+            @endforeach
+        </div>
+
+        <form method="GET" action="{{ provider_route('provider.staffs.index') }}" class="admin-booking-filter-panel compact {{ $hasMobileAdvancedFilters ? 'is-expanded' : '' }}">
+            @if (! empty($currentStatus) && $currentStatus !== 'all')
+                <input type="hidden" name="status" value="{{ $currentStatus }}">
+            @endif
+
+            <input type="hidden" name="sort_by" value="{{ $sortBy }}">
+            <input type="hidden" name="sort_direction" value="{{ $sortDirection }}">
+
+            <div class="admin-booking-filter-row provider-staff-filter-row" id="staffFilterRow">
+                <label class="admin-booking-field search">
+                    <div class="admin-booking-search-box">
+                        <svg viewBox="0 0 24 24">
+                            <circle cx="11" cy="11" r="7"></circle>
+                            <path d="m21 21-4.3-4.3"></path>
+                        </svg>
+
+                        <input id="staffSearchInput"
+                               type="text"
+                               name="search"
+                               value="{{ $filters['search'] ?? '' }}"
+                               placeholder="Search staff">
+                    </div>
+                </label>
+
+                <button type="submit" class="admin-booking-mobile-search-submit" aria-label="Search staff">
+                    Search
+                </button>
+
+                <button type="button"
+                        class="admin-booking-mobile-filter-toggle {{ $hasMobileAdvancedFilters ? 'active' : '' }}"
+                        aria-controls="staffFilterRow"
+                        aria-expanded="{{ $hasMobileAdvancedFilters ? 'true' : 'false' }}">
+                    Filter
+                </button>
+
+                <label class="admin-booking-field mini">
+                    <select name="branch_id" aria-label="Branch" title="Branch">
+                        <option value="all">All Branch</option>
+                        @foreach ($branches as $branch)
+                            <option value="{{ $branch->id }}" {{ (string) ($filters['branch_id'] ?? 'all') === (string) $branch->id ? 'selected' : '' }}>
+                                {{ $branch->branch_name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </label>
+
+                <label class="admin-booking-field mini">
+                    <select name="category_id" aria-label="Category" title="Category">
+                        <option value="all">All Category</option>
+                        @foreach ($categories as $category)
+                            <option value="{{ $category->id }}" {{ (string) ($filters['category_id'] ?? 'all') === (string) $category->id ? 'selected' : '' }}>
+                                {{ $category->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </label>
+
+                <label class="admin-booking-field count">
+                    <select id="staffEntriesSelect" name="per_page" aria-label="Rows per page" title="Rows per page">
+                        <option value="10" {{ (int) ($filters['per_page'] ?? 10) === 10 ? 'selected' : '' }}>10</option>
+                        <option value="25" {{ (int) ($filters['per_page'] ?? 10) === 25 ? 'selected' : '' }}>25</option>
+                        <option value="50" {{ (int) ($filters['per_page'] ?? 10) === 50 ? 'selected' : '' }}>50</option>
+                        <option value="100" {{ (int) ($filters['per_page'] ?? 10) === 100 ? 'selected' : '' }}>100</option>
+                    </select>
+                </label>
+
+                <div class="admin-booking-filter-buttons">
+                    <button type="submit">Filter</button>
+                    @if ($hasActiveFilters ?? false)
+                        <a href="{{ provider_route('provider.staffs.index') }}">Reset</a>
+                    @endif
+                </div>
+            </div>
+
+            <div class="admin-booking-filter-meta">
+                <span class="admin-booking-filter-count">{{ number_format($totalItem) }} staff</span>
+
+                @if (($filters['search'] ?? '') !== '')
+                    <span>Search: {{ $filters['search'] }}</span>
+                @endif
+
+                @if (($filters['status'] ?? 'all') !== 'all')
+                    <span>Status: {{ $statusLabel($filters['status']) }}</span>
+                @endif
+
+                @if ($selectedBranchName($filters['branch_id'] ?? 'all'))
+                    <span>Branch: {{ $selectedBranchName($filters['branch_id']) }}</span>
+                @endif
+
+                @if ($selectedCategoryName($filters['category_id'] ?? 'all'))
+                    <span>Category: {{ $selectedCategoryName($filters['category_id']) }}</span>
+                @endif
+            </div>
+        </form>
+
+        <div class="admin-category-add-row provider-staff-actions provider-staff-actions-mobile">
+            <button type="button" class="admin-category-add-button admin-category-add-button-mobile" data-staff-add>
+                <svg viewBox="0 0 24 24" fill="none">
+                    <path d="M12 5v14"></path>
+                    <path d="M5 12h14"></path>
+                </svg>
+                Add Staff
+            </button>
+        </div>
+
+        <div class="admin-category-mobile-list admin-booking-mobile-list provider-staff-mobile-list">
+            @forelse ($staffCollection as $staff)
+                @php
+                    $staffName = $staffNameFor($staff);
+                    $initial = $staffInitial($staff, $staffName);
+                    $imageUrl = $staffImageUrl($staff);
+                    $phone = $phoneText($staff);
+                    $location = $locationText($staff);
+                    $branchName = $branchNameFor($staff);
+                    $categoryName = $categoryNameFor($staff);
+                    $roleName = $roleNameFor($staff);
+                    $status = $staff->status ?? 'active';
+                    $dateOfBirth = $staff->date_of_birth instanceof \Carbon\CarbonInterface
+                        ? $staff->date_of_birth->format('Y-m-d')
+                        : $staff->date_of_birth;
+                    $staffPayload = [
+                        'id' => $staff->id,
+                        'image' => $staff->image,
+                        'image_url' => $imageUrl ?: '',
+                        'first_name' => $staff->first_name,
+                        'last_name' => $staff->last_name,
+                        'email' => $staff->email,
+                        'username' => $staff->username,
+                        'country_code' => $staff->country_code,
+                        'phone_number' => $staff->phone_number,
+                        'gender' => $staff->gender,
+                        'date_of_birth' => $dateOfBirth,
+                        'address' => $staff->address,
+                        'country_id' => $staff->country_id,
+                        'state_id' => $staff->state_id,
+                        'city_id' => $staff->city_id,
+                        'postal_code' => $staff->postal_code,
+                        'bio' => $staff->bio,
+                        'category_id' => $staff->category_id,
+                        'branch_id' => $staff->branch_id,
+                        'provider_role_id' => $staff->provider_role_id,
+                        'status' => $status,
+                        'update_url' => provider_route('provider.staffs.update', $staff->id),
+                        'delete_url' => provider_route('provider.staffs.destroy', $staff->id),
+                    ];
+                @endphp
+
+                <article class="admin-category-mobile-card admin-booking-mobile-card provider-staff-mobile-card">
+                    <header class="admin-category-mobile-head">
+                        <div class="admin-category-mobile-title">
+                            @if ($imageUrl)
+                                <img src="{{ $imageUrl }}" alt="{{ $staffName }}">
+                            @else
+                                <span>{{ $initial }}</span>
+                            @endif
+
+                            <div>
+                                <strong>{{ $staffName ?: '-' }}</strong>
+                                <span>{{ $staff->email ?? 'No email' }}</span>
+                            </div>
+                        </div>
+
+                        <b>{{ $roleName }}</b>
+                    </header>
+
+                    <div class="admin-category-mobile-main admin-booking-mobile-main provider-staff-mobile-main">
+                        <div>
+                            <span>Phone</span>
+                            <strong>{{ $phone }}</strong>
+                        </div>
+
+                        <div>
+                            <span>Branch</span>
+                            <strong>{{ Str::limit($branchName, 28) }}</strong>
+                        </div>
+
+                        <div>
+                            <span>Category</span>
+                            <strong>{{ Str::limit($categoryName, 28) }}</strong>
+                        </div>
+
+                        <div>
+                            <span>Location</span>
+                            <strong>{{ Str::limit($location ?: '-', 28) }}</strong>
+                        </div>
+                    </div>
+
+                    <p>{{ Str::limit($staff->bio ?: $staff->address ?: 'No profile note', 120) }}</p>
+
+                    <footer class="admin-category-mobile-footer provider-staff-mobile-footer">
+                        <span class="admin-booking-status {{ $statusClass($status) }}">
+                            {{ $statusLabel($status) }}
+                        </span>
+
+                        <div class="category-actions provider-staff-action-icons provider-staff-mobile-action-icons">
+                            <button
+                                type="button"
+                                class="category-action-btn info staff-edit-btn"
+                                title="Edit"
+                                aria-label="Edit {{ $staffName ?: 'staff' }}"
+                                data-staff='@json($staffPayload)'
+                            >
+                                <svg viewBox="0 0 24 24" fill="none">
+                                    <path d="M12 20h9"></path>
+                                    <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path>
+                                </svg>
+                            </button>
+
+                            <button
+                                type="button"
+                                class="category-action-btn danger staff-delete-trigger"
+                                title="Delete"
+                                aria-label="Delete {{ $staffName ?: 'staff' }}"
+                                data-delete-url="{{ provider_route('provider.staffs.destroy', $staff->id) }}"
+                            >
+                                <svg viewBox="0 0 24 24" fill="none">
+                                    <path d="M3 6h18"></path>
+                                    <path d="M8 6V4h8v2"></path>
+                                    <path d="M19 6l-1 14H6L5 6"></path>
+                                    <path d="M10 11v6"></path>
+                                    <path d="M14 11v6"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </footer>
+                </article>
+            @empty
+                <div class="admin-category-mobile-empty admin-booking-mobile-empty provider-staff-mobile-empty">
+                    <strong>No staff available.</strong>
+                    <p>Try changing the keyword, branch, category, or staff status.</p>
+                </div>
+            @endforelse
+        </div>
+
+        <div class="admin-booking-table-wrap category-table-wrap provider-staff-category-table-wrap">
+            <table class="admin-booking-table detailed category-table provider-staff-category-table">
                 <thead>
                     <tr>
-                        <th data-sort="number">
-                            <span>#</span>
-                            <span class="sort-icon">↕</span>
-                        </th>
-
-                        <th data-sort="text">
-                            <span>Staff</span>
-                            <span class="sort-icon">↕</span>
-                        </th>
-
-                        <th data-sort="text">
-                            <span>Phone</span>
-                            <span class="sort-icon">↕</span>
-                        </th>
-
-                        <th data-sort="text">
-                            <span>Location</span>
-                            <span class="sort-icon">↕</span>
-                        </th>
-
-                        <th data-sort="text">
-                            <span>Branch</span>
-                            <span class="sort-icon">↕</span>
-                        </th>
-
-                        <th data-sort="text">
-                            <span>Role</span>
-                            <span class="sort-icon">&varr;</span>
-                        </th>
-
-                        <th data-sort="text">
-                            <span>Status</span>
-                            <span class="sort-icon">↕</span>
-                        </th>
-
                         <th>
-                            <span>Action</span>
+                            <a href="{{ provider_route('provider.staffs.index', $sortQueryFor('full_name')) }}" class="admin-booking-sort {{ $sortBy === 'full_name' ? 'active' : '' }}">
+                                Staff
+                                <span class="admin-booking-sort-icons" aria-hidden="true">
+                                    <span class="{{ $sortIconClass('full_name', 'asc') }}">&uarr;</span>
+                                    <span class="{{ $sortIconClass('full_name', 'desc') }}">&darr;</span>
+                                </span>
+                            </a>
                         </th>
+                        <th>
+                            <a href="{{ provider_route('provider.staffs.index', $sortQueryFor('email')) }}" class="admin-booking-sort {{ $sortBy === 'email' ? 'active' : '' }}">
+                                Contact
+                                <span class="admin-booking-sort-icons" aria-hidden="true">
+                                    <span class="{{ $sortIconClass('email', 'asc') }}">&uarr;</span>
+                                    <span class="{{ $sortIconClass('email', 'desc') }}">&darr;</span>
+                                </span>
+                            </a>
+                        </th>
+                        <th>Location</th>
+                        <th>Branch</th>
+                        <th>Category</th>
+                        <th>Role</th>
+                        <th>
+                            <a href="{{ provider_route('provider.staffs.index', $sortQueryFor('status')) }}" class="admin-booking-sort {{ $sortBy === 'status' ? 'active' : '' }}">
+                                Status
+                                <span class="admin-booking-sort-icons" aria-hidden="true">
+                                    <span class="{{ $sortIconClass('status', 'asc') }}">&uarr;</span>
+                                    <span class="{{ $sortIconClass('status', 'desc') }}">&darr;</span>
+                                </span>
+                            </a>
+                        </th>
+                        <th>Action</th>
                     </tr>
                 </thead>
 
                 <tbody>
-                    @forelse ($staffs as $index => $staff)
+                    @forelse ($staffCollection as $staff)
                         @php
-                            $staffName = $staff->full_name ?? trim(($staff->first_name ?? '') . ' ' . ($staff->last_name ?? ''));
-                            $staffInitial = strtoupper(substr($staffName ?: 'S', 0, 1));
-
-                            $branchName = $staff->branch->branch_name
-                                ?? optional($branches->firstWhere('id', $staff->branch_id))->branch_name
-                                ?? '-';
-
-                            $categoryName = optional($categories->firstWhere('id', $staff->category_id))->name ?? $staff->category_id;
-                            $roleName = $staff->providerRole->role_name ?? 'Default staff';
-
-                            $locationParts = collect([
-                                $staff->city_id ?? null,
-                                $staff->state_id ?? null,
-                                $staff->country_id ?? null,
-                            ])->filter()->values()->implode(', ');
-
+                            $staffName = $staffNameFor($staff);
+                            $initial = $staffInitial($staff, $staffName);
+                            $imageUrl = $staffImageUrl($staff);
+                            $phone = $phoneText($staff);
+                            $location = $locationText($staff);
+                            $branchName = $branchNameFor($staff);
+                            $categoryName = $categoryNameFor($staff);
+                            $roleName = $roleNameFor($staff);
+                            $status = $staff->status ?? 'active';
+                            $dateOfBirth = $staff->date_of_birth instanceof \Carbon\CarbonInterface
+                                ? $staff->date_of_birth->format('Y-m-d')
+                                : $staff->date_of_birth;
                             $staffPayload = [
                                 'id' => $staff->id,
                                 'image' => $staff->image,
-                                'image_url' => $staff->image ? asset('storage/' . $staff->image) : '',
+                                'image_url' => $imageUrl ?: '',
                                 'first_name' => $staff->first_name,
                                 'last_name' => $staff->last_name,
                                 'email' => $staff->email,
@@ -163,7 +542,7 @@
                                 'country_code' => $staff->country_code,
                                 'phone_number' => $staff->phone_number,
                                 'gender' => $staff->gender,
-                                'date_of_birth' => optional($staff->date_of_birth)->format('Y-m-d') ?? $staff->date_of_birth,
+                                'date_of_birth' => $dateOfBirth,
                                 'address' => $staff->address,
                                 'country_id' => $staff->country_id,
                                 'state_id' => $staff->state_id,
@@ -173,114 +552,158 @@
                                 'category_id' => $staff->category_id,
                                 'branch_id' => $staff->branch_id,
                                 'provider_role_id' => $staff->provider_role_id,
-                                'status' => $staff->status ?? 'active',
+                                'status' => $status,
                                 'update_url' => provider_route('provider.staffs.update', $staff->id),
                                 'delete_url' => provider_route('provider.staffs.destroy', $staff->id),
                             ];
                         @endphp
 
                         <tr>
-                            <td>{{ $index + 1 }}</td>
-
                             <td>
-                                <div class="staff-name-cell">
-                                    <div class="staff-avatar">
-                                        @if (!empty($staff->image))
-                                            <img src="{{ asset('storage/' . $staff->image) }}" alt="{{ $staffName }}">
-                                        @else
-                                            {{ $staffInitial }}
+                                <div class="category-name-box provider-staff-name-box">
+                                    @if ($imageUrl)
+                                        <img class="category-thumb" src="{{ $imageUrl }}" alt="{{ $staffName }}">
+                                    @else
+                                        <span class="category-thumb-placeholder">{{ $initial }}</span>
+                                    @endif
+
+                                    <div class="category-name-text">
+                                        <strong>{{ $staffName ?: '-' }}</strong>
+                                        <small>ID #{{ $staff->id }}</small>
+                                        @if ($staff->username)
+                                            <small>{{ $staff->username }}</small>
                                         @endif
                                     </div>
-
-                                    <div>
-                                        <strong>{{ $staffName ?: '-' }}</strong>
-                                        <small>{{ $staff->email ?? '-' }}</small>
-                                    </div>
                                 </div>
                             </td>
 
                             <td>
-                                {{ $staff->country_code ?? '' }}{{ $staff->phone_number ?? '-' }}
-                            </td>
-
-                            <td>
-                                <div class="staff-location-cell">
-                                    <strong>{{ $locationParts ?: '-' }}</strong>
-                                    <small>{{ $staff->address ?? '-' }}</small>
+                                <div class="admin-booking-date">
+                                    <strong>{{ $phone }}</strong>
+                                    <small>{{ $staff->email ?? 'No email' }}</small>
+                                    <small>{{ $genderLabel($staff->gender) }}{{ $dateOfBirth ? ' - ' . $formatDate($dateOfBirth) : '' }}</small>
                                 </div>
                             </td>
 
                             <td>
-                                <div class="staff-branch-cell">
+                                <div class="admin-booking-date provider-staff-location-stack">
+                                    <strong>{{ $location ?: '-' }}</strong>
+                                    <small>{{ Str::limit($staff->address ?: '-', 64) }}</small>
+                                </div>
+                            </td>
+
+                            <td>
+                                <div class="admin-booking-date provider-staff-assignment-stack">
                                     <strong>{{ $branchName }}</strong>
-                                    <small>{{ $categoryName ?: '-' }}</small>
+                                    <small>{{ optional($staff->branch)->status ? $statusLabel($staff->branch->status) : 'Branch assigned' }}</small>
                                 </div>
                             </td>
 
                             <td>
-                                <div class="staff-branch-cell">
-                                    <strong>{{ $roleName }}</strong>
+                                <div class="admin-booking-date provider-staff-assignment-stack">
+                                    <strong>{{ $categoryName }}</strong>
+                                    <small>{{ optional($staff->category)->status ? $statusLabel($staff->category->status) : 'Service category' }}</small>
+                                </div>
+                            </td>
+
+                            <td>
+                                <div class="admin-booking-mode-stack provider-staff-role-stack">
+                                    <span class="admin-booking-status info">
+                                        {{ Str::limit($roleName, 18) }}
+                                    </span>
                                     <small>{{ $staff->role ?? 'staff' }}</small>
                                 </div>
                             </td>
 
                             <td>
-                                <span class="staff-status-badge {{ $staff->status ?? 'active' }}">
-                                    {{ ucfirst($staff->status ?? 'active') }}
+                                <span class="admin-booking-status {{ $statusClass($status) }}">
+                                    {{ $statusLabel($status) }}
                                 </span>
                             </td>
 
                             <td>
-                                <div class="staff-action-group">
+                                <div class="category-actions provider-staff-action-icons provider-staff-row-actions">
                                     <button
                                         type="button"
-                                        class="staff-icon-btn edit staff-edit-btn"
+                                        class="category-action-btn info staff-edit-btn"
                                         title="Edit"
+                                        aria-label="Edit {{ $staffName ?: 'staff' }}"
                                         data-staff='@json($staffPayload)'
                                     >
-                                        <svg viewBox="0 0 24 24">
-                                            <path d="M12 20h9"/>
-                                            <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>
+                                        <svg viewBox="0 0 24 24" fill="none">
+                                            <path d="M12 20h9"></path>
+                                            <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path>
                                         </svg>
                                     </button>
 
                                     <button
                                         type="button"
-                                        class="staff-icon-btn delete staff-delete-trigger"
+                                        class="category-action-btn danger staff-delete-trigger"
                                         title="Delete"
+                                        aria-label="Delete {{ $staffName ?: 'staff' }}"
                                         data-delete-url="{{ provider_route('provider.staffs.destroy', $staff->id) }}"
                                     >
-                                        <svg viewBox="0 0 24 24">
-                                            <path d="M3 6h18"/>
-                                            <path d="M8 6V4h8v2"/>
-                                            <path d="M19 6l-1 14H6L5 6"/>
-                                            <path d="M10 11v6M14 11v6"/>
+                                        <svg viewBox="0 0 24 24" fill="none">
+                                            <path d="M3 6h18"></path>
+                                            <path d="M8 6V4h8v2"></path>
+                                            <path d="M19 6l-1 14H6L5 6"></path>
+                                            <path d="M10 11v6"></path>
+                                            <path d="M14 11v6"></path>
                                         </svg>
                                     </button>
                                 </div>
                             </td>
                         </tr>
                     @empty
-                        <tr class="staff-empty-row">
-                            <td colspan="8">No staff available</td>
+                        <tr>
+                            <td colspan="8" class="admin-booking-empty">
+                                <div>
+                                    <span>
+                                        <svg viewBox="0 0 24 24" fill="none">
+                                            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+                                            <circle cx="9" cy="7" r="4"></circle>
+                                            <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
+                                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                                        </svg>
+                                    </span>
+
+                                    <strong>No staff available.</strong>
+                                    <p>Try changing the keyword, branch, category, or staff status.</p>
+                                </div>
+                            </td>
                         </tr>
                     @endforelse
                 </tbody>
             </table>
         </div>
 
-        <div class="staff-data-footer">
-            <div class="staff-info-text" id="staffInfoText">
-                Showing 0 to 0 of 0 entries
-            </div>
+        <div class="admin-booking-footer category-footer provider-staff-footer">
+            <p class="admin-booking-showing">
+                <strong>{{ number_format($firstItem) }}-{{ number_format($lastItem) }}</strong>
+                <span>/ {{ number_format($totalItem) }}</span>
+            </p>
 
-            <div class="staff-pagination" id="staffPagination">
-                <button type="button" data-page="first">First</button>
-                <button type="button" data-page="previous">Previous</button>
-                <button type="button" class="active" data-page="1">1</button>
-                <button type="button" data-page="next">Next</button>
-                <button type="button" data-page="last">Last</button>
-            </div>
+            @if ($hasPaginator)
+                <div class="admin-booking-pagination category-pagination">
+                    @if ($staffCollection->onFirstPage())
+                        <span class="disabled">&lsaquo;</span>
+                    @else
+                        <a href="{{ $staffCollection->previousPageUrl() }}" aria-label="Previous page">&lsaquo;</a>
+                    @endif
+
+                    <span class="active">{{ $staffCollection->currentPage() }}</span>
+
+                    @if ($staffCollection->hasMorePages())
+                        <a href="{{ $staffCollection->nextPageUrl() }}" aria-label="Next page">&rsaquo;</a>
+                    @else
+                        <span class="disabled">&rsaquo;</span>
+                    @endif
+                </div>
+            @else
+                <div class="admin-booking-pagination category-pagination static">
+                    <span class="active">1</span>
+                </div>
+            @endif
         </div>
     </div>
 </section>
@@ -290,11 +713,11 @@
         <div class="staff-modal-header">
             <div>
                 <h2 id="staffModalTitle">Add Staff</h2>
-                <p>Lengkapi data staff provider.</p>
+                <p>Complete the provider staff details.</p>
             </div>
 
-            <button type="button" class="staff-modal-close" id="staffModalClose">
-                ×
+            <button type="button" class="staff-modal-close" id="staffModalClose" aria-label="Close modal">
+                &times;
             </button>
         </div>
 
@@ -309,8 +732,12 @@
                         <img src="" alt="Staff Preview" id="staffImagePreview" class="hidden">
 
                         <span id="staffImagePlaceholder">
-                            ▧<br>
-                            Image
+                            <svg viewBox="0 0 24 24" fill="none">
+                                <path d="M4 5h16v14H4z"></path>
+                                <path d="m4 15 4-4 4 4 3-3 5 5"></path>
+                                <circle cx="9" cy="9" r="1.5"></circle>
+                            </svg>
+                            <small>Image</small>
                         </span>
                     </label>
 
@@ -318,7 +745,7 @@
 
                     <div>
                         <strong>Profile Image</strong>
-                        <p>Upload foto staff. Format JPG, PNG, WEBP.</p>
+                        <p>Upload a staff photo. Supported formats: JPG, PNG, WEBP.</p>
                     </div>
                 </div>
 
@@ -407,27 +834,25 @@
                     <div class="staff-form-group">
                         <label>Category</label>
                         <select name="category_id" id="staffCategorySelect" required>
-    <option value="">Select Category</option>
-
-    @foreach ($categories as $category)
-        <option value="{{ $category->id }}">
-            {{ $category->name }}
-        </option>
-    @endforeach
-</select>
+                            <option value="">Select Category</option>
+                            @foreach ($categories as $category)
+                                <option value="{{ $category->id }}">
+                                    {{ $category->name }}
+                                </option>
+                            @endforeach
+                        </select>
                     </div>
 
                     <div class="staff-form-group">
                         <label>Branch</label>
                         <select name="branch_id" id="staffBranchSelect" required>
-    <option value="">Select Branch</option>
-
-    @foreach ($branches as $branch)
-        <option value="{{ $branch->id }}">
-            {{ $branch->branch_name }}
-        </option>
-    @endforeach
-</select>
+                            <option value="">Select Branch</option>
+                            @foreach ($branches as $branch)
+                                <option value="{{ $branch->id }}">
+                                    {{ $branch->branch_name }}
+                                </option>
+                            @endforeach
+                        </select>
                     </div>
                 </div>
 
@@ -458,18 +883,19 @@
 <div class="staff-delete-modal-overlay" id="staffDeleteModal">
     <div class="staff-delete-modal">
         <div class="staff-delete-icon">
-            <svg viewBox="0 0 24 24">
-                <path d="M3 6h18"/>
-                <path d="M8 6V4h8v2"/>
-                <path d="M19 6l-1 14H6L5 6"/>
-                <path d="M10 11v6M14 11v6"/>
+            <svg viewBox="0 0 24 24" fill="none">
+                <path d="M3 6h18"></path>
+                <path d="M8 6V4h8v2"></path>
+                <path d="M19 6l-1 14H6L5 6"></path>
+                <path d="M10 11v6"></path>
+                <path d="M14 11v6"></path>
             </svg>
         </div>
 
-        <h2>Confirm Deletion</h2>
+        <h2>Delete Staff?</h2>
 
         <p>
-            Are you sure you want to delete this staff? This action cannot be undone.
+            This staff member will be removed from the provider list. Data cannot be restored after confirmation.
         </p>
 
         <div class="staff-delete-modal-actions">
@@ -482,7 +908,7 @@
                 @method('DELETE')
 
                 <button type="submit" class="staff-modal-delete">
-                    Yes, Delete
+                    Delete
                 </button>
             </form>
         </div>

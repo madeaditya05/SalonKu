@@ -358,7 +358,7 @@ function initAdminDeleteConfirm() {
 
         if (confirmButton) {
             confirmButton.disabled = true;
-            confirmButton.textContent = pendingForm.dataset.deleteLoadingLabel || 'Menghapus...';
+            confirmButton.textContent = pendingForm.dataset.deleteLoadingLabel || 'Deleting...';
         }
 
         HTMLFormElement.prototype.submit.call(pendingForm);
@@ -370,7 +370,7 @@ function initAdminDeleteConfirm() {
         }
 
         if (!modal || !confirmButton) {
-            if (confirm(form.dataset.deleteFallbackMessage || 'Yakin ingin menghapus data ini?')) {
+            if (confirm(form.dataset.deleteFallbackMessage || 'Are you sure you want to delete this data?')) {
                 form.dataset.deleteConfirmed = 'true';
                 HTMLFormElement.prototype.submit.call(form);
             }
@@ -382,19 +382,19 @@ function initAdminDeleteConfirm() {
         previousFocus = document.activeElement;
 
         if (title) {
-            title.textContent = form.dataset.deleteTitle || 'Hapus Data?';
+            title.textContent = form.dataset.deleteTitle || 'Delete Data?';
         }
 
         if (item) {
-            item.textContent = form.dataset.deleteItem || form.dataset.deleteName || 'data ini';
+            item.textContent = form.dataset.deleteItem || form.dataset.deleteName || 'this data';
         }
 
         if (message) {
-            message.textContent = form.dataset.deleteMessage || 'Data yang dipilih akan dihapus dari sistem.';
+            message.textContent = form.dataset.deleteMessage || 'The selected data will be deleted from the system.';
         }
 
         confirmButton.disabled = false;
-        confirmButton.textContent = form.dataset.deleteConfirmLabel || 'Hapus';
+        confirmButton.textContent = form.dataset.deleteConfirmLabel || 'Delete';
         modal.classList.add('show');
         modal.setAttribute('aria-hidden', 'false');
         document.body.classList.add('modal-open');

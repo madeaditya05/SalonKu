@@ -16,7 +16,7 @@ class ServiceCategoryController extends Controller
     public function index(Request $request)
     {
         if (! Auth::check() || Auth::user()->role !== 'admin') {
-            abort(403, 'Akses ditolak.');
+            abort(403, 'Access denied.');
         }
 
         $search = trim((string) $request->get('search', ''));
@@ -118,7 +118,7 @@ class ServiceCategoryController extends Controller
     public function store(Request $request)
     {
         if (! Auth::check() || Auth::user()->role !== 'admin') {
-            abort(403, 'Akses ditolak.');
+            abort(403, 'Access denied.');
         }
 
         $validated = $request->validate([
@@ -154,13 +154,13 @@ class ServiceCategoryController extends Controller
             'is_featured' => (bool) $validated['is_featured'],
         ]);
 
-        return back()->with('success', 'Category berhasil ditambahkan.');
+        return back()->with('success', 'Category has been added.');
     }
 
     public function update(Request $request, ServiceCategory $category)
     {
         if (! Auth::check() || Auth::user()->role !== 'admin') {
-            abort(403, 'Akses ditolak.');
+            abort(403, 'Access denied.');
         }
 
         $validated = $request->validate([
@@ -201,39 +201,39 @@ class ServiceCategoryController extends Controller
             'is_featured' => (bool) $validated['is_featured'],
         ]);
 
-        return back()->with('success', 'Category berhasil diperbarui.');
+        return back()->with('success', 'Category has been updated.');
     }
 
     public function toggleFeatured(ServiceCategory $category)
     {
         if (! Auth::check() || Auth::user()->role !== 'admin') {
-            abort(403, 'Akses ditolak.');
+            abort(403, 'Access denied.');
         }
 
         $category->update([
             'is_featured' => ! $category->is_featured,
         ]);
 
-        return back()->with('success', 'Featured category berhasil diubah.');
+        return back()->with('success', 'Featured category has been updated.');
     }
 
     public function toggleStatus(ServiceCategory $category)
     {
         if (! Auth::check() || Auth::user()->role !== 'admin') {
-            abort(403, 'Akses ditolak.');
+            abort(403, 'Access denied.');
         }
 
         $category->update([
             'status' => $category->status === 'active' ? 'inactive' : 'active',
         ]);
 
-        return back()->with('success', 'Status category berhasil diubah.');
+        return back()->with('success', 'Category status has been updated.');
     }
 
     public function destroy(ServiceCategory $category)
     {
         if (! Auth::check() || Auth::user()->role !== 'admin') {
-            abort(403, 'Akses ditolak.');
+            abort(403, 'Access denied.');
         }
 
         $this->deleteLocalFile($category->image);
@@ -241,7 +241,7 @@ class ServiceCategoryController extends Controller
 
         $category->delete();
 
-        return back()->with('success', 'Category berhasil dihapus.');
+        return back()->with('success', 'Category has been deleted.');
     }
 
     private function deleteLocalFile(?string $path): void

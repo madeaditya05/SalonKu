@@ -69,7 +69,7 @@ class ProfileController extends Controller
         $user = User::query()->findOrFail($authId);
 
         if (! ProviderMenuAccess::isProviderOwner($user)) {
-            return back()->with('error', 'Akun cabang tidak boleh mengubah profil utama provider.');
+            return back()->with('error', 'Branch accounts cannot update the main provider profile.');
         }
 
         $profile = ProviderProfile::query()->firstOrCreate(
@@ -132,13 +132,13 @@ class ProfileController extends Controller
             DB::commit();
 
             return provider_route_redirect('provider.profile')
-                ->with('success', 'Profile berhasil diperbarui.');
+                ->with('success', 'Profile has been updated.');
         } catch (\Throwable $e) {
             DB::rollBack();
 
             return back()
                 ->withInput()
-                ->with('error', 'Profile gagal diperbarui. ' . $e->getMessage());
+                ->with('error', 'Profile update failed. ' . $e->getMessage());
         }
     }
 
@@ -153,7 +153,7 @@ class ProfileController extends Controller
         $user = User::query()->findOrFail($authId);
 
         if (! ProviderMenuAccess::isProviderOwner($user)) {
-            return back()->with('error', 'Akun cabang tidak boleh mengubah dokumen provider.');
+            return back()->with('error', 'Branch accounts cannot update provider documents.');
         }
 
         $profile = ProviderProfile::query()->firstOrCreate(
@@ -166,14 +166,14 @@ class ProfileController extends Controller
 
         /*
         |--------------------------------------------------------------------------
-        | Kalau dokumen sudah verified, provider tidak boleh ubah lagi
+        | If documents are already verified, the provider can no longer change them.
         |--------------------------------------------------------------------------
         */
 
         if ($profile->document_status === 'verified') {
             return back()->with(
                 'error',
-                'Dokumen sudah verified oleh admin dan tidak bisa dimodifikasi lagi.'
+                'Documents have already been verified by admin and can no longer be modified.'
             );
         }
 
@@ -181,21 +181,21 @@ class ProfileController extends Controller
             'ktp_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
             'business_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
         ], [
-            'ktp_image.image' => 'File KTP harus berupa gambar.',
-            'ktp_image.mimes' => 'Format KTP harus jpg, jpeg, png, atau webp.',
-            'ktp_image.max' => 'Ukuran KTP maksimal 4MB.',
-            'business_image.image' => 'File usaha harus berupa gambar.',
-            'business_image.mimes' => 'Format foto usaha harus jpg, jpeg, png, atau webp.',
-            'business_image.max' => 'Ukuran foto usaha maksimal 4MB.',
+            'ktp_image.image' => 'The ID card file must be an image.',
+            'ktp_image.mimes' => 'The ID card format must be jpg, jpeg, png, or webp.',
+            'ktp_image.max' => 'The ID card file size must not exceed 4MB.',
+            'business_image.image' => 'The business photo file must be an image.',
+            'business_image.mimes' => 'The business photo format must be jpg, jpeg, png, or webp.',
+            'business_image.max' => 'The business photo file size must not exceed 4MB.',
         ]);
 
         if (! $request->hasFile('ktp_image') && ! $request->hasFile('business_image')) {
-            return back()->with('error', 'Pilih minimal satu dokumen untuk diupload.');
+            return back()->with('error', 'Select at least one document to upload.');
         }
 
         /*
         |--------------------------------------------------------------------------
-        | Pastikan setelah submit provider punya 2 dokumen:
+        | Make sure the provider has 2 documents after submission:
         | 1. Foto KTP
         | 2. Foto Usaha
         |--------------------------------------------------------------------------
@@ -207,7 +207,7 @@ class ProfileController extends Controller
         if (! $willHaveKtp || ! $willHaveBusinessImage) {
             return back()->with(
                 'error',
-                'Upload Foto KTP dan Foto Usaha terlebih dahulu sebelum dokumen dikirim.'
+                'Upload the ID card photo and business photo before submitting documents.'
             );
         }
 
@@ -238,7 +238,7 @@ class ProfileController extends Controller
             |--------------------------------------------------------------------------
             | INI BAGIAN PENTING
             |--------------------------------------------------------------------------
-            | Setelah dokumen berhasil dikirim, status menjadi submitted.
+            | After documents are submitted successfully, status becomes submitted.
             | Bukan pending lagi.
             */
 
@@ -254,8 +254,8 @@ class ProfileController extends Controller
             app(AppNotificationService::class)->createForUsers(
                 app(AppNotificationService::class)->adminRecipients(),
                 'provider.document.submitted',
-                'Dokumen provider dikirim',
-                ($user->name ?: 'Provider') . ' mengirim dokumen untuk diverifikasi.',
+                'Provider documents submitted',
+                ($user->name ?: 'Provider') . ' submitted documents for verification.',
                 route('admin.providers.show', ProviderMenuAccess::providerOwnerId($user)),
                 [
                     'provider_id' => ProviderMenuAccess::providerOwnerId($user),
@@ -264,13 +264,13 @@ class ProfileController extends Controller
             );
 
             return provider_route_redirect('provider.profile')
-                ->with('success', 'Dokumen berhasil dikirim. Status dokumen sekarang Submitted dan menunggu verifikasi admin.');
+                ->with('success', 'Documents submitted successfully. Document status is now Submitted and awaiting admin verification.');
         } catch (\Throwable $e) {
             DB::rollBack();
 
             return back()
                 ->withInput()
-                ->with('error', 'Dokumen gagal diupload. ' . $e->getMessage());
+                ->with('error', 'Document upload failed. ' . $e->getMessage());
         }
     }
 
@@ -288,15 +288,15 @@ class ProfileController extends Controller
             'current_password' => ['required', 'string'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
         ], [
-            'current_password.required' => 'Password lama wajib diisi.',
-            'password.required' => 'Password baru wajib diisi.',
-            'password.min' => 'Password baru minimal 8 karakter.',
-            'password.confirmed' => 'Konfirmasi password tidak sama.',
+            'current_password.required' => 'Current password is required.',
+            'password.required' => 'New password is required.',
+            'password.min' => 'New password must be at least 8 characters.',
+            'password.confirmed' => 'Password confirmation does not match.',
         ]);
 
         if (! Hash::check($validated['current_password'], $user->password)) {
             return back()
-                ->withErrors(['current_password' => 'Password lama tidak sesuai.'])
+                ->withErrors(['current_password' => 'Current password is incorrect.'])
                 ->withInput();
         }
 
@@ -307,16 +307,16 @@ class ProfileController extends Controller
             ]);
 
         return provider_route_redirect('provider.profile')
-            ->with('success', 'Password berhasil diperbarui.');
+            ->with('success', 'Password has been updated.');
     }
 
     private function replaceFile(Request $request, string $field, ?string $oldPath, string $folder): string
     {
         /*
         |--------------------------------------------------------------------------
-        | Simpan file baru dulu
+        | Store the new file first.
         |--------------------------------------------------------------------------
-        | Setelah file baru berhasil tersimpan, baru hapus file lama.
+        | After the new file is stored successfully, delete the old file.
         */
 
         $newPath = $request->file($field)->store($folder, 'public');

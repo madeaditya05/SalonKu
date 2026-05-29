@@ -65,7 +65,7 @@
 
                 <div>
                     <strong>{{ $mode === 'edit' ? 'Coupon Detail' : 'New Coupon Detail' }}</strong>
-                    <span>Kode, scope layanan, diskon, kuota, dan masa aktif coupon.</span>
+                    <span>Code, service scope, discount, quota, and coupon validity period.</span>
                 </div>
             </div>
 
@@ -74,7 +74,7 @@
                     <span>01</span>
                     <div>
                         <strong>Basic Information</strong>
-                        <small>Identitas coupon dan layanan yang menerima promo.</small>
+                        <small>Coupon identity and services eligible for the promotion.</small>
                     </div>
                 </div>
 
@@ -85,11 +85,11 @@
                                type="text"
                                name="code"
                                value="{{ old('code', $coupon->code) }}"
-                               placeholder="Contoh: SALONHEMAT"
+                               placeholder="Example: SALONSAVE"
                                autocomplete="off"
                                data-coupon-preview-source="code"
                                required>
-                        <small class="coupon-field-hint">Gunakan kode singkat tanpa spasi agar mudah dipakai customer.</small>
+                        <small class="coupon-field-hint">Use a short code without spaces so customers can use it easily.</small>
                         @error('code')
                             <small class="coupon-field-error">{{ $message }}</small>
                         @enderror
@@ -102,7 +102,7 @@
                             <option value="service" {{ $selectedProductType === 'service' ? 'selected' : '' }}>Selected Services</option>
                             <option value="category" {{ $selectedProductType === 'category' ? 'selected' : '' }}>Selected Categories</option>
                         </select>
-                        <small class="coupon-field-hint">Pilih All Services untuk promo global.</small>
+                        <small class="coupon-field-hint">Choose All Services for a global promotion.</small>
                         @error('product_type')
                             <small class="coupon-field-error">{{ $message }}</small>
                         @enderror
@@ -130,7 +130,7 @@
                         </div>
 
                         <div id="couponProductHiddenInputs"></div>
-                        <small class="coupon-field-hint">Pilih satu atau beberapa item sesuai scope coupon.</small>
+                        <small class="coupon-field-hint">Choose one or more items according to the coupon scope.</small>
                         @error('product_ids')
                             <small class="coupon-field-error">{{ $message }}</small>
                         @enderror
@@ -143,7 +143,7 @@
                     <span>02</span>
                     <div>
                         <strong>Discount & Quota</strong>
-                        <small>Nilai promo dan batas total pemakaian coupon.</small>
+                        <small>Promotion value and total coupon usage limit.</small>
                     </div>
                 </div>
 
@@ -176,7 +176,7 @@
 
                             <span id="couponValueSuffix">%</span>
                         </div>
-                        <small class="coupon-field-hint">Contoh: 10 untuk 10% atau 25000 untuk Rp 25.000.</small>
+                        <small class="coupon-field-hint">Example: 10 for 10% or 25000 for Rp 25,000.</small>
                         @error('coupon_value')
                             <small class="coupon-field-error">{{ $message }}</small>
                         @enderror
@@ -193,7 +193,7 @@
                                placeholder="Unlimited"
                                inputmode="numeric"
                                data-coupon-preview-source="quantity">
-                        <small class="coupon-field-hint">Kosongkan jika coupon tidak memiliki batas jumlah pemakaian.</small>
+                        <small class="coupon-field-hint">Leave blank if the coupon has no usage limit.</small>
                         @error('quantity')
                             <small class="coupon-field-error">{{ $message }}</small>
                         @enderror
@@ -206,7 +206,7 @@
                     <span>03</span>
                     <div>
                         <strong>Validity & Status</strong>
-                        <small>Periode aktif dan visibilitas coupon di sistem.</small>
+                        <small>Active period and coupon visibility in the system.</small>
                     </div>
                 </div>
 
@@ -243,7 +243,7 @@
                         <div class="coupon-status-row">
                             <span>
                                 <strong>Active Coupon</strong>
-                                <small>Coupon dapat digunakan selama tanggal valid dan kuota masih tersedia.</small>
+                                <small>The coupon can be used while the dates are valid and quota is still available.</small>
                             </span>
 
                             <label class="coupon-status-toggle" for="couponStatusToggle" aria-label="Toggle coupon status">
@@ -343,13 +343,13 @@
         <div class="coupon-side-panel">
             <div class="coupon-side-panel-head">
                 <strong>Coupon Checklist</strong>
-                <span>Validasi cepat sebelum disimpan</span>
+                <span>Quick validation before saving</span>
             </div>
 
             <div class="coupon-checklist">
                 <span>
                     <i></i>
-                    Code unik dan mudah dibaca.
+                    Unique, easy-to-read code.
                 </span>
 
                 <span>
@@ -359,7 +359,7 @@
 
                 <span>
                     <i></i>
-                    Tanggal akhir tidak sebelum tanggal mulai.
+                    The end date cannot be earlier than the start date.
                 </span>
             </div>
         </div>

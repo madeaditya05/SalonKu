@@ -143,27 +143,27 @@
 
     <div class="admin-booking-summary-grid admin-people-summary-grid">
         <div class="admin-booking-summary-card pink">
-            <span>Total User</span>
+            <span>Total Users</span>
             <strong>{{ number_format((int) $summary['total']) }}</strong>
-            <small>Customer terdaftar</small>
+            <small>Registered customers</small>
         </div>
 
         <div class="admin-booking-summary-card yellow">
             <span>Active</span>
             <strong>{{ number_format((int) $summary['active']) }}</strong>
-            <small>Akun bisa melakukan booking</small>
+            <small>Accounts allowed to book</small>
         </div>
 
         <div class="admin-booking-summary-card blue">
             <span>Inactive</span>
             <strong>{{ number_format((int) $summary['inactive']) }}</strong>
-            <small>Akun customer dinonaktifkan</small>
+            <small>Disabled customer accounts</small>
         </div>
 
         <div class="admin-booking-summary-card orange">
             <span>Profiles</span>
             <strong>{{ number_format((int) $summary['profiles']) }}</strong>
-            <small>Customer dengan profile detail</small>
+            <small>Customers with detailed profiles</small>
         </div>
     </div>
 
@@ -199,7 +199,7 @@
                 </label>
 
                 <button type="submit" class="admin-booking-mobile-search-submit" aria-label="Search user">
-                    Cari
+                    Search
                 </button>
 
                 <button type="button"
@@ -295,7 +295,7 @@
                     </div>
 
                     <p>
-                        {{ collect([$profile->city ?? null, $profile->state ?? null, $profile->country ?? null])->filter()->implode(', ') ?: 'Alamat customer belum lengkap.' }}
+                        {{ collect([$profile->city ?? null, $profile->state ?? null, $profile->country ?? null])->filter()->implode(', ') ?: 'Customer address is incomplete.' }}
                     </p>
 
                     <footer class="admin-people-mobile-footer">
@@ -311,11 +311,11 @@
                                 </svg>
                             </a>
 
-                            <form action="{{ route('admin.users.destroy', $customer->id) }}" method="POST" data-delete-form data-delete-title="Hapus User?" data-delete-item="{{ $customer->name }}" data-delete-message="User ini akan dihapus dari daftar customer. Data profil customer ikut terhapus.">
+                            <form action="{{ route('admin.users.destroy', $customer->id) }}" method="POST" data-delete-form data-delete-title="Delete User?" data-delete-item="{{ $customer->name }}" data-delete-message="This user will be removed from the customer list. Customer profile data will also be deleted.">
                                 @csrf
                                 @method('DELETE')
 
-                                <button type="submit" class="user-action-btn danger" title="Delete" aria-label="Hapus user {{ $customer->name }}">
+                                <button type="submit" class="user-action-btn danger" title="Delete" aria-label="Delete user {{ $customer->name }}">
                                     <svg viewBox="0 0 24 24" fill="none">
                                         <path d="M5 7h14"></path>
                                         <path d="M9 7V5h6v2"></path>
@@ -332,7 +332,7 @@
             @empty
                 <div class="user-mobile-empty admin-booking-mobile-empty">
                     <strong>No user data found.</strong>
-                    <p>Coba ubah keyword, status akun, atau gender.</p>
+                    <p>Try changing the keyword, account status, or gender.</p>
                 </div>
             @endforelse
         </div>
@@ -433,11 +433,11 @@
                                         </svg>
                                     </a>
 
-                                    <form action="{{ route('admin.users.destroy', $customer->id) }}" method="POST" data-delete-form data-delete-title="Hapus User?" data-delete-item="{{ $customer->name }}" data-delete-message="User ini akan dihapus dari daftar customer. Data profil customer ikut terhapus.">
+                                    <form action="{{ route('admin.users.destroy', $customer->id) }}" method="POST" data-delete-form data-delete-title="Delete User?" data-delete-item="{{ $customer->name }}" data-delete-message="This user will be removed from the customer list. Customer profile data will also be deleted.">
                                         @csrf
                                         @method('DELETE')
 
-                                        <button type="submit" class="user-action-btn danger" title="Delete" aria-label="Hapus user {{ $customer->name }}">
+                                        <button type="submit" class="user-action-btn danger" title="Delete" aria-label="Delete user {{ $customer->name }}">
                                             <svg viewBox="0 0 24 24" fill="none">
                                                 <path d="M5 7h14"></path>
                                                 <path d="M9 7V5h6v2"></path>
@@ -463,7 +463,7 @@
                                     </span>
 
                                     <strong>No user data found.</strong>
-                                    <p>Coba ubah keyword, status akun, atau gender.</p>
+                                    <p>Try changing the keyword, account status, or gender.</p>
                                 </div>
                             </td>
                         </tr>

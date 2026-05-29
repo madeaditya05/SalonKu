@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Events\ChatMessageSent;
 use App\Events\ChatThreadUpdated;
+use App\Models\AppNotification;
 use App\Models\ChatMessage;
 use App\Models\ChatThread;
 use App\Models\User;
@@ -309,7 +310,7 @@ class SupportChatController extends Controller
 
         if ($subject === '' || $body === '') {
             return back()
-                ->withErrors(['subject' => 'Judul dan detail tiket tidak boleh kosong.'])
+                ->withErrors(['subject' => 'Ticket subject and details cannot be empty.'])
                 ->withInput();
         }
 
@@ -317,12 +318,12 @@ class SupportChatController extends Controller
 
         if ($this->threadChatApproved($thread)) {
             return provider_route_redirect('provider.chat.index')
-                ->with('success', 'Tiket sudah disetujui. Chat dengan admin sudah terbuka.');
+                ->with('success', 'Ticket approved. Admin chat is now open.');
         }
 
         if ($thread->ticket_status === 'pending') {
             return provider_route_redirect('provider.tickets.index')
-                ->with('success', 'Tiket chat kamu masih menunggu persetujuan admin.');
+                ->with('success', 'Your chat ticket is still waiting for admin approval.');
         }
 
         $thread->forceFill([
@@ -342,8 +343,8 @@ class SupportChatController extends Controller
         $this->notificationService()->createForUsers(
             $this->notificationService()->adminRecipients(),
             'ticket.pending',
-            'Tiket chat baru',
-            ($user->name ?: 'Provider') . ' mengajukan tiket chat ke admin.',
+            'New chat ticket',
+            ($user->name ?: 'Provider') . ' submitted a chat ticket to admin.',
             route('admin.tickets.index', ['status' => 'pending', 'thread' => $thread->id]),
             [
                 'thread_id' => (int) $thread->id,
@@ -354,7 +355,7 @@ class SupportChatController extends Controller
         );
 
         return provider_route_redirect('provider.tickets.index')
-            ->with('success', 'Tiket chat berhasil diajukan. Admin akan meninjau tiket ini.');
+            ->with('success', 'Chat ticket submitted. Admin will review it.');
     }
 
     public function providerInternalStart(Request $request): RedirectResponse
@@ -383,7 +384,7 @@ class SupportChatController extends Controller
         $thread = $this->ensureInternalThread($providerId, $user, $contact);
 
         return provider_route_redirect('provider.chat.index', ['thread' => $thread->id])
-            ->with('success', 'Chat internal dibuka. History percakapan tetap tersimpan.');
+            ->with('success', 'Internal chat opened. Conversation history remains available.');
     }
 
     public function providerInternalTicketStore(Request $request): RedirectResponse
@@ -395,7 +396,7 @@ class SupportChatController extends Controller
     {
         abort_unless($request->user()?->role === 'admin', 403);
         abort_unless($this->threadType($thread) === self::TYPE_PROVIDER_ADMIN, 404);
-        abort_unless($this->threadChatApproved($thread), 403, 'Tiket chat belum disetujui.');
+        abort_unless($this->threadChatApproved($thread), 403, 'Chat ticket has not been approved yet.');
 
         return $this->storeMessage($request, $thread, 'admin');
     }
@@ -484,14 +485,14 @@ class SupportChatController extends Controller
             $thread,
             'tickets',
             'ticket.approved',
-            'Tiket chat disetujui',
-            'Admin menyetujui tiket chat. Chat sudah bisa digunakan.',
+            'Chat ticket approved',
+            'Admin approved the chat ticket. Chat is now available.',
             'provider.chat.index',
             ['thread' => $thread->id],
             (int) $admin->id
         );
 
-        $message = 'Tiket disetujui. Provider sekarang bisa chat dengan admin.';
+        $message = 'Ticket approved.';
 
         if ($request->input('return_to') === 'chat') {
             return redirect()
@@ -529,14 +530,14 @@ class SupportChatController extends Controller
             $thread,
             'tickets',
             'ticket.rejected',
-            'Tiket chat ditolak',
-            $reason !== '' ? $reason : 'Admin menolak pengajuan tiket chat.',
+            'Chat ticket rejected',
+            $reason !== '' ? $reason : 'Admin rejected the chat ticket request.',
             'provider.tickets.index',
             [],
             (int) $admin->id
         );
 
-        $message = 'Tiket chat ditolak.';
+        $message = 'Chat ticket rejected.';
 
         if ($request->input('return_to') === 'chat') {
             return redirect()
@@ -557,14 +558,14 @@ class SupportChatController extends Controller
         abort_unless($this->threadType($thread) === self::TYPE_PROVIDER_ADMIN, 404);
         abort_unless($this->threadChatApproved($thread), 404);
 
-        $reason = $this->closeThread($request, $thread, $admin, 'Chat diakhiri oleh admin.', 'admin');
+        $reason = $this->closeThread($request, $thread, $admin, 'Chat ended by admin.', 'admin');
 
         $this->notifyProviderParticipants(
             $thread,
             'tickets',
             'ticket.closed',
-            'Chat diakhiri admin',
-            $reason . ' Ajukan tiket ulang untuk membuka chat lagi.',
+            'Chat ended by admin',
+            $reason . ' Submit a new ticket to reopen chat.',
             'provider.tickets.index',
             [],
             (int) $admin->id
@@ -572,7 +573,7 @@ class SupportChatController extends Controller
 
         return redirect()
             ->route('admin.tickets.index', ['status' => 'closed', 'thread' => $thread->id])
-            ->with('success', 'Chat berhasil diakhiri. Provider harus mengajukan tiket ulang untuk chat lagi.');
+            ->with('success', 'Chat ended.');
     }
 
     public function providerInternalTicketApprove(Request $request, ChatThread $thread): RedirectResponse
@@ -599,8 +600,8 @@ class SupportChatController extends Controller
             $this->notificationService()->createForUser(
                 $thread->branchUser,
                 'ticket.internal.approved',
-                'Tiket chat disetujui pusat',
-                'Provider pusat menyetujui tiket chat internal. Chat sudah bisa digunakan.',
+                'Internal chat ticket approved',
+                'Main provider approved the internal chat ticket. Chat is now available.',
                 provider_route('provider.chat.index', ['thread' => $thread->id], true, true),
                 [
                     'thread_id' => (int) $thread->id,
@@ -610,7 +611,7 @@ class SupportChatController extends Controller
         }
 
         return provider_route_redirect('provider.tickets.index', ['thread' => $thread->id])
-            ->with('success', 'Tiket internal disetujui. Chat pusat-cabang sudah terbuka.');
+            ->with('success', 'Internal ticket approved. Main-to-branch chat is now open.');
     }
 
     public function providerInternalTicketReject(Request $request, ChatThread $thread): RedirectResponse
@@ -639,8 +640,8 @@ class SupportChatController extends Controller
             $this->notificationService()->createForUser(
                 $thread->branchUser,
                 'ticket.internal.rejected',
-                'Tiket chat ditolak pusat',
-                $reason !== '' ? $reason : 'Provider pusat menolak pengajuan chat internal.',
+                'Internal chat ticket rejected',
+                $reason !== '' ? $reason : 'Main provider rejected the internal chat request.',
                 provider_route('provider.tickets.index', [], true, true),
                 [
                     'thread_id' => (int) $thread->id,
@@ -650,7 +651,7 @@ class SupportChatController extends Controller
         }
 
         return provider_route_redirect('provider.tickets.index', ['thread' => $thread->id])
-            ->with('success', 'Tiket internal ditolak.');
+            ->with('success', 'Internal ticket rejected.');
     }
 
     public function providerTicketEnd(Request $request, ChatThread $thread): RedirectResponse
@@ -660,14 +661,14 @@ class SupportChatController extends Controller
         abort_unless($this->providerCanEndThread($user, $thread), 403);
         abort_unless($this->threadChatApproved($thread), 404);
 
-        $reason = $this->closeThread($request, $thread, $user, 'Chat diakhiri oleh provider pusat.', 'provider_owner');
+        $reason = $this->closeThread($request, $thread, $user, 'Chat ended by main provider.', 'provider_owner');
 
         if ($thread->branchUser) {
             $this->notificationService()->createForUser(
                 $thread->branchUser,
                 'ticket.internal.closed',
-                'Chat diakhiri provider pusat',
-                $reason . ' Ajukan tiket ulang untuk membuka chat lagi.',
+                'Chat ended by main provider',
+                $reason . ' Submit a new ticket to reopen chat.',
                 provider_route('provider.tickets.index', [], true, true),
                 [
                     'thread_id' => (int) $thread->id,
@@ -677,7 +678,7 @@ class SupportChatController extends Controller
         }
 
         return provider_route_redirect('provider.tickets.index', ['thread' => $thread->id])
-            ->with('success', 'Chat internal berhasil diakhiri. Cabang harus mengajukan tiket ulang untuk chat lagi.');
+            ->with('success', 'Internal chat ended. The branch must submit a new ticket to chat again.');
     }
 
     private function providerOwners(string $search = ''): Collection
@@ -820,7 +821,7 @@ class SupportChatController extends Controller
 
     private function ensureInternalThread(int $providerId, User $firstUser, User $secondUser): ChatThread
     {
-        abort_if((int) $firstUser->id === (int) $secondUser->id, 422, 'Kontak chat tidak valid.');
+        abort_if((int) $firstUser->id === (int) $secondUser->id, 422, 'Invalid chat contact.');
         abort_if(ProviderMenuAccess::providerOwnerId($firstUser) !== $providerId, 403);
         abort_if(ProviderMenuAccess::providerOwnerId($secondUser) !== $providerId, 403);
 
@@ -838,8 +839,8 @@ class SupportChatController extends Controller
             'branch_user_id' => $slotBUserId,
             'conversation_type' => self::TYPE_PROVIDER_BRANCH,
             'ticket_status' => 'approved',
-            'ticket_subject' => 'Chat internal provider',
-            'ticket_body' => 'Percakapan internal provider.',
+            'ticket_subject' => 'Internal provider chat',
+            'ticket_body' => 'Internal provider conversation.',
             'ticket_rejection_reason' => null,
             'ticket_requested_at' => $thread?->ticket_requested_at ?: now(),
             'ticket_reviewed_at' => $thread?->ticket_reviewed_at ?: now(),
@@ -959,7 +960,7 @@ class SupportChatController extends Controller
 
         if ($body === '' && ! $image) {
             return response()->json([
-                'message' => 'Pesan atau gambar tidak boleh kosong.',
+                'message' => 'Message or image cannot be empty.',
             ], 422);
         }
 
@@ -1098,14 +1099,14 @@ class SupportChatController extends Controller
     {
         $preview = $message->body !== ''
             ? Str::limit($message->body, 120)
-            : ($message->attachment_path ? 'Mengirim gambar' : '');
+            : ($message->attachment_path ? 'Sending image' : '');
 
         if ($this->threadType($thread) === self::TYPE_PROVIDER_ADMIN) {
             if ($senderRole === 'provider') {
                 $this->notificationService()->createForUsers(
                     $this->notificationService()->adminRecipients(),
                     'chat.message',
-                    'Pesan baru dari ' . ($sender->name ?: 'Provider'),
+                    'New message from ' . ($sender->name ?: 'Provider'),
                     $preview,
                     route('admin.chat.index', ['thread' => $thread->id]),
                     [
@@ -1123,7 +1124,7 @@ class SupportChatController extends Controller
                 $thread,
                 'chat',
                 'chat.message',
-                'Pesan baru dari admin',
+                'New message from admin',
                 $preview,
                 'provider.chat.index',
                 ['thread' => $thread->id],
@@ -1143,7 +1144,7 @@ class SupportChatController extends Controller
         $this->notificationService()->createForUser(
             $recipient,
             'chat.message',
-            'Pesan baru dari ' . ($sender->name ?: 'Provider'),
+            'New message from ' . ($sender->name ?: 'Provider'),
             $preview,
             provider_route('provider.chat.index', ['thread' => $thread->id], true, ! ProviderMenuAccess::isProviderOwner($recipient)),
             [
@@ -1324,7 +1325,17 @@ class SupportChatController extends Controller
             'readReceipts' => $activeThread ? $this->threadStatePayload($activeThread)['read_receipts'] : [],
             'csrfToken' => csrf_token(),
             'authEndpoint' => url('/broadcasting/auth'),
-            'closedMessage' => 'Chat sudah diakhiri. Ajukan tiket baru untuk membuka sesi chat berikutnya.',
+            'closedMessage' => 'Chat has ended. Submit a new ticket to open the next chat session.',
+            'closedRedirectUrl' => $user->role === 'provider'
+                ? provider_route('provider.chat.index', ['list' => 1], true, ! ProviderMenuAccess::isProviderOwner($user))
+                : null,
+            'chatNotificationPollUrl' => $user->role === 'admin'
+                ? route('admin.notifications.index', ['include_chat' => 1])
+                : provider_route('provider.notifications.index', ['include_chat' => 1], true, ! ProviderMenuAccess::isProviderOwner($user)),
+            'latestChatNotificationId' => (int) AppNotification::query()
+                ->where('user_id', $user->id)
+                ->where('type', 'chat.message')
+                ->max('id'),
             'broadcast' => [
                 'key' => (string) ($connection['key'] ?? ''),
                 'host' => $host !== '' ? $host : request()->getHost(),

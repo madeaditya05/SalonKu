@@ -321,7 +321,7 @@
 
         <input type="text" id="sidebarSearchInput" placeholder="Search menu" autocomplete="off">
 
-        <button type="button" id="sidebarSearchClear">×</button>
+        <button type="button" id="sidebarSearchClear" aria-label="Clear search">&times;</button>
     </div>
 
     <div class="admin-current-open" id="currentOpenBox">
@@ -360,7 +360,7 @@
                                 @if (array_key_exists('badge', $item))
                                     <b class="admin-menu-badge {{ $chatUnreadCount > 0 ? '' : 'is-hidden' }}" data-sidebar-chat-badge>{{ $chatUnreadLabel }}</b>
                                 @endif
-                                <span class="admin-menu-arrow">›</span>
+                                <span class="admin-menu-arrow">&rsaquo;</span>
                             </button>
 
                             <div class="admin-submenu">
@@ -387,7 +387,7 @@
 
             <div class="admin-menu-empty" id="sidebarSearchEmpty">
                 <strong>No menu found</strong>
-                <span>Coba keyword lain.</span>
+                <span>Try another keyword.</span>
             </div>
         </nav>
     </div>

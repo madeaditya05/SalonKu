@@ -25,15 +25,15 @@
     ];
 
     $viewLabels = [
-        'month' => 'Bulan',
-        'week' => 'Minggu',
-        'day' => 'Hari',
+        'month' => 'Month',
+        'week' => 'Week',
+        'day' => 'Day',
     ];
 
     $calendarHelp = [
-        'month' => 'Lihat semua booking dalam satu bulan. Klik tanggal untuk membuka agenda harian.',
-        'week' => 'Lihat booking per hari dan jam dalam satu minggu.',
-        'day' => 'Lihat detail booking per jam untuk satu hari.',
+        'month' => 'View all bookings in one month. Click a date to open the daily agenda.',
+        'week' => 'View bookings by day and hour in one week.',
+        'day' => 'View hourly booking details for one day.',
     ];
 
     $statusLabel = fn ($value) => $statusLabels[$value ?: 'open'] ?? ucwords(str_replace('_', ' ', $value ?: 'open'));
@@ -144,18 +144,18 @@
             <input type="hidden" name="view" value="{{ $view }}">
 
             <label class="calendar-filter-field">
-                <span>Tanggal</span>
+                <span>Date</span>
                 <input type="date" name="date" value="{{ $baseDate->format('Y-m-d') }}">
             </label>
 
-            <button type="submit" class="calendar-filter-submit">Terapkan</button>
+            <button type="submit" class="calendar-filter-submit">Apply</button>
         </form>
 
         <div class="calendar-toolbar">
             <div class="calendar-left-actions" aria-label="Calendar navigation">
                 <a href="{{ route('admin.calendar.index', ['view' => $view, 'date' => now()->format('Y-m-d')]) }}"
                    class="calendar-today-btn">
-                    Hari ini
+                    Today
                 </a>
             </div>
 
@@ -167,9 +167,9 @@
                 </a>
 
                 <div class="calendar-title-block">
-                    <span>Tampilan {{ $viewLabels[$view] ?? ucfirst($view) }}</span>
+                    <span>{{ $viewLabels[$view] ?? ucfirst($view) }} View</span>
                     <h2 class="calendar-title">{{ $calendarTitle }}</h2>
-                    <small>{{ number_format($calendarAgenda->count()) }} booking pada rentang ini</small>
+                    <small>{{ number_format($calendarAgenda->count()) }} bookings in this range</small>
                 </div>
 
                 <a href="{{ route('admin.calendar.index', ['view' => $view, 'date' => $nextDate->format('Y-m-d')]) }}"
@@ -182,23 +182,23 @@
             <div class="calendar-view-actions" aria-label="Calendar view mode">
                 <a href="{{ route('admin.calendar.index', ['view' => 'month', 'date' => $baseDate->format('Y-m-d')]) }}"
                    class="calendar-view-btn {{ $view === 'month' ? 'active' : '' }}">
-                    Bulan
+                    Month
                 </a>
 
                 <a href="{{ route('admin.calendar.index', ['view' => 'week', 'date' => $baseDate->format('Y-m-d')]) }}"
                    class="calendar-view-btn {{ $view === 'week' ? 'active' : '' }}">
-                    Minggu
+                    Week
                 </a>
 
                 <a href="{{ route('admin.calendar.index', ['view' => 'day', 'date' => $baseDate->format('Y-m-d')]) }}"
                    class="calendar-view-btn {{ $view === 'day' ? 'active' : '' }}">
-                    Hari
+                    Day
                 </a>
             </div>
         </div>
 
         <div class="calendar-guide">
-            {{ $calendarHelp[$view] ?? 'Pilih tanggal dan tampilan kalender untuk melihat booking.' }}
+            {{ $calendarHelp[$view] ?? 'Choose a date and calendar view to see bookings.' }}
         </div>
 
         @if ($view === 'month')
@@ -237,7 +237,7 @@
                                                 @foreach ($dayBookings->take(3) as $booking)
                                                    <a href="{{ $bookingUrl($booking) }}"
                                                        class="calendar-event status-{{ $statusClass($booking->status) }}">
-                                                        <span>{{ $bookingTimeRange($booking) ?: 'Tanpa jam' }}</span>
+                                                        <span>{{ $bookingTimeRange($booking) ?: 'No time' }}</span>
                                                         <strong>{{ $booking->booking_code ?? ('#' . $booking->id) }}</strong>
                                                     </a>
                                                 @endforeach
@@ -245,7 +245,7 @@
                                                 @if ($dayBookings->count() > 3)
                                                     <a href="{{ route('admin.calendar.index', ['view' => 'day', 'date' => $day['date']->format('Y-m-d')]) }}"
                                                        class="calendar-more-events">
-                                                        +{{ $dayBookings->count() - 3 }} lainnya
+                                                        +{{ $dayBookings->count() - 3 }} more
                                                     </a>
                                                 @endif
                                             </div>
@@ -372,7 +372,7 @@
                        class="calendar-mobile-event status-{{ $statusClass($booking->status) }}">
                         <div class="calendar-mobile-date">
                             <strong>{{ $bookingDate($booking) }}</strong>
-                            <span>{{ $bookingTimeRange($booking) ?: 'Tanpa jam' }}</span>
+                            <span>{{ $bookingTimeRange($booking) ?: 'No time' }}</span>
                         </div>
 
                         <div class="calendar-mobile-copy">
@@ -385,8 +385,8 @@
                     </a>
                 @empty
                     <div class="calendar-mobile-empty">
-                        <strong>Tidak ada booking di rentang ini.</strong>
-                        <span>Coba pilih hari, minggu, atau bulan lain.</span>
+                        <strong>No bookings in this range.</strong>
+                        <span>Try choosing another day, week, or month.</span>
                     </div>
                 @endforelse
             </div>
