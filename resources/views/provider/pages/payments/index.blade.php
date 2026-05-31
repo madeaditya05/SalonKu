@@ -24,6 +24,7 @@
         'paid' => 'Paid',
         'failed' => 'Failed',
         'refunded' => 'Refunded',
+        'expired' => 'Expired',
     ];
 
     $paymentTypes = $paymentTypes ?? [
@@ -103,6 +104,7 @@
         'paid' => 'Paid',
         'failed' => 'Failed',
         'refunded' => 'Refunded',
+        'expired' => 'Expired',
     ];
 
     $statusLabel = fn ($value) => $statusLabels[$value ?: 'pending'] ?? ucwords(str_replace('_', ' ', $value ?: 'pending'));
@@ -113,6 +115,7 @@
             'pay_at_salon' => 'info',
             'failed' => 'danger',
             'refunded' => 'neutral',
+            'expired' => 'danger',
             default => 'neutral',
         };
     };

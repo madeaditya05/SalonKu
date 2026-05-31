@@ -31,6 +31,15 @@
         return value > 99 ? '99+' : String(value);
     };
 
+    const runWhenIdle = (callback, timeout = 1500) => {
+        if ('requestIdleCallback' in window) {
+            window.requestIdleCallback(callback, { timeout });
+            return;
+        }
+
+        window.setTimeout(callback, Math.min(timeout, 500));
+    };
+
     const normalizeNotification = (notification) => ({
         id: Number(notification?.id || 0),
         type: notification?.type || 'general',
@@ -64,6 +73,8 @@
         let isSyncing = false;
         let latestChatNotificationId = 0;
         let isSyncingChatNotifications = false;
+        let hasLoadedNotifications = false;
+        let notificationLoadPromise = null;
 
         const setOpen = (isOpen) => {
             root.classList.toggle('is-open', isOpen);
@@ -307,6 +318,7 @@
         };
 
         const loadNotifications = async () => {
+            hasLoadedNotifications = true;
             renderLoading();
 
             try {
@@ -317,8 +329,16 @@
             }
         };
 
+        const ensureNotificationsLoaded = () => {
+            if (!notificationLoadPromise) {
+                notificationLoadPromise = loadNotifications();
+            }
+
+            return notificationLoadPromise;
+        };
+
         const syncNotifications = async () => {
-            if (isSyncing) {
+            if (isSyncing || !hasLoadedNotifications) {
                 return;
             }
 
@@ -468,7 +488,12 @@
         };
 
         toggle.addEventListener('click', () => {
-            setOpen(!root.classList.contains('is-open'));
+            const willOpen = !root.classList.contains('is-open');
+            setOpen(willOpen);
+
+            if (willOpen) {
+                ensureNotificationsLoaded();
+            }
         });
 
         popover.addEventListener('click', (event) => {
@@ -491,11 +516,27 @@
             }
         });
 
-        loadNotifications();
-        bootRealtime();
-        primeChatNotificationCursor();
-        window.setInterval(syncNotifications, Number(config.pollInterval || 3000));
-        window.setInterval(syncChatNotifications, Number(config.chatPollInterval || 3000));
+        setBadge(Number(config.initialUnreadCount || 0));
+        renderEmpty('Open notifications to load.');
+        setSubtitle();
+        setReadAllState();
+
+        runWhenIdle(() => {
+            bootRealtime();
+            primeChatNotificationCursor();
+
+            window.setInterval(() => {
+                if (!document.hidden) {
+                    syncNotifications();
+                }
+            }, Number(config.pollInterval || 10000));
+
+            window.setInterval(() => {
+                if (!document.hidden) {
+                    syncChatNotifications();
+                }
+            }, Number(config.chatPollInterval || 10000));
+        });
     };
 
     roots.forEach(setupNotificationRoot);

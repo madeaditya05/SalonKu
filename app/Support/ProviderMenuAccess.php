@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Models\ProviderProfile;
 use App\Models\ProviderRole;
 use App\Models\User;
 use Illuminate\Support\Str;
@@ -259,6 +260,27 @@ class ProviderMenuAccess
     public static function providerOwnerId(User $user): int
     {
         return (int) ($user->provider_id ?: $user->id);
+    }
+
+    public static function providerProfile(?User $user): ?ProviderProfile
+    {
+        if (! $user || $user->role !== 'provider') {
+            return null;
+        }
+
+        return ProviderProfile::query()
+            ->where('user_id', self::providerOwnerId($user))
+            ->first();
+    }
+
+    public static function documentStatus(?User $user): string
+    {
+        return self::providerProfile($user)?->document_status ?: 'pending';
+    }
+
+    public static function hasVerifiedDocuments(?User $user): bool
+    {
+        return self::documentStatus($user) === 'verified';
     }
 
     private static function userPermissionKeys(User $user): array

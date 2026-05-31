@@ -4,11 +4,13 @@ namespace App\Support;
 
 use App\Models\ChatMessage;
 use App\Models\User;
+use Illuminate\Support\Facades\Cache;
 
 class ChatUnreadCounter
 {
     private const TYPE_PROVIDER_ADMIN = 'provider_admin';
     private const TYPE_PROVIDER_BRANCH = 'provider_branch';
+    private const CACHE_SECONDS = 12;
 
     public static function forUser(?User $user): int
     {
@@ -16,11 +18,25 @@ class ChatUnreadCounter
             return 0;
         }
 
-        return match ($user->role) {
+        return (int) Cache::remember(self::cacheKey($user), self::CACHE_SECONDS, fn () => match ($user->role) {
             'admin' => self::forAdmin(),
             'provider' => self::forProvider($user),
             default => 0,
-        };
+        });
+    }
+
+    public static function forgetForUser(?User $user): void
+    {
+        if (! $user) {
+            return;
+        }
+
+        Cache::forget(self::cacheKey($user));
+    }
+
+    private static function cacheKey(User $user): string
+    {
+        return 'chat_unread_count:user:' . (int) $user->id;
     }
 
     private static function forAdmin(): int

@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 
 class DashboardController extends Controller
 {
@@ -47,20 +48,25 @@ class DashboardController extends Controller
         $activeTab = (string) $request->get('tab', 'overview');
         $activeTab = in_array($activeTab, $allowedTabs, true) ? $activeTab : 'overview';
 
-        $stats = $this->stats();
-        $monthlyBuckets = $this->monthlyBuckets();
+        $dashboardData = Cache::remember('admin_dashboard:data:' . now()->format('Ymd'), 30, function () {
+            $stats = $this->stats();
+            $monthlyBuckets = $this->monthlyBuckets();
 
-        return view('admin.dashboard.index', [
-            'stats' => $stats,
+            return [
+                'stats' => $stats,
+                'monthlyBuckets' => $monthlyBuckets,
+                'monthlyBars' => $this->monthlyBars($monthlyBuckets),
+                'revenueChart' => $this->revenueChart($monthlyBuckets),
+                'recentPlatformRows' => $this->recentPlatformRows($stats),
+                'salesSummary' => $this->salesSummary($stats, $monthlyBuckets),
+                'orderSummary' => $this->orderSummary(),
+                'reportSummary' => $this->reportSummary(),
+            ];
+        });
+
+        return view('admin.dashboard.index', array_merge($dashboardData, [
             'activeTab' => $activeTab,
-            'monthlyBuckets' => $monthlyBuckets,
-            'monthlyBars' => $this->monthlyBars($monthlyBuckets),
-            'revenueChart' => $this->revenueChart($monthlyBuckets),
-            'recentPlatformRows' => $this->recentPlatformRows($stats),
-            'salesSummary' => $this->salesSummary($stats, $monthlyBuckets),
-            'orderSummary' => $this->orderSummary(),
-            'reportSummary' => $this->reportSummary(),
-        ]);
+        ]));
     }
 
     public function export(string $format)

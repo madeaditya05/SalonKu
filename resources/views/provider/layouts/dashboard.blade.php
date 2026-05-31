@@ -11,7 +11,7 @@
     @stack('styles')
     <link rel="stylesheet" href="{{ asset('admin/css/colorful-theme.css') }}">
     <link rel="stylesheet" href="{{ asset('provider/css/provider-admin-theme.css') }}">
-    <link rel="stylesheet" href="{{ asset('provider/css/provider-sidebar-admin-parity.css') }}?v=admin-sidebar-parity-6">
+    <link rel="stylesheet" href="{{ asset('provider/css/provider-sidebar-admin-parity.css') }}?v=admin-sidebar-parity-7">
 </head>
 <body class="admin-body provider-body">
     <div class="provider-app-shell admin-layout" id="providerLayout">
@@ -28,9 +28,9 @@
         <div class="provider-sidebar-overlay admin-sidebar-overlay" id="providerSidebarOverlay"></div>
     </div>
 
-    <script src="https://js.pusher.com/8.4.0/pusher.min.js"></script>
-    <script src="{{ asset('js/realtime-notifications.js') }}"></script>
-    <script src="{{ asset('provider/js/provider-dashboard.js') }}"></script>
+    <script src="https://js.pusher.com/8.4.0/pusher.min.js" defer></script>
+    <script src="{{ asset('js/realtime-notifications.js') }}" defer></script>
+    <script src="{{ asset('provider/js/provider-dashboard.js') }}" defer></script>
 
     @stack('scripts')
 </body>

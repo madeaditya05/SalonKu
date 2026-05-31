@@ -11,10 +11,13 @@
     $providerProfile = $authUser
         ? ProviderProfile::where('user_id', ProviderMenuAccess::providerOwnerId($authUser))->first()
         : null;
-    $isDocumentVerified = optional($providerProfile)->document_status === 'verified';
+    $documentStatus = optional($providerProfile)->document_status ?? 'pending';
+    $isDocumentVerified = $documentStatus === 'verified';
+    $documentGateUrl = provider_route('provider.profile.edit');
+    $lockIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>';
 
-    $menuUrl = function ($url) use ($isDocumentVerified) {
-        return $isDocumentVerified ? $url : provider_route('provider.profile');
+    $menuUrl = function ($url) use ($isDocumentVerified, $documentGateUrl) {
+        return $isDocumentVerified ? $url : $documentGateUrl;
     };
 
     $userName = $authUser->name ?? 'Provider User';
@@ -469,6 +472,50 @@
         ->values()
         ->all();
 
+    if (! $isDocumentVerified) {
+        $sidebarSections = collect($sidebarSections)
+            ->map(function ($section) use ($documentGateUrl) {
+                $section['items'] = collect($section['items'])
+                    ->map(function ($item) use ($documentGateUrl) {
+                        $key = $item['key'] ?? null;
+                        $isProfileMenu = $key === 'profile';
+
+                        if (($item['type'] ?? 'link') === 'group') {
+                            $item['children'] = collect($item['children'] ?? [])
+                                ->map(function ($child) use ($documentGateUrl) {
+                                    if (($child['key'] ?? null) !== 'profile') {
+                                        $child['url'] = $documentGateUrl;
+                                        $child['locked_by_documents'] = true;
+                                    }
+
+                                    return $child;
+                                })
+                                ->values()
+                                ->all();
+
+                            if (! $isProfileMenu) {
+                                $item['locked_by_documents'] = true;
+                            }
+
+                            return $item;
+                        }
+
+                        if (! $isProfileMenu) {
+                            $item['url'] = $documentGateUrl;
+                            $item['locked_by_documents'] = true;
+                        }
+
+                        return $item;
+                    })
+                    ->values()
+                    ->all();
+
+                return $section;
+            })
+            ->values()
+            ->all();
+    }
+
     $routePatterns = function (array $patterns) {
         return collect($patterns)
             ->flatMap(fn ($pattern) => [
@@ -525,6 +572,7 @@
                             'url' => $child['url'],
                             'active' => $child['active'] ?? [],
                             'locked' => $child['locked'] ?? false,
+                            'locked_by_documents' => $child['locked_by_documents'] ?? false,
                             'keywords' => $child['keywords'] ?? $child['label'],
                             'icon' => $item['icon'],
                         ];
@@ -542,11 +590,14 @@
     if (! $currentItem) {
         $currentItem = $sidebarSections[0]['items'][0];
     }
+
+    $currentItemLocked = !empty($currentItem['locked_by_documents']);
+    $brandUrl = $isDocumentVerified ? provider_route('provider.dashboard') : $documentGateUrl;
 @endphp
 
-<aside class="admin-sidebar provider-admin-sidebar" id="providerSidebar">
+<aside class="admin-sidebar provider-sidebar provider-admin-sidebar" id="providerSidebar">
     <div class="admin-sidebar-header">
-        <a href="{{ provider_route('provider.dashboard') }}" class="admin-sidebar-brand">
+        <a href="{{ $brandUrl }}" class="admin-sidebar-brand">
             <span class="admin-brand-icon">
                 <svg viewBox="0 0 24 24">
                     <path d="M4 4h16v16H4z"/>
@@ -564,6 +615,14 @@
             </svg>
         </button>
     </div>
+
+    @if (! $isDocumentVerified)
+        <div class="provider-document-gate">
+            <strong>Dokumen belum lengkap</strong>
+            <span>Upload KTP dan foto usaha supaya menu terbuka.</span>
+            <a href="{{ $documentGateUrl }}">Lengkapi Dokumen</a>
+        </div>
+    @endif
 
     <div class="admin-sidebar-search" id="providerSidebarSearchBox">
         <svg viewBox="0 0 24 24">
@@ -586,8 +645,9 @@
     <div class="admin-current-open" id="providerSidebarCurrent">
         <p>Currently Open</p>
 
-        <a href="{{ $currentItem['url'] ?? provider_route('provider.dashboard') }}"
-           class="admin-current-link">
+        <a href="{{ $currentItem['url'] ?? $brandUrl }}"
+           class="admin-current-link {{ $currentItemLocked ? 'sidebar-locked' : '' }}"
+           title="{{ $currentItemLocked ? 'Lengkapi dokumen untuk membuka menu ini' : '' }}">
             <span class="admin-menu-icon">
                 {!! $currentItem['icon'] !!}
             </span>
@@ -599,6 +659,9 @@
 
             @if (array_key_exists('badge', $currentItem))
                 <b class="admin-menu-badge {{ $chatUnreadCount > 0 ? '' : 'is-hidden' }}" data-sidebar-chat-badge>{{ $chatUnreadLabel }}</b>
+            @endif
+            @if ($currentItemLocked)
+                <span class="admin-menu-lock">{!! $lockIcon !!}</span>
             @endif
         </a>
     </div>
@@ -613,6 +676,7 @@
                         $itemType = $item['type'] ?? 'link';
                         $itemActive = $isActive($item);
                         $groupActive = $itemType === 'group' && ($itemActive || $hasActiveChild($item));
+                        $itemLocked = !empty($item['locked_by_documents']);
                     @endphp
 
                     @if ($itemType === 'group')
@@ -622,8 +686,9 @@
                         >
                             <button
                                 type="button"
-                                class="admin-menu-item admin-menu-parent {{ $groupActive ? 'active' : '' }}"
+                                class="admin-menu-item admin-menu-parent {{ $groupActive ? 'active' : '' }} {{ $itemLocked ? 'sidebar-locked' : '' }}"
                                 data-submenu-toggle
+                                title="{{ $itemLocked ? 'Lengkapi dokumen untuk membuka menu ini' : '' }}"
                             >
                                 <span class="admin-menu-icon">
                                     {!! $item['icon'] !!}
@@ -633,6 +698,9 @@
                                 @if (array_key_exists('badge', $item))
                                     <b class="admin-menu-badge {{ $chatUnreadCount > 0 ? '' : 'is-hidden' }}" data-sidebar-chat-badge>{{ $chatUnreadLabel }}</b>
                                 @endif
+                                @if ($itemLocked)
+                                    <span class="admin-menu-lock">{!! $lockIcon !!}</span>
+                                @endif
                                 <span class="admin-menu-arrow">&rsaquo;</span>
                             </button>
 
@@ -641,15 +709,20 @@
                                     @php
                                         $childPatterns = $child['active'] ?? [];
                                         $childActive = !empty($childPatterns) && request()->routeIs(...$routePatterns($childPatterns));
+                                        $childLocked = !empty($child['locked_by_documents']);
                                     @endphp
 
                                     <a
                                         href="{{ $child['url'] }}"
-                                        class="{{ $childActive ? 'active' : '' }}"
+                                        class="{{ $childActive ? 'active' : '' }} {{ $childLocked ? 'sidebar-locked' : '' }}"
                                         data-submenu-item
                                         data-keywords="{{ $child['keywords'] ?? $child['label'] }}"
+                                        title="{{ $childLocked ? 'Lengkapi dokumen untuk membuka menu ini' : '' }}"
                                     >
                                         {{ $child['label'] }}
+                                        @if ($childLocked)
+                                            <span class="admin-menu-lock submenu-lock">{!! $lockIcon !!}</span>
+                                        @endif
                                     </a>
                                 @endforeach
                             </div>
@@ -657,8 +730,9 @@
                     @else
                         <a
                             href="{{ $item['url'] }}"
-                            class="admin-menu-item admin-menu-search-item {{ $itemActive ? 'active' : '' }}"
+                            class="admin-menu-item admin-menu-search-item {{ $itemActive ? 'active' : '' }} {{ $itemLocked ? 'sidebar-locked' : '' }}"
                             data-keywords="{{ $item['keywords'] ?? $item['label'] }}"
+                            title="{{ $itemLocked ? 'Lengkapi dokumen untuk membuka menu ini' : '' }}"
                         >
                             <span class="admin-menu-icon">
                                 {!! $item['icon'] !!}
@@ -667,6 +741,9 @@
                             <span class="admin-menu-label">{{ $item['label'] }}</span>
                             @if (array_key_exists('badge', $item))
                                 <b class="admin-menu-badge {{ $chatUnreadCount > 0 ? '' : 'is-hidden' }}" data-sidebar-chat-badge>{{ $chatUnreadLabel }}</b>
+                            @endif
+                            @if ($itemLocked)
+                                <span class="admin-menu-lock">{!! $lockIcon !!}</span>
                             @endif
                         </a>
                     @endif

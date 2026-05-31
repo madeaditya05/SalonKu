@@ -55,9 +55,9 @@
         </div>
     </div>
 
-    <script src="https://js.pusher.com/8.4.0/pusher.min.js"></script>
-    <script src="{{ asset('js/realtime-notifications.js') }}"></script>
-    <script src="{{ asset('admin/js/admin-layout.js') }}"></script>
+    <script src="https://js.pusher.com/8.4.0/pusher.min.js" defer></script>
+    <script src="{{ asset('js/realtime-notifications.js') }}" defer></script>
+    <script src="{{ asset('admin/js/admin-layout.js') }}" defer></script>
     @stack('scripts')
 </body>
 </html>

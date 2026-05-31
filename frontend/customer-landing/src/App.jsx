@@ -14,6 +14,7 @@ import {
     logoutCustomer,
     registerCustomer,
     refreshBookingPaymentStatus,
+    rescheduleCustomerBooking,
     resolveAssetUrl,
     validateCoupon,
 } from './api.js';
@@ -24,6 +25,7 @@ import { CustomerFooter } from './components/customer/Footer.jsx';
 import { LandingContent } from './components/customer/LandingContent.jsx';
 import { MenuRoutePage } from './components/customer/MenuRoutePage.jsx';
 import { SearchResultsContent } from './components/customer/SearchResultsContent.jsx';
+import { StaffScheduleContent } from './components/customer/StaffScheduleContent.jsx';
 import { CustomerTopbar } from './components/customer/Topbar.jsx';
 import { Icon } from './components/Icons.jsx';
 import { heroImage, partnerImage } from './data/content.js';
@@ -32,18 +34,23 @@ import { customerDateLocale, useLocalizedCustomerText } from './i18n.jsx';
 const authStorageKey = 'glowhub_customer_auth';
 const bookingDraftStorageKey = 'glowhub_customer_booking_draft';
 const paymentDraftStorageKey = 'glowhub_customer_payment_draft';
-const tones = ['rose', 'amber', 'sky', 'teal', 'orange', 'yellow', 'blue', 'slate'];
+const customerBookingsStorageKey = 'glowhub_customer_bookings_cache';
+const tones = ['blue', 'teal', 'sky', 'slate'];
 const catalogRefreshMs = 12000;
-const availabilityRefreshMs = 5000;
+const availabilityRefreshMs = 20000;
+const availabilityCacheMaxAgeMs = 60000;
+const availabilityCacheLimit = 40;
 const bookingRefreshMs = 10000;
 
 const findServiceRoute = '/findservice';
 const serviceRoute = (branchId) => (branchId ? `${findServiceRoute}/${branchId}/services` : findServiceRoute);
 const deviceLocationRadiusKm = 25;
+const deviceLocationFallbackRadiusKm = 100;
 const deviceLocationMaxAccuracyMeters = deviceLocationRadiusKm * 1000;
 const deviceLocationDraftMaxAgeMs = 10 * 60 * 1000;
 const pastBookingDateMessage = 'Service is not available before today. Choose today or a later date.';
-const locationAccuracyMessage = 'Location accuracy is low. Turn on precise location or type your city manually.';
+const approximateLocationMessage = 'Location accuracy is approximate. Results are based on the location your browser shared.';
+const locationUnavailableMessage = 'Could not read your current location. Allow browser location access or type your city manually.';
 const dateInputPattern = /^\d{4}-\d{2}-\d{2}$/;
 const midtransPaymentChannels = [
     { id: 'qris', label: 'QRIS', detail: 'Scan QR from any QRIS-ready wallet or mobile banking app.' },
@@ -125,8 +132,26 @@ function todayInputValue() {
     return today.toISOString().slice(0, 10);
 }
 
+function dateInputValueFrom(value) {
+    const directValue = String(value || '').trim().slice(0, 10);
+
+    if (dateInputPattern.test(directValue)) {
+        return directValue;
+    }
+
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) {
+        return '';
+    }
+
+    date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
+
+    return date.toISOString().slice(0, 10);
+}
+
 function isPastBookingDate(value) {
-    const dateValue = String(value || '').trim();
+    const dateValue = dateInputValueFrom(value);
 
     return dateInputPattern.test(dateValue) && dateValue < todayInputValue();
 }
@@ -189,7 +214,6 @@ function readBookingDraft() {
     const draftAge = Number.isFinite(updatedAt) ? Date.now() - updatedAt : Infinity;
     const staleDeviceLocation = currentLocationDraft && (
         !searchCoordinates
-        || !locationCoordinatesArePrecise(searchCoordinates)
         || draftAge > deviceLocationDraftMaxAgeMs
     );
     const normalizedSelectedLocation = selectedLocation && currentLocationDraft
@@ -282,6 +306,31 @@ function clearPaymentDraft() {
     clearStoredJson(paymentDraftStorageKey);
 }
 
+function readCustomerBookingsCache(userId) {
+    const cache = plainObject(readStoredJson(customerBookingsStorageKey));
+
+    if (!cache || !sameId(cache.userId, userId)) {
+        return [];
+    }
+
+    return safeArray(cache.bookings);
+}
+
+function writeCustomerBookingsCache(userId, bookings) {
+    if (!userId) return;
+
+    writeStoredJson(customerBookingsStorageKey, {
+        version: 1,
+        userId,
+        updatedAt: Date.now(),
+        bookings: safeArray(bookings),
+    });
+}
+
+function clearCustomerBookingsCache() {
+    clearStoredJson(customerBookingsStorageKey);
+}
+
 function formatPrice(price) {
     return `Rp${Number(price || 0).toLocaleString('id-ID')}`;
 }
@@ -300,6 +349,12 @@ function formatTime(time) {
     if (!time) return '-';
     const match = String(time).match(/(\d{2}):(\d{2})/);
     return match ? `${match[1]}:${match[2]}` : String(time);
+}
+
+function timeInputValueFrom(value) {
+    const match = String(value || '').match(/(\d{1,2}):(\d{2})/);
+
+    return match ? `${String(match[1]).padStart(2, '0')}:${match[2]}` : '';
 }
 
 function formatWaitLabel(label) {
@@ -349,6 +404,26 @@ function locationCoordinatesArePrecise(coordinates) {
     return Number.isFinite(accuracy) && accuracy <= deviceLocationMaxAccuracyMeters;
 }
 
+function searchRadiusForCoordinates(coordinates) {
+    const accuracyKm = Number(coordinates?.accuracy) / 1000;
+
+    if (!Number.isFinite(accuracyKm) || accuracyKm <= deviceLocationRadiusKm) {
+        return deviceLocationRadiusKm;
+    }
+
+    return Math.min(deviceLocationFallbackRadiusKm, Math.ceil(accuracyKm + 5));
+}
+
+function coordinatesMatchForm(coordinates, latitude, longitude) {
+    return Boolean(
+        latitude
+        && longitude
+        && coordinates
+        && String(coordinates.lat) === latitude
+        && String(coordinates.lng) === longitude
+    );
+}
+
 function normalizeDevicePosition(position) {
     const lat = Number(position?.coords?.latitude);
     const lng = Number(position?.coords?.longitude);
@@ -380,36 +455,40 @@ function getDeviceCoordinates() {
         let bestCoordinates = null;
 
         function runAttempt(index = 0) {
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    const coordinates = normalizeDevicePosition(position);
+            try {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const coordinates = normalizeDevicePosition(position);
 
-                    if (coordinates && (!bestCoordinates || coordinates.accuracy < bestCoordinates.accuracy)) {
-                        bestCoordinates = coordinates;
-                    }
+                        if (coordinates && (!bestCoordinates || coordinates.accuracy < bestCoordinates.accuracy)) {
+                            bestCoordinates = coordinates;
+                        }
 
-                    if (coordinates && locationCoordinatesArePrecise(coordinates)) {
-                        resolve(coordinates);
-                        return;
-                    }
+                        if (coordinates && locationCoordinatesArePrecise(coordinates)) {
+                            resolve(coordinates);
+                            return;
+                        }
 
-                    if (index + 1 < attempts.length) {
-                        runAttempt(index + 1);
-                        return;
-                    }
+                        if (index + 1 < attempts.length) {
+                            runAttempt(index + 1);
+                            return;
+                        }
 
-                    resolve(bestCoordinates && locationCoordinatesArePrecise(bestCoordinates) ? bestCoordinates : null);
-                },
-                () => {
-                    if (index + 1 < attempts.length) {
-                        runAttempt(index + 1);
-                        return;
-                    }
+                        resolve(bestCoordinates);
+                    },
+                    () => {
+                        if (index + 1 < attempts.length) {
+                            runAttempt(index + 1);
+                            return;
+                        }
 
-                    resolve(bestCoordinates && locationCoordinatesArePrecise(bestCoordinates) ? bestCoordinates : null);
-                },
-                attempts[index]
-            );
+                        resolve(bestCoordinates);
+                    },
+                    attempts[index]
+                );
+            } catch {
+                resolve(bestCoordinates);
+            }
         }
 
         runAttempt();
@@ -449,6 +528,8 @@ function statusLabel(status) {
         cancelled: 'Cancelled',
         no_show: 'No-show',
         rescheduled: 'Rescheduled',
+        expired: 'Expired',
+        payment_expired: 'Payment Expired',
     };
 
     return labels[status] || 'Pending';
@@ -472,26 +553,75 @@ function paymentStatusLabel(status) {
         failed: 'Failed',
         refunded: 'Refunded',
         cancelled: 'Cancelled',
+        expired: 'Expired',
     };
 
     return labels[status] || statusLabel(status);
 }
 
+function paymentExpiryDate(payment = {}) {
+    if (!payment?.expiry_time) return null;
+
+    const expiryDate = new Date(payment.expiry_time);
+
+    return Number.isNaN(expiryDate.getTime()) ? null : expiryDate;
+}
+
+function paymentHasExpired(payment = {}) {
+    const status = payment.status || '';
+
+    if (status === 'expired') return true;
+    if (!['pending', 'unpaid'].includes(status)) return false;
+
+    const expiryDate = paymentExpiryDate(payment);
+
+    return Boolean(expiryDate && expiryDate.getTime() <= Date.now());
+}
+
+function bookingPaymentSnapshot(booking = {}) {
+    const payment = booking?.payment || {};
+
+    return {
+        ...payment,
+        status: payment.status || booking?.payment_status,
+    };
+}
+
+function formatPaymentCountdown(milliseconds) {
+    const totalSeconds = Math.max(0, Math.ceil(milliseconds / 1000));
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+
+    return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+}
+
+function firstErrorMessage(error, fallback = 'Request failed.') {
+    const fieldErrors = error?.errors || {};
+    const firstFieldError = Object.values(fieldErrors).find((messages) => Array.isArray(messages) && messages.length > 0);
+
+    return firstFieldError?.[0] || error?.message || fallback;
+}
+
 const cancelledBookingStatuses = ['cancelled', 'customer_cancelled', 'provider_cancelled', 'no_show'];
 const finalBookingStatuses = [...cancelledBookingStatuses, 'completed', 'order_completed'];
+const reschedulableBookingStatuses = ['open', 'pending', 'pending_payment', 'confirmed', 'rescheduled'];
 
 function bookingIsCancelled(booking) {
     return cancelledBookingStatuses.includes(booking?.status);
 }
 
 function bookingDisplayStatus(booking) {
-    const payment = booking?.payment || {};
+    const payment = bookingPaymentSnapshot(booking);
     const bookingStatus = booking?.status || 'pending';
     const paymentType = payment.payment_type || booking?.payment_type || 'pay_at_salon';
     const paymentStatus = payment.status || booking?.payment_status || '';
 
     if (finalBookingStatuses.includes(bookingStatus)) {
         return bookingStatus;
+    }
+
+    if (paymentType !== 'pay_at_salon' && paymentHasExpired(payment)) {
+        return 'payment_expired';
     }
 
     if (paymentType !== 'pay_at_salon' && ['pending', 'unpaid'].includes(paymentStatus)) {
@@ -504,7 +634,9 @@ function bookingDisplayStatus(booking) {
 function bookingEffectivePaymentStatus(booking) {
     if (bookingIsCancelled(booking)) return 'cancelled';
 
-    const payment = booking?.payment || {};
+    const payment = bookingPaymentSnapshot(booking);
+
+    if (paymentHasExpired(payment)) return 'expired';
 
     return payment.status || booking?.payment_status || 'pending';
 }
@@ -515,6 +647,10 @@ function bookingHeroVisual(booking) {
 
     if (bookingIsCancelled(booking) || effectivePaymentStatus === 'failed') {
         return { icon: 'x', state: 'is-cancelled' };
+    }
+
+    if (effectivePaymentStatus === 'expired') {
+        return { icon: 'clock', state: 'is-expired' };
     }
 
     if (effectivePaymentStatus === 'paid') {
@@ -566,7 +702,30 @@ function bookingDateTimeLabel(booking) {
 }
 
 function canCancelBooking(booking) {
-    return ['open', 'pending', 'pending_payment', 'confirmed', 'waiting', 'checked_in', 'rescheduled'].includes(booking?.status);
+    return !paymentHasExpired(bookingPaymentSnapshot(booking))
+        && ['open', 'pending', 'pending_payment', 'confirmed', 'waiting', 'checked_in', 'rescheduled'].includes(booking?.status);
+}
+
+function canRescheduleBooking(booking) {
+    const bookingDate = dateInputValueFrom(booking?.booking_date);
+
+    return booking?.booking_type === 'scheduled'
+        && !paymentHasExpired(bookingPaymentSnapshot(booking))
+        && reschedulableBookingStatuses.includes(booking?.status)
+        && dateInputPattern.test(bookingDate)
+        && bookingDate > todayInputValue();
+}
+
+function rescheduleDeadlineText(booking) {
+    if (canRescheduleBooking(booking)) {
+        return 'Reschedule is available until H-1 before your visit date.';
+    }
+
+    if (booking?.booking_type !== 'scheduled') {
+        return 'Queue bookings cannot be rescheduled.';
+    }
+
+    return 'Reschedule is closed because the visit is today or already past H-1.';
 }
 
 function normalizeBranch(branch, index = 0) {
@@ -590,6 +749,7 @@ function normalizeBranch(branch, index = 0) {
         workingStart: String(branch.working_start_hour || '09:00').slice(0, 5),
         workingEnd: String(branch.working_end_hour || '18:00').slice(0, 5),
         workingDays: Array.isArray(branch.working_days) ? branch.working_days : [],
+        holidays: Array.isArray(branch.holidays) ? branch.holidays : [],
         latitude: branch.latitude,
         longitude: branch.longitude,
         distanceKm: branch.distance_km,
@@ -636,10 +796,17 @@ function normalizeStaff(staff, index = 0) {
     return {
         id: staff.id,
         name: staff.name || `${staff.first_name || ''} ${staff.last_name || ''}`.trim() || 'Staff',
+        firstName: staff.first_name || '',
+        lastName: staff.last_name || '',
+        gender: staff.gender || '',
+        bio: stripHtml(staff.bio || ''),
+        role: staff.role || staff.provider_role?.role_name || staff.providerRole?.roleName || '',
         rating: staff.rating,
         status: staff.current_status || staff.status || 'available',
+        accountStatus: staff.status || 'active',
         image: resolveAssetUrl(staff.image_url || staff.image),
         skills: Array.isArray(staff.skills) ? staff.skills : [],
+        schedules: Array.isArray(staff.schedules) ? staff.schedules : [],
         tone: tones[index % tones.length],
         raw: staff,
     };
@@ -678,6 +845,10 @@ function availabilityCacheKey(branchId, serviceIds, bookingType, bookingDate, st
     return [branchId || '', servicesKey, bookingType || '', bookingDate || '', staffId || 'any'].join('|');
 }
 
+function availabilityStaffKey(bookingType, staffId) {
+    return bookingType === 'queue' ? (staffId || '') : '';
+}
+
 function slotDateTime(dateValue, timeValue) {
     const dateMatch = String(dateValue || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
     const timeMatch = String(timeValue || '').match(/^(\d{1,2}):(\d{2})/);
@@ -701,14 +872,128 @@ function slotIsExpired(dateValue, timeValue, referenceDate = new Date()) {
     return Boolean(slotTime && slotTime <= referenceDate);
 }
 
+function dayAliasesForInputDate(dateValue) {
+    const date = slotDateTime(dateValue, '00:00') || new Date(dateValue);
+    const aliases = [
+        ['0', 'sunday', 'sun', 'minggu', 'ahad'],
+        ['1', 'monday', 'mon', 'senin'],
+        ['2', 'tuesday', 'tue', 'selasa'],
+        ['3', 'wednesday', 'wed', 'rabu'],
+        ['4', 'thursday', 'thu', 'kamis'],
+        ['5', 'friday', 'fri', 'jumat', 'jum\'at'],
+        ['6', 'saturday', 'sat', 'sabtu'],
+    ];
+
+    return aliases[Number.isNaN(date.getTime()) ? 0 : date.getDay()] || [];
+}
+
+function minutesFromTime(value, fallback = 0) {
+    const match = String(value || '').match(/^(\d{1,2}):(\d{2})/);
+
+    if (!match) return fallback;
+
+    return Number(match[1]) * 60 + Number(match[2]);
+}
+
+function timeFromMinutes(value) {
+    const hour = Math.floor(value / 60);
+    const minute = value % 60;
+
+    return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+}
+
+function branchWorksOnInputDate(branch, dateValue) {
+    if (!branch || !dateInputPattern.test(String(dateValue || ''))) return false;
+    if (isPastBookingDate(dateValue)) return false;
+
+    const holidays = safeArray(branch.holidays)
+        .map((holiday) => String(holiday || '').slice(0, 10))
+        .filter(Boolean);
+
+    if (holidays.includes(dateValue)) return false;
+
+    const workingDays = safeArray(branch.workingDays)
+        .map((day) => String(day || '').toLowerCase());
+
+    if (workingDays.length === 0) return true;
+
+    const aliases = dayAliasesForInputDate(dateValue);
+
+    return workingDays.some((day) => aliases.includes(day));
+}
+
+function localStaffWorkingWindows(branch, staff, dateValue) {
+    if (!branchWorksOnInputDate(branch, dateValue)) return [];
+
+    const branchStart = minutesFromTime(branch?.workingStart || '09:00', 9 * 60);
+    const branchEnd = minutesFromTime(branch?.workingEnd || '18:00', 18 * 60);
+    const aliases = dayAliasesForInputDate(dateValue);
+    const schedules = safeArray(staff?.schedules)
+        .filter((schedule) => (
+            schedule?.is_available !== false
+            && aliases.includes(String(schedule?.day_of_week || '').toLowerCase())
+        ));
+
+    if (schedules.length === 0) {
+        return branchStart < branchEnd ? [{ start: branchStart, end: branchEnd }] : [];
+    }
+
+    return schedules
+        .map((schedule) => ({
+            start: Math.max(minutesFromTime(schedule.start_time, branchStart), branchStart),
+            end: Math.min(minutesFromTime(schedule.end_time, branchEnd), branchEnd),
+        }))
+        .filter((window) => window.start < window.end);
+}
+
+function estimateLocalAvailabilitySlots(branch, selectedServices, staffList, bookingDate, referenceDate = new Date()) {
+    if (!branch || selectedServices.length === 0 || !dateInputPattern.test(String(bookingDate || ''))) return [];
+    if (selectedServices.some((service) => !service.isScheduledEnabled)) return [];
+
+    const duration = selectedServices.reduce((sum, service) => sum + Number(service.duration || 30), 0);
+    const serviceIds = selectedServices.map((service) => service.id);
+    const currentDate = todayInputValue();
+    const nowMinutes = referenceDate.getHours() * 60 + referenceDate.getMinutes();
+
+    return safeArray(staffList)
+        .filter((staff) => (
+            staff.accountStatus === 'active'
+            && staff.status !== 'offline'
+            && staffHasSelectedServiceSkills(staff, serviceIds)
+        ))
+        .flatMap((staff) => localStaffWorkingWindows(branch, staff, bookingDate).flatMap((window) => {
+            const slots = [];
+
+            for (let cursor = window.start; cursor + duration <= window.end; cursor += 30) {
+                if (bookingDate === currentDate && cursor <= nowMinutes) continue;
+
+                slots.push({
+                    time: timeFromMinutes(cursor),
+                    staff_id: staff.id,
+                    staff_name: staff.name,
+                    estimated_end_time: timeFromMinutes(cursor + duration),
+                    instant: true,
+                });
+            }
+
+            return slots;
+        }))
+        .sort((left, right) => (
+            left.time.localeCompare(right.time)
+            || String(left.staff_name || '').localeCompare(String(right.staff_name || ''))
+        ));
+}
+
 function staffHasSelectedServiceSkills(staff, serviceIds) {
+    if (!Array.isArray(serviceIds) || serviceIds.length === 0) return true;
+
     const skills = Array.isArray(staff?.skills) ? staff.skills : [];
     const skillIds = skills
         .map((skill) => skill?.id ?? skill?.service_id ?? skill)
         .filter((id) => id !== undefined && id !== null)
         .map(String);
 
-    if (skillIds.length === 0) return true;
+    if (skillIds.length === 0) return false;
 
     return serviceIds.every((serviceId) => skillIds.includes(String(serviceId)));
 }
@@ -741,6 +1026,7 @@ function App() {
     const [availabilityRefreshTick, setAvailabilityRefreshTick] = useState(0);
     const [clockTick, setClockTick] = useState(() => Date.now());
     const isReviewBookingRoute = location.pathname === '/booking/payment';
+    const isStaffScheduleRoute = location.pathname === '/booking/staff';
 
     useEffect(() => {
         const frame = window.requestAnimationFrame(() => {
@@ -771,6 +1057,7 @@ function App() {
     const [availabilityLoading, setAvailabilityLoading] = useState(false);
     const availabilityRequestRef = useRef(0);
     const availabilityKeyRef = useRef('');
+    const availabilityCacheRef = useRef(new Map());
     const [bookingLoading, setBookingLoading] = useState(false);
     const [bookingError, setBookingError] = useState('');
     const [bookingSuccess, setBookingSuccess] = useState(null);
@@ -800,6 +1087,7 @@ function App() {
     const [customerBookings, setCustomerBookings] = useState([]);
     const [bookingsLoading, setBookingsLoading] = useState(false);
     const selectedBranchId = selectedBranch?.id || null;
+    const activeAvailabilityStaffId = availabilityStaffKey(bookingType, selectedStaffId);
     const activeAvailabilityKey = useMemo(() => (
         selectedBranchId && selectedServiceIds.length > 0
             ? availabilityCacheKey(
@@ -807,10 +1095,10 @@ function App() {
                 selectedServiceIds,
                 bookingType,
                 bookingType === 'scheduled' ? bookingDate : todayInputValue(),
-                selectedStaffId
+                activeAvailabilityStaffId
             )
             : ''
-    ), [bookingDate, bookingType, selectedBranchId, selectedServiceIds, selectedStaffId]);
+    ), [activeAvailabilityStaffId, bookingDate, bookingType, selectedBranchId, selectedServiceIds]);
 
     useEffect(() => {
         if (bookingSuccess) return;
@@ -981,6 +1269,37 @@ function App() {
         void refreshSelectedBranch(selectedBranchId, { quiet: true });
     }, [isLoadingBranch, refreshSelectedBranch, selectedBranchId, services.length]);
 
+    function readCachedAvailability(key) {
+        const cached = availabilityCacheRef.current.get(key);
+
+        if (!cached) return null;
+
+        if (Date.now() - Number(cached.cached_at || 0) > availabilityCacheMaxAgeMs) {
+            availabilityCacheRef.current.delete(key);
+            return null;
+        }
+
+        return cached;
+    }
+
+    function rememberAvailability(key, data) {
+        const cached = {
+            ...data,
+            _key: key,
+            received_at: Date.now(),
+            cached_at: Date.now(),
+        };
+
+        availabilityCacheRef.current.set(key, cached);
+
+        if (availabilityCacheRef.current.size > availabilityCacheLimit) {
+            const oldestKey = availabilityCacheRef.current.keys().next().value;
+            availabilityCacheRef.current.delete(oldestKey);
+        }
+
+        return cached;
+    }
+
     const refreshAvailability = useCallback(async (options = {}) => {
         const requestId = availabilityRequestRef.current + 1;
         availabilityRequestRef.current = requestId;
@@ -994,13 +1313,23 @@ function App() {
 
         const { quiet = false } = options;
         const keyChanged = availabilityKeyRef.current !== activeAvailabilityKey;
+        const cachedAvailability = readCachedAvailability(activeAvailabilityKey);
 
         if (keyChanged) {
-            setAvailability(null);
-            availabilityKeyRef.current = '';
+            if (cachedAvailability) {
+                setAvailability(cachedAvailability);
+                availabilityKeyRef.current = activeAvailabilityKey;
+            } else {
+                setAvailability(null);
+                availabilityKeyRef.current = '';
+            }
         }
 
-        if (!quiet || keyChanged) setAvailabilityLoading(true);
+        if (cachedAvailability) {
+            setAvailabilityLoading(false);
+        } else if (!quiet) {
+            setAvailabilityLoading(true);
+        }
 
         try {
             const data = await checkBookingAvailability({
@@ -1008,18 +1337,20 @@ function App() {
                 service_ids: selectedServiceIds,
                 booking_type: bookingType,
                 booking_date: bookingType === 'scheduled' ? bookingDate : undefined,
-                staff_id: selectedStaffId || undefined,
+                staff_id: activeAvailabilityStaffId || undefined,
             });
 
             if (requestId !== availabilityRequestRef.current) {
                 return null;
             }
 
+            const cached = rememberAvailability(activeAvailabilityKey, data);
+
             availabilityKeyRef.current = activeAvailabilityKey;
-            setAvailability({ ...data, _key: activeAvailabilityKey, received_at: Date.now() });
-            return data;
+            setAvailability(cached);
+            return cached;
         } catch {
-            if (requestId === availabilityRequestRef.current && (keyChanged || !quiet)) {
+            if (!cachedAvailability && requestId === availabilityRequestRef.current && (keyChanged || !quiet)) {
                 setAvailability(null);
                 availabilityKeyRef.current = '';
             }
@@ -1030,7 +1361,11 @@ function App() {
                 setAvailabilityLoading(false);
             }
         }
-    }, [activeAvailabilityKey, bookingDate, bookingType, selectedBranchId, selectedServiceIds, selectedStaffId]);
+    }, [activeAvailabilityKey, activeAvailabilityStaffId, bookingDate, bookingType, selectedBranchId, selectedServiceIds]);
+
+    const prepareAvailability = useCallback(() => {
+        void refreshAvailability({ quiet: true });
+    }, [refreshAvailability]);
 
     useEffect(() => {
         let mounted = true;
@@ -1086,13 +1421,18 @@ function App() {
             return;
         }
 
-        loadCustomerBookings(authToken);
-    }, [authToken, authUser]);
+        const cachedBookings = readCustomerBookingsCache(authUser.id);
+
+        if (cachedBookings.length > 0) {
+            setCustomerBookings(cachedBookings);
+        }
+
+        loadCustomerBookings(authToken, { quiet: cachedBookings.length > 0 });
+    }, [authToken, authUser?.id, authUser?.role]);
 
     useEffect(() => {
         const refresh = () => {
             setCatalogRefreshTick((tick) => tick + 1);
-            setAvailabilityRefreshTick((tick) => tick + 1);
         };
         const interval = window.setInterval(refresh, catalogRefreshMs);
 
@@ -1178,25 +1518,71 @@ function App() {
         return services.filter((service) => service.category === serviceCategory);
     }, [services, serviceCategory]);
 
+    const availabilityMatchesSelection = Boolean(activeAvailabilityKey && availability?._key === activeAvailabilityKey);
+    const availabilityEligibleStaff = useMemo(() => {
+        if (!availabilityMatchesSelection || !Array.isArray(availability?.eligible_staff)) {
+            return null;
+        }
+
+        const localStaffById = new Map(staffs.map((staff) => [String(staff.id), staff]));
+
+        const mergedStaff = availability.eligible_staff.map((staff, index) => {
+            const normalizedStaff = normalizeStaff(staff, index);
+            const localStaff = localStaffById.get(String(normalizedStaff.id));
+
+            if (!localStaff) {
+                return normalizedStaff;
+            }
+
+            return {
+                ...localStaff,
+                ...normalizedStaff,
+                image: normalizedStaff.image || localStaff.image,
+                skills: normalizedStaff.skills.length > 0 ? normalizedStaff.skills : localStaff.skills,
+                schedules: normalizedStaff.schedules.length > 0 ? normalizedStaff.schedules : localStaff.schedules,
+                tone: localStaff.tone || normalizedStaff.tone,
+                raw: {
+                    ...(localStaff.raw || {}),
+                    ...(normalizedStaff.raw || {}),
+                },
+            };
+        });
+
+        return stableStaffList(mergedStaff)
+            .filter((staff) => staffHasSelectedServiceSkills(staff, selectedServiceIds));
+    }, [availability?.eligible_staff, availabilityMatchesSelection, selectedServiceIds, staffs]);
+
     const fallbackEligibleStaff = useMemo(() => {
         if (selectedServiceIds.length === 0) return staffs;
 
-        return staffs.filter((staff) => staff.status !== 'offline' && staffHasSelectedServiceSkills(staff, selectedServiceIds));
+        return staffs.filter((staff) => (
+            staff.accountStatus === 'active'
+            && staff.status !== 'offline'
+            && staffHasSelectedServiceSkills(staff, selectedServiceIds)
+        ));
     }, [selectedServiceIds, staffs]);
+
+    const slotReferenceDate = useMemo(() => new Date(clockTick), [clockTick]);
+    const instantAvailableSlots = useMemo(() => (
+        estimateLocalAvailabilitySlots(selectedBranch, selectedServices, fallbackEligibleStaff, bookingDate, slotReferenceDate)
+    ), [bookingDate, fallbackEligibleStaff, selectedBranch, selectedServices, slotReferenceDate]);
 
     const staffOptions = useMemo(() => {
         if (selectedServiceIds.length > 0) {
+            if (availabilityEligibleStaff !== null) {
+                return availabilityEligibleStaff;
+            }
+
             return fallbackEligibleStaff;
         }
 
         return staffs;
-    }, [fallbackEligibleStaff, selectedServiceIds, staffs]);
+    }, [availabilityEligibleStaff, fallbackEligibleStaff, selectedServiceIds, staffs]);
 
-    const availabilityMatchesSelection = Boolean(activeAvailabilityKey && availability?._key === activeAvailabilityKey);
-    const isAvailabilityResolving = Boolean(activeAvailabilityKey) && (!availabilityMatchesSelection || availabilityLoading);
-    const availableSlots = availabilityMatchesSelection ? (availability?.available_slots || []) : [];
+    const hasInstantAvailability = !availabilityMatchesSelection && (fallbackEligibleStaff.length > 0 || instantAvailableSlots.length > 0);
+    const isAvailabilityResolving = Boolean(activeAvailabilityKey) && availabilityLoading && !availabilityMatchesSelection && !hasInstantAvailability;
+    const availableSlots = availabilityMatchesSelection ? (availability?.available_slots || []) : instantAvailableSlots;
     const queueEstimation = availabilityMatchesSelection ? availability?.queue_estimation : null;
-    const slotReferenceDate = useMemo(() => new Date(clockTick), [clockTick]);
     const visibleSlots = useMemo(() => {
         const staffId = selectedStaffId ? Number(selectedStaffId) : null;
         const slots = staffId ? availableSlots.filter((slot) => Number(slot.staff_id) === staffId) : availableSlots;
@@ -1222,8 +1608,8 @@ function App() {
     useEffect(() => {
         if (document.hidden) return;
 
-        void refreshAvailability({ quiet: availabilityRefreshTick > 0 });
-    }, [availabilityRefreshTick, refreshAvailability]);
+        void refreshAvailability({ quiet: !isStaffScheduleRoute || availabilityRefreshTick > 0 });
+    }, [availabilityRefreshTick, isStaffScheduleRoute, refreshAvailability]);
 
     useEffect(() => {
         if (!selectedStaffId || selectedServiceIds.length === 0) {
@@ -1247,7 +1633,7 @@ function App() {
             return;
         }
 
-        if (!availabilityMatchesSelection || isAvailabilityResolving) {
+        if (isAvailabilityResolving) {
             return;
         }
 
@@ -1261,7 +1647,7 @@ function App() {
         if (!visibleSlots.some((slot) => slot.time === startTime && !slot.expired)) {
             setStartTime(nextAvailableSlot.time);
         }
-    }, [availabilityMatchesSelection, bookingType, isAvailabilityResolving, isReviewBookingRoute, startTime, visibleSlots]);
+    }, [bookingType, isAvailabilityResolving, isReviewBookingRoute, startTime, visibleSlots]);
 
     async function loadBranches(params = {}) {
         setSearchError('');
@@ -1294,15 +1680,8 @@ function App() {
         const selectedBookingDate = String(formData.get('booking_date') || '').trim();
         let latitude = String(formData.get('lat') || '').trim();
         let longitude = String(formData.get('lng') || '').trim();
-        const hiddenCoordinatesArePrecise = Boolean(
-            latitude
-            && longitude
-            && searchCoordinates
-            && locationCoordinatesArePrecise(searchCoordinates)
-            && String(searchCoordinates.lat) === latitude
-            && String(searchCoordinates.lng) === longitude
-        );
-        let preciseCoordinates = hiddenCoordinatesArePrecise ? searchCoordinates : null;
+        const hiddenCoordinatesMatch = coordinatesMatchForm(searchCoordinates, latitude, longitude);
+        let deviceCoordinates = hiddenCoordinatesMatch ? searchCoordinates : null;
 
         if (isPastBookingDate(selectedBookingDate)) {
             setSearchError(pastBookingDateMessage);
@@ -1329,18 +1708,18 @@ function App() {
 
         if (selectedBookingDate) setBookingDate(selectedBookingDate);
 
-        if ((!latitude || !longitude || !hiddenCoordinatesArePrecise) && (!keyword || usesDeviceLocation)) {
+        if ((!latitude || !longitude || !hiddenCoordinatesMatch) && (!keyword || usesDeviceLocation)) {
             const coordinates = await getDeviceCoordinates();
 
             if (coordinates) {
                 latitude = String(coordinates.lat);
                 longitude = String(coordinates.lng);
-                preciseCoordinates = coordinates;
+                deviceCoordinates = coordinates;
             } else {
                 setSearchCoordinates(null);
                 setSelectedLocation({ label: 'Current location' });
                 setLocationQuery('Current location');
-                setSearchError(locationAccuracyMessage);
+                setSearchError(locationUnavailableMessage);
                 setBranchQueryParams({});
                 setBranches([]);
                 navigate(findServiceRoute);
@@ -1350,7 +1729,8 @@ function App() {
 
         if (latitude && longitude) {
             const locationLabel = usesDeviceLocation || !keyword ? 'Current location' : keyword;
-            const locationCoordinates = preciseCoordinates || normalizeSearchCoordinates({ lat: latitude, lng: longitude });
+            const locationCoordinates = deviceCoordinates || normalizeSearchCoordinates({ lat: latitude, lng: longitude });
+            const isApproximateLocation = locationCoordinates && !locationCoordinatesArePrecise(locationCoordinates);
 
             setLocationQuery(locationLabel);
             setSearchCoordinates(locationCoordinates);
@@ -1358,13 +1738,16 @@ function App() {
             await loadBranches({
                 lat: latitude,
                 lng: longitude,
-                radius_km: deviceLocationRadiusKm,
+                radius_km: searchRadiusForCoordinates(locationCoordinates),
                 ...scheduleParams,
             });
             const resolvedLocationLabel = usesDeviceLocation || !keyword ? 'Current location' : locationLabel;
 
             setLocationQuery(resolvedLocationLabel);
             setSelectedLocation({ label: resolvedLocationLabel, ...(locationCoordinates || { lat: latitude, lng: longitude }) });
+            if (isApproximateLocation) {
+                setSearchError(approximateLocationMessage);
+            }
             return;
         }
 
@@ -1396,7 +1779,7 @@ function App() {
             setSearchCoordinates(null);
             setLocationQuery('Current location');
             setSelectedLocation({ label: 'Current location' });
-            setSearchError(locationAccuracyMessage);
+            setSearchError(locationUnavailableMessage);
             if (refreshResults) {
                 setBranchQueryParams({});
                 setSelectedBranch(null);
@@ -1414,10 +1797,14 @@ function App() {
 
         const currentCoordinates = coordinates;
         const resolvedLocationLabel = 'Current location';
+        const isApproximateLocation = !locationCoordinatesArePrecise(currentCoordinates);
 
         setSearchCoordinates(currentCoordinates);
         setLocationQuery(resolvedLocationLabel);
         setSelectedLocation({ label: resolvedLocationLabel, ...currentCoordinates });
+        if (isApproximateLocation) {
+            setSearchError(approximateLocationMessage);
+        }
 
         if (refreshResults) {
             const selectedBookingDate = isPastBookingDate(bookingDate) ? todayInputValue() : (bookingDate || todayInputValue());
@@ -1429,9 +1816,12 @@ function App() {
             await loadBranches({
                 lat: currentCoordinates.lat,
                 lng: currentCoordinates.lng,
-                radius_km: deviceLocationRadiusKm,
+                radius_km: searchRadiusForCoordinates(currentCoordinates),
                 ...(selectedBookingDate ? { booking_date: selectedBookingDate } : {}),
             });
+            if (isApproximateLocation) {
+                setSearchError(approximateLocationMessage);
+            }
         }
 
         return currentCoordinates;
@@ -1545,6 +1935,7 @@ function App() {
         setAuthToken('');
         setCustomerBookings([]);
         window.localStorage.removeItem(authStorageKey);
+        clearCustomerBookingsCache();
         resetBookingSession();
         navigate('/', { replace: true });
 
@@ -1650,11 +2041,28 @@ function App() {
         try {
             const results = await getCustomerBookings(token, { per_page: 100 });
             setCustomerBookings(results);
+            writeCustomerBookingsCache(authUser?.id, results);
         } catch {
-            setCustomerBookings([]);
+            if (!quiet && customerBookings.length === 0) {
+                setCustomerBookings([]);
+            }
         } finally {
             if (!quiet) setBookingsLoading(false);
         }
+    }
+
+    function rememberUpdatedCustomerBooking(updatedBooking) {
+        if (!updatedBooking?.id) return;
+
+        setCustomerBookings((current) => {
+            const exists = current.some((booking) => sameId(booking.id, updatedBooking.id));
+            const nextBookings = exists
+                ? current.map((booking) => (sameId(booking.id, updatedBooking.id) ? updatedBooking : booking))
+                : [updatedBooking, ...current];
+
+            writeCustomerBookingsCache(authUser?.id, nextBookings);
+            return nextBookings;
+        });
     }
 
     async function openBookingsPanel() {
@@ -1668,14 +2076,20 @@ function App() {
     }
 
     async function handleCancelBooking(bookingId) {
-        if (!authToken) return;
-
-        try {
-            await cancelCustomerBooking(authToken, bookingId);
-            await loadCustomerBookings(authToken);
-        } catch {
-            // Keep current list if cancellation fails.
+        if (!authToken) {
+            throw new Error('Login customer diperlukan.');
         }
+
+        const response = await cancelCustomerBooking(authToken, bookingId);
+        const updatedBooking = response.data || null;
+
+        if (updatedBooking) {
+            rememberUpdatedCustomerBooking(updatedBooking);
+        }
+
+        await loadCustomerBookings(authToken, { quiet: true });
+
+        return updatedBooking;
     }
 
     async function refreshPaymentForBooking(bookingId) {
@@ -1834,6 +2248,7 @@ function App() {
                                 setBookingDate={setBookingDate}
                                 bookingType={bookingType}
                                 setBookingType={setBookingType}
+                                prepareAvailability={prepareAvailability}
                                 staffs={staffOptions}
                                 selectedStaffId={selectedStaffId}
                                 setSelectedStaffId={setSelectedStaffId}
@@ -1856,18 +2271,41 @@ function App() {
 
                     <Route
                         path="/booking/staff"
-                        element={<Navigate to={selectedBranchServiceRoute} replace />}
+                        element={(
+                            <BookingGuard condition={hasBookingBasics} redirectTo={selectedBranchServiceRoute}>
+                                <StaffScheduleContent
+                                    branch={selectedBranch}
+                                    selectedServices={selectedServices}
+                                    bookingType={bookingType}
+                                    setBookingType={setBookingType}
+                                    staffs={staffOptions}
+                                    selectedStaffId={selectedStaffId}
+                                    setSelectedStaffId={setSelectedStaffId}
+                                    selectedStaff={selectedStaff}
+                                    bookingDate={bookingDate}
+                                    availabilityLoading={isAvailabilityResolving}
+                                    availableSlots={availableSlots}
+                                    visibleSlots={visibleSlots}
+                                    startTime={startTime}
+                                    setStartTime={setStartTime}
+                                    queueEstimation={queueEstimation}
+                                    canContinueToPayment={canContinueToPayment}
+                                    totals={totals}
+                                    serviceRouteTo={selectedBranchServiceRoute}
+                                />
+                            </BookingGuard>
+                        )}
                     />
 
                     <Route
                         path="/booking/schedule"
-                        element={<Navigate to={canContinueToPayment ? '/booking/payment' : selectedBranchServiceRoute} replace />}
+                        element={<Navigate to="/booking/staff" replace />}
                     />
 
                     <Route
                         path="/booking/payment"
                         element={(
-                            <BookingGuard condition={hasBookingBasics} redirectTo={selectedBranchServiceRoute}>
+                            <BookingGuard condition={canContinueToPayment} redirectTo={hasBookingBasics ? '/booking/staff' : selectedBranchServiceRoute}>
                                 <ReviewStep
                                     authUser={authUser}
                                     branch={selectedBranch}
@@ -1912,7 +2350,7 @@ function App() {
                                 authUser={authUser}
                                 bookings={customerBookings}
                                 loading={bookingsLoading}
-                                onRefresh={() => loadCustomerBookings(authToken)}
+                                onRefresh={() => loadCustomerBookings(authToken, { quiet: true })}
                                 onCancel={handleCancelBooking}
                                 openAuthModal={openAuthModal}
                             />
@@ -1928,6 +2366,36 @@ function App() {
                                 bookings={customerBookings}
                                 loading={bookingsLoading}
                                 onRefresh={() => loadCustomerBookings(authToken)}
+                                onCancel={handleCancelBooking}
+                                openAuthModal={openAuthModal}
+                            />
+                        )}
+                    />
+
+                    <Route
+                        path="/my-bookings/:bookingId/reschedule"
+                        element={(
+                            <MyBookingReschedulePage
+                                authUser={authUser}
+                                authToken={authToken}
+                                bookings={customerBookings}
+                                loading={bookingsLoading}
+                                onRefresh={() => loadCustomerBookings(authToken, { quiet: true })}
+                                onBookingUpdated={rememberUpdatedCustomerBooking}
+                                openAuthModal={openAuthModal}
+                            />
+                        )}
+                    />
+
+                    <Route
+                        path="/my-bookings/:bookingId/cancel"
+                        element={(
+                            <MyBookingCancelPage
+                                authUser={authUser}
+                                authToken={authToken}
+                                bookings={customerBookings}
+                                loading={bookingsLoading}
+                                onRefresh={() => loadCustomerBookings(authToken, { quiet: true })}
                                 onCancel={handleCancelBooking}
                                 openAuthModal={openAuthModal}
                             />
@@ -2016,6 +2484,7 @@ function ServiceRoutePage({
     setBookingDate,
     bookingType,
     setBookingType,
+    prepareAvailability,
     staffs,
     selectedStaffId,
     setSelectedStaffId,
@@ -2094,6 +2563,7 @@ function ServiceRoutePage({
             setBookingDate={setBookingDate}
             bookingType={bookingType}
             setBookingType={setBookingType}
+            onPrepareSchedule={prepareAvailability}
             staffs={staffs}
             selectedStaffId={selectedStaffId}
             setSelectedStaffId={setSelectedStaffId}
@@ -2187,11 +2657,12 @@ function BookingSuccess({ booking, loading = false, openBookingsPanel, onPayment
     const status = statusLabel(statusKey);
     const paymentType = payment.payment_type || booking.payment_type || 'pay_at_salon';
     const isBookingCancelled = bookingIsCancelled(booking);
-    const paymentAmount = isBookingCancelled ? 0 : Number(payment.amount ?? (booking.payment_status === 'paid' ? payableAmount : 0));
     const rawPaymentStatus = bookingEffectivePaymentStatus(booking);
     const paymentStatus = paymentStatusLabel(rawPaymentStatus);
     const hasSettledPayment = rawPaymentStatus === 'paid';
-    const needsOnlinePayment = paymentType !== 'pay_at_salon' && !hasSettledPayment && !isBookingCancelled;
+    const paymentExpired = rawPaymentStatus === 'expired' || paymentHasExpired({ ...payment, status: rawPaymentStatus });
+    const paymentAmount = isBookingCancelled || paymentExpired ? 0 : Number(payment.amount ?? (booking.payment_status === 'paid' ? payableAmount : 0));
+    const needsOnlinePayment = paymentType !== 'pay_at_salon' && !hasSettledPayment && !isBookingCancelled && !paymentExpired;
     const paymentSetupApplies = paymentSetup?.bookingId && sameId(paymentSetup.bookingId, booking.id);
     const paymentSetupStatus = paymentSetupApplies ? paymentSetup.status : 'idle';
     const paymentSetupError = paymentSetupApplies ? paymentSetup.error : '';
@@ -2199,33 +2670,39 @@ function BookingSuccess({ booking, loading = false, openBookingsPanel, onPayment
     const hasPaymentInstruction = Boolean(payment.qr_url || payment.payment_code || payment.midtrans_order_id);
     const isPreparingPayment = needsOnlinePayment && paymentSetupStatus === 'loading' && !hasPaymentInstruction;
     const paymentSetupFailed = needsOnlinePayment && paymentSetupStatus === 'error' && !hasPaymentInstruction;
-    const paymentFailed = needsOnlinePayment && rawPaymentStatus === 'failed';
+    const paymentFailed = rawPaymentStatus === 'failed';
     const heroTitle = isBookingCancelled
         ? 'Booking Cancelled'
+        : paymentExpired
+            ? 'Payment Expired'
         : needsOnlinePayment
         ? paymentSetupFailed ? 'Payment Setup Failed' : paymentFailed ? 'Payment Failed' : isPreparingPayment ? 'Preparing Payment' : 'Payment Pending'
         : 'Booking Successful';
     const heroDescription = isBookingCancelled
         ? 'This booking has been cancelled. No payment is required.'
+        : paymentExpired
+            ? 'The 7 minute payment window has ended. This booking payment is now expired.'
         : needsOnlinePayment
         ? paymentSetupFailed
             ? 'Your booking has been created, but payment instructions could not be generated yet.'
             : isPreparingPayment
-                ? 'Your booking has been created. Payment instructions are being prepared.'
+                ? 'Mohon tunggu, Midtrans sedang membuat instruksi pembayaran.'
                 : paymentFailed
             ? 'Your booking has been created, but the payment could not be completed.'
             : 'Your booking has been created. Complete payment to secure your salon visit.'
         : 'Your booking has been created. Save this code for salon check-in.';
-    const heroIcon = isBookingCancelled ? 'x' : needsOnlinePayment ? (paymentFailed ? 'info' : 'clock') : 'check';
-    const heroState = isBookingCancelled ? 'is-failed' : needsOnlinePayment ? (paymentFailed || paymentSetupFailed ? 'is-failed' : 'is-pending') : 'is-success';
+    const heroIcon = isBookingCancelled ? 'x' : paymentExpired ? 'clock' : needsOnlinePayment ? (paymentFailed ? 'info' : 'clock') : 'check';
+    const heroState = isBookingCancelled ? 'is-failed' : paymentExpired ? 'is-expired' : needsOnlinePayment ? (paymentFailed || paymentSetupFailed ? 'is-failed' : 'is-pending') : 'is-success';
     const nextStepText = isBookingCancelled
             ? 'Payment flow stopped because the booking was cancelled.'
+        : paymentExpired
+            ? 'Waktu pembayaran 7 menit sudah habis. Buat booking baru untuk mendapatkan instruksi pembayaran baru.'
         : paymentType === 'pay_at_salon'
             ? 'Visit the salon on schedule and pay directly on site.'
         : paymentSetupFailed
             ? 'Payment instructions could not be generated. Try again from the payment card below.'
             : isPreparingPayment
-                ? 'Preparing payment instructions. You can stay on this page while we connect to Midtrans.'
+                ? 'Mohon tunggu, instruksi pembayaran sedang dibuat oleh Midtrans.'
         : hasSettledPayment
             ? 'Payment has been received. Visit the salon at your scheduled booking time.'
             : 'Payment is being recorded. Keep your booking code for salon check-in.';
@@ -2379,34 +2856,89 @@ function PaymentInstructionCard({
     const status = payment.status || 'pending';
     const isOnlinePayment = paymentType !== 'pay_at_salon';
     const isPaid = status === 'paid';
+    const isFailed = status === 'failed';
+    const expiryDate = paymentExpiryDate(payment);
+    const expiryMs = expiryDate ? expiryDate.getTime() : null;
+    const [nowMs, setNowMs] = useState(() => Date.now());
+    const autoExpiredRef = useRef(false);
+
+    useEffect(() => {
+        autoExpiredRef.current = false;
+    }, [payment.id, payment.midtrans_order_id, status]);
+
+    useEffect(() => {
+        if (!isOnlinePayment || !expiryMs || isPaid || isFailed || cancelled || status === 'expired') {
+            return undefined;
+        }
+
+        const timer = window.setInterval(() => setNowMs(Date.now()), 1000);
+
+        return () => window.clearInterval(timer);
+    }, [isOnlinePayment, expiryMs, isPaid, isFailed, cancelled, status]);
+
+    const remainingMs = expiryMs ? expiryMs - nowMs : null;
+    const canExpireLocally = ['pending', 'unpaid'].includes(status);
+    const isExpired = status === 'expired' || (canExpireLocally && remainingMs !== null && remainingMs <= 0);
+
+    useEffect(() => {
+        if (!isExpired || isPaid || isFailed || cancelled || checking || !onCheckStatus || autoExpiredRef.current) {
+            return;
+        }
+
+        autoExpiredRef.current = true;
+        void onCheckStatus();
+    }, [isExpired, isPaid, isFailed, cancelled, checking, onCheckStatus]);
 
     if (!isOnlinePayment) return null;
 
     const hasInstruction = Boolean(payment.qr_url || payment.payment_code);
-    const isSettingUp = setupStatus === 'loading' && !hasInstruction;
-    const setupFailed = setupStatus === 'error' && !hasInstruction;
+    const isSettingUp = setupStatus === 'loading' && !hasInstruction && !isExpired;
+    const setupFailed = setupStatus === 'error' && !hasInstruction && !isExpired;
     const channelLabel = payment.payment_code_label
         || String(payment.payment_channel || setupChannel || 'Midtrans').replaceAll('_', ' ').toUpperCase();
-    const expiryLabel = payment.expiry_time
+    const expiryLabel = expiryDate
         ? `${formatDate(payment.expiry_time)}, ${formatTime(payment.expiry_time)}`
         : 'Follow the expiry time shown by your payment app.';
-    const statusClass = cancelled || setupFailed ? 'failed' : status;
+    const countdownLabel = expiryMs ? formatPaymentCountdown(remainingMs || 0) : '';
+    const showCountdown = Boolean(expiryMs && hasInstruction && !cancelled && !isPaid && !isFailed && !isExpired);
+    const statusClass = cancelled || setupFailed || isFailed ? 'failed' : isExpired ? 'expired' : status;
     const statusText = cancelled
         ? 'Cancelled'
+        : isExpired
+            ? 'Expired'
         : isSettingUp
         ? 'Preparing'
         : setupFailed
             ? 'Needs Retry'
+            : isFailed
+                ? 'Failed'
             : paymentStatusLabel(status);
     const headingText = isPaid
         ? 'Payment Received'
         : cancelled
             ? 'Payment Cancelled'
+        : isExpired
+            ? 'Payment Expired'
         : isSettingUp
-            ? 'Preparing instructions'
+            ? 'Mohon tunggu...'
             : setupFailed
                 ? 'Payment setup failed'
+                : isFailed
+                    ? 'Payment Failed'
                 : channelLabel;
+    const footerText = cancelled
+        ? 'Payment flow stopped because the booking was cancelled.'
+        : isExpired
+            ? 'Waktu pembayaran 7 menit sudah habis. Status pembayaran berubah menjadi expired.'
+        : isSettingUp
+            ? 'Mohon tunggu, Midtrans sedang membuat instruksi pembayaran. Sandbox bisa memakan waktu sekitar 10 detik.'
+        : setupFailed
+            ? 'Retry payment setup to generate a new instruction.'
+        : isPaid
+            ? 'Payment has been received.'
+        : expiryMs
+            ? `Batas pembayaran: ${countdownLabel} tersisa. Maksimal pembayaran 7 menit.`
+            : `Expires: ${expiryLabel}`;
 
     return (
         <section className="midtrans-instruction-card">
@@ -2423,15 +2955,20 @@ function PaymentInstructionCard({
                     <Icon name="x" size={28} />
                     <p>This booking has been cancelled. No payment is required.</p>
                 </div>
+            ) : isExpired ? (
+                <div className="midtrans-empty-instruction is-expired">
+                    <Icon name="clock" size={28} />
+                    <p>Waktu pembayaran 7 menit sudah habis. Booking payment sekarang berstatus expired.</p>
+                </div>
             ) : isSettingUp ? (
                 <div className="midtrans-empty-instruction">
                     <Icon name="clock" size={28} />
-                    <p>Preparing payment instructions with Midtrans. This can take a moment on sandbox.</p>
+                    <p>Mohon tunggu, instruksi pembayaran sedang dibuat oleh Midtrans. Proses sandbox bisa sekitar 10 detik.</p>
                 </div>
-            ) : setupFailed ? (
+            ) : setupFailed || isFailed ? (
                 <div className="midtrans-empty-instruction is-error">
                     <Icon name="info" size={28} />
-                    <p>{setupError || 'Payment instructions could not be generated yet.'}</p>
+                    <p>{setupError || 'Payment could not be completed. Please check the payment status or make a new booking.'}</p>
                 </div>
             ) : payment.qr_url ? (
                 <div className="midtrans-live-qr">
@@ -2462,14 +2999,23 @@ function PaymentInstructionCard({
                 </div>
             )}
 
+            {showCountdown && (
+                <div className="midtrans-countdown">
+                    <Icon name="clock" size={22} />
+                    <span>Payment deadline</span>
+                    <strong>{countdownLabel}</strong>
+                    <small>Bayar sebelum timer habis agar booking tetap aktif.</small>
+                </div>
+            )}
+
             <footer>
-                <span>{cancelled ? 'Payment flow stopped because the booking was cancelled.' : isSettingUp ? 'Connecting to Midtrans...' : setupFailed ? 'Retry payment setup to generate a new instruction.' : `Expires: ${expiryLabel}`}</span>
-                {!cancelled && (setupFailed || (!hasInstruction && onRetrySetup && !isSettingUp)) ? (
+                <span>{footerText}</span>
+                {!cancelled && !isExpired && (setupFailed || (!hasInstruction && onRetrySetup && !isSettingUp)) ? (
                     <button type="button" onClick={onRetrySetup} disabled={isSettingUp}>
                         Retry Payment Setup
                     </button>
-                ) : !cancelled && onCheckStatus && (
-                    <button type="button" onClick={onCheckStatus} disabled={checking || isPaid}>
+                ) : !cancelled && !isExpired && onCheckStatus && (
+                    <button type="button" onClick={onCheckStatus} disabled={checking || isPaid || isFailed}>
                         {checking ? 'Checking...' : isPaid ? 'Paid' : 'Check Status'}
                     </button>
                 )}
@@ -2524,7 +3070,7 @@ function StaffStep({ staffs, selectedStaffId, setSelectedStaffId, availabilityLo
             {availabilityLoading && !hasStaffOptions ? (
                 <div className="empty-state">Checking eligible staff...</div>
             ) : hasSelectedServices && !hasStaffOptions ? (
-                <div className="empty-state">No staff member has all skills for this service yet.</div>
+                <div className="empty-state">No staff member can handle all selected services on this date.</div>
             ) : (
                 <div className="staff-grid">
                     {staffs.length > 0 && (
@@ -3172,38 +3718,64 @@ function MyBookingCard({ booking, onCancel }) {
 
     return (
         <article className="my-booking-card">
-            <Link className="my-booking-card-main" to={`/my-bookings/${booking.id}`}>
+            <Link className="my-booking-card-thumb" to={`/my-bookings/${booking.id}`} aria-label={`Open ${booking.booking_code || 'booking'}`}>
                 <img src={branch.image} alt={branch.name} />
-                <div>
-                    <div className="my-booking-card-top">
-                        <strong>{bookingServicesText(booking)}</strong>
-                        <span className={`booking-status ${displayStatus}`}>{statusLabel(displayStatus)}</span>
-                    </div>
-                    <p>{branch.name}</p>
-                    <div className="my-booking-meta">
-                        <span><Icon name="calendar" size={16} /> {bookingDateTimeLabel(booking)}</span>
-                        <span><Icon name="card" size={16} /> {paymentTypeLabel(paymentType)}</span>
-                        <span><Icon name="money" size={16} /> {formatPrice(amount)}</span>
-                    </div>
-                    <small>{booking.booking_code || '-'} - {services.length || 1} services</small>
-                </div>
             </Link>
 
-            <div className="my-booking-card-actions">
-                <Link to={`/my-bookings/${booking.id}`}>Details</Link>
-                {canCancelBooking(booking) && (
-                    <button type="button" onClick={() => onCancel(booking.id)}>Cancel</button>
-                )}
+            <div className="my-booking-card-content">
+                <div className="my-booking-card-top">
+                    <Link to={`/my-bookings/${booking.id}`}>{bookingServicesText(booking)}</Link>
+                    <span className={`booking-status ${displayStatus}`}>{statusLabel(displayStatus)}</span>
+                </div>
+                <p>{branch.name}</p>
+                <div className="my-booking-meta">
+                    <span><Icon name="calendar" size={16} /> {bookingDateTimeLabel(booking)}</span>
+                    <span><Icon name="card" size={16} /> {paymentTypeLabel(paymentType)}</span>
+                    <span><Icon name="money" size={16} /> {formatPrice(amount)}</span>
+                </div>
+                <small>{booking.booking_code || '-'} - {services.length || 1} services</small>
+
+                <div className="my-booking-card-actions">
+                    <Link className="primary" to={`/my-bookings/${booking.id}`}>Details</Link>
+                    {canRescheduleBooking(booking) && (
+                        <Link className="secondary" to={`/my-bookings/${booking.id}/reschedule`}>Reschedule</Link>
+                    )}
+                    {canCancelBooking(booking) && (
+                        <Link className="danger" to={`/my-bookings/${booking.id}/cancel`}>Cancel</Link>
+                    )}
+                </div>
+            </div>
+        </article>
+    );
+}
+
+function MyBookingCardSkeleton() {
+    return (
+        <article className="my-booking-card my-booking-card-skeleton" aria-hidden="true">
+            <span className="my-booking-card-thumb" />
+            <div className="my-booking-card-content">
+                <div className="my-booking-card-top">
+                    <i />
+                    <b />
+                </div>
+                <p />
+                <div className="my-booking-meta">
+                    <span />
+                    <span />
+                    <span />
+                </div>
+                <small />
+                <div className="my-booking-card-actions">
+                    <span />
+                    <span />
+                    <span />
+                </div>
             </div>
         </article>
     );
 }
 
 function MyBookingsPage({ authUser, bookings, loading, onRefresh, onCancel, openAuthModal }) {
-    useEffect(() => {
-        if (authUser) void onRefresh?.();
-    }, [authUser?.id]);
-
     if (!authUser) {
         return <MyBookingsAuthPrompt openAuthModal={openAuthModal} />;
     }
@@ -3240,16 +3812,22 @@ function MyBookingsPage({ authUser, bookings, loading, onRefresh, onCancel, open
                     <strong>{completedCount}</strong>
                 </article>
                 <button type="button" onClick={onRefresh} disabled={loading}>
-                    <Icon name="clock" size={17} /> {loading ? 'Loading...' : 'Refresh'}
+                    <Icon name="clock" size={17} /> {loading ? 'Mohon tunggu...' : 'Refresh'}
                 </button>
             </div>
 
+            {loading && bookings.length > 0 && (
+                <div className="booking-action-processing">
+                    <Icon name="clock" size={18} /> Mohon tunggu, daftar booking sedang diperbarui.
+                </div>
+            )}
+
             {loading && bookings.length === 0 ? (
-                <section className="booking-review-card my-bookings-empty">
-                    <span><Icon name="clock" size={34} /></span>
-                    <h2>Loading bookings...</h2>
-                    <p>Customer bookings are being prepared.</p>
-                </section>
+                <div className="my-bookings-list" aria-label="Loading bookings">
+                    {Array.from({ length: 3 }).map((_, index) => (
+                        <MyBookingCardSkeleton key={index} />
+                    ))}
+                </div>
             ) : bookings.length === 0 ? (
                 <section className="booking-review-card my-bookings-empty">
                     <span><Icon name="calendar" size={34} /></span>
@@ -3268,7 +3846,285 @@ function MyBookingsPage({ authUser, bookings, loading, onRefresh, onCancel, open
     );
 }
 
-function MyBookingDetailPage({ authUser, authToken, bookings, loading, onRefresh, onCancel, openAuthModal }) {
+function RescheduleBookingPanel({ booking, authToken, onRescheduled, defaultOpen = false, standalone = false }) {
+    const currentBookingDate = dateInputValueFrom(booking?.booking_date);
+    const currentStartTime = timeInputValueFrom(booking?.start_time || booking?.booking_time);
+    const currentStaffId = booking?.staff_id || booking?.staff?.id || '';
+    const branchId = booking?.branch_id || booking?.branch?.id;
+    const serviceIds = useMemo(() => (
+        bookingServiceItems(booking)
+            .map((service) => service.id || service.service_id)
+            .filter((id) => id !== undefined && id !== null)
+            .map(Number)
+            .filter(Number.isFinite)
+    ), [booking]);
+    const serviceIdsKey = serviceIds.join(',');
+    const canReschedule = canRescheduleBooking(booking);
+    const [isOpen, setOpen] = useState(defaultOpen);
+    const [rescheduleDate, setRescheduleDate] = useState(currentBookingDate || todayInputValue());
+    const [rescheduleStaffId, setRescheduleStaffId] = useState(currentStaffId ? String(currentStaffId) : '');
+    const [rescheduleStartTime, setRescheduleStartTime] = useState('');
+    const [availability, setAvailability] = useState(null);
+    const [availabilityLoading, setAvailabilityLoading] = useState(false);
+    const [rescheduleSaving, setRescheduleSaving] = useState(false);
+    const [rescheduleError, setRescheduleError] = useState('');
+    const [rescheduleSuccess, setRescheduleSuccess] = useState('');
+
+    useEffect(() => {
+        setOpen(defaultOpen);
+        setRescheduleDate(currentBookingDate || todayInputValue());
+        setRescheduleStaffId(currentStaffId ? String(currentStaffId) : '');
+        setRescheduleStartTime('');
+        setAvailability(null);
+        setAvailabilityLoading(false);
+        setRescheduleError('');
+        setRescheduleSuccess('');
+    }, [booking?.id, currentBookingDate, currentStaffId, currentStartTime, defaultOpen]);
+
+    useEffect(() => {
+        if ((!isOpen && !standalone) || !canReschedule) {
+            return undefined;
+        }
+
+        if (!branchId || serviceIds.length === 0 || !dateInputPattern.test(rescheduleDate)) {
+            setAvailability(null);
+            setRescheduleError('Booking services are incomplete, so available slots could not be checked.');
+            return undefined;
+        }
+
+        let cancelled = false;
+
+        setAvailabilityLoading(true);
+        setRescheduleError('');
+
+        async function loadAvailability() {
+            try {
+                const result = await checkBookingAvailability({
+                    branch_id: branchId,
+                    service_ids: serviceIds,
+                    booking_type: 'scheduled',
+                    booking_date: rescheduleDate,
+                    staff_id: rescheduleStaffId || undefined,
+                });
+
+                if (!cancelled) {
+                    setAvailability(result);
+                }
+            } catch (error) {
+                if (!cancelled) {
+                    setAvailability(null);
+                    setRescheduleError(firstErrorMessage(error, 'Available slots could not be loaded.'));
+                }
+            } finally {
+                if (!cancelled) {
+                    setAvailabilityLoading(false);
+                }
+            }
+        }
+
+        void loadAvailability();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [branchId, canReschedule, isOpen, rescheduleDate, rescheduleStaffId, serviceIds, serviceIdsKey, standalone]);
+
+    const staffOptions = useMemo(() => (
+        stableStaffList(safeArray(availability?.eligible_staff).map(normalizeStaff))
+    ), [availability]);
+
+    const rescheduleSlots = useMemo(() => {
+        const uniqueSlots = new Map();
+
+        safeArray(availability?.available_slots).forEach((slot) => {
+            if (rescheduleStaffId && String(slot.staff_id) !== String(rescheduleStaffId)) {
+                return;
+            }
+
+            if (!uniqueSlots.has(slot.time)) {
+                uniqueSlots.set(slot.time, {
+                    ...slot,
+                    expired: slotIsExpired(rescheduleDate, slot.time),
+                });
+            }
+        });
+
+        return Array.from(uniqueSlots.values())
+            .filter((slot) => !slot.expired)
+            .sort((left, right) => String(left.time).localeCompare(String(right.time)));
+    }, [availability, rescheduleDate, rescheduleStaffId]);
+
+    useEffect(() => {
+        if (!isOpen && !standalone) return;
+        if (rescheduleStartTime && rescheduleSlots.some((slot) => slot.time === rescheduleStartTime)) return;
+
+        setRescheduleStartTime(rescheduleSlots[0]?.time || '');
+    }, [isOpen, rescheduleSlots, rescheduleStartTime, standalone]);
+
+    async function submitReschedule(event) {
+        event.preventDefault();
+
+        if (!canReschedule || !authToken || rescheduleSaving) return;
+
+        if (!rescheduleDate || !rescheduleStartTime) {
+            setRescheduleError('Choose a new date and time first.');
+            return;
+        }
+
+        setRescheduleSaving(true);
+        setRescheduleError('');
+        setRescheduleSuccess('');
+
+        try {
+            const response = await rescheduleCustomerBooking(authToken, booking.id, {
+                booking_date: rescheduleDate,
+                start_time: rescheduleStartTime,
+                staff_id: rescheduleStaffId || undefined,
+            });
+            const updatedBooking = response.data || null;
+
+            if (updatedBooking) {
+                await onRescheduled?.(updatedBooking);
+            }
+
+            setOpen(false);
+            setRescheduleSuccess('Jadwal booking berhasil diubah.');
+        } catch (error) {
+            setRescheduleError(firstErrorMessage(error, 'Booking could not be rescheduled.'));
+        } finally {
+            setRescheduleSaving(false);
+        }
+    }
+
+    return (
+        <section className="booking-review-card reschedule-card">
+            <header>
+                <h2><Icon name="calendar" size={34} /> Reschedule</h2>
+                {!standalone && (
+                    <button className="reschedule-toggle" type="button" disabled={!canReschedule} onClick={() => setOpen((current) => !current)}>
+                        {isOpen ? 'Close' : 'Change Schedule'}
+                    </button>
+                )}
+            </header>
+
+            <div className="reschedule-body">
+                <div className="reschedule-current">
+                    <span>Current Schedule</span>
+                    <strong>{bookingDateTimeLabel(booking)}</strong>
+                    <small>{rescheduleDeadlineText(booking)}</small>
+                </div>
+
+                {!canReschedule && (
+                    <div className="booking-review-alert">{rescheduleDeadlineText(booking)}</div>
+                )}
+
+                {rescheduleSuccess && <div className="alert success">{rescheduleSuccess}</div>}
+
+                {(standalone || isOpen) && canReschedule && (
+                    <form className="reschedule-form" onSubmit={submitReschedule}>
+                        <div className="reschedule-fields">
+                            <label className="date-field">
+                                Date
+                                <input
+                                    type="date"
+                                    min={todayInputValue()}
+                                    value={rescheduleDate}
+                                    onChange={(event) => {
+                                        setRescheduleDate(event.target.value);
+                                        setRescheduleStartTime('');
+                                    }}
+                                />
+                            </label>
+
+                            <label className="date-field">
+                                Staff
+                                <select value={rescheduleStaffId} onChange={(event) => setRescheduleStaffId(event.target.value)}>
+                                    <option value="">Any Available Staff</option>
+                                    {staffOptions.map((staff) => (
+                                        <option value={staff.id} key={staff.id}>{staff.name}</option>
+                                    ))}
+                                </select>
+                            </label>
+                        </div>
+
+                        {rescheduleError && <div className="alert error">{rescheduleError}</div>}
+
+                        {availabilityLoading && rescheduleSlots.length === 0 ? (
+                            <div className="empty-state">Mohon tunggu, mengecek slot tersedia...</div>
+                        ) : rescheduleSlots.length === 0 ? (
+                            <div className="empty-state">No slots are available for this date.</div>
+                        ) : (
+                            <div className="slot-grid reschedule-slot-grid">
+                                {rescheduleSlots.map((slot) => (
+                                    <button
+                                        className={rescheduleStartTime === slot.time ? 'active' : ''}
+                                        type="button"
+                                        key={`${slot.time}-${slot.staff_id || 'any'}`}
+                                        onClick={() => setRescheduleStartTime(slot.time)}
+                                    >
+                                        <strong>{slot.time}</strong>
+                                        <span>{slot.staff_name || 'Available'}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+
+                        <footer className="reschedule-actions">
+                            {!standalone && (
+                                <button className="btn btn-outline" type="button" disabled={rescheduleSaving} onClick={() => setOpen(false)}>Cancel</button>
+                            )}
+                            <button className="btn btn-primary" type="submit" disabled={availabilityLoading || rescheduleSaving || !rescheduleStartTime}>
+                                {rescheduleSaving ? 'Mohon tunggu...' : 'Save Schedule'}
+                            </button>
+                        </footer>
+                    </form>
+                )}
+            </div>
+        </section>
+    );
+}
+
+function BookingActionSummary({ booking }) {
+    const branch = bookingBranchMeta(booking);
+    const services = bookingServiceItems(booking);
+    const payment = booking.payment || {};
+    const paymentType = payment.payment_type || booking.payment_type || 'pay_at_salon';
+    const amount = Number(booking.total_price || booking.amount || payment.amount || 0);
+    const staffName = booking.staff?.full_name || booking.staff?.name || booking.staff?.email || 'Any Available Staff';
+
+    return (
+        <section className="booking-action-summary">
+            <img src={branch.image} alt={branch.name} />
+            <div>
+                <span>Booking Summary</span>
+                <h2>{booking.booking_code || 'Booking'}</h2>
+                <p>{bookingServicesText(booking)}</p>
+            </div>
+            <article>
+                <span>Salon</span>
+                <strong>{branch.name}</strong>
+            </article>
+            <article>
+                <span>Schedule</span>
+                <strong>{bookingDateTimeLabel(booking)}</strong>
+            </article>
+            <article>
+                <span>Staff</span>
+                <strong>{staffName}</strong>
+            </article>
+            <article>
+                <span>Payment</span>
+                <strong>{paymentTypeLabel(paymentType)} - {formatPrice(amount)}</strong>
+            </article>
+            <footer>
+                <span>{services.length || 1} services</span>
+                <span className={`booking-status ${bookingDisplayStatus(booking)}`}>{statusLabel(bookingDisplayStatus(booking))}</span>
+            </footer>
+        </section>
+    );
+}
+
+function MyBookingReschedulePage({ authUser, authToken, bookings, loading, onRefresh, onBookingUpdated, openAuthModal }) {
     const { bookingId } = useParams();
     const bookingFromList = useMemo(
         () => bookings.find((booking) => sameId(booking.id, bookingId) || sameId(booking.booking_code, bookingId)),
@@ -3277,8 +4133,6 @@ function MyBookingDetailPage({ authUser, authToken, bookings, loading, onRefresh
     const [bookingDetail, setBookingDetail] = useState(null);
     const [detailLoading, setDetailLoading] = useState(false);
     const [detailError, setDetailError] = useState('');
-    const [cancelLoading, setCancelLoading] = useState(false);
-    const [checkingPayment, setCheckingPayment] = useState(false);
     const booking = bookingDetail || bookingFromList;
 
     useEffect(() => {
@@ -3317,32 +4171,327 @@ function MyBookingDetailPage({ authUser, authToken, bookings, loading, onRefresh
         return <MyBookingsAuthPrompt openAuthModal={openAuthModal} />;
     }
 
-    async function cancelCurrentBooking() {
-        if (!booking || cancelLoading) return;
+    async function handleRescheduled(updatedBooking) {
+        if (updatedBooking) {
+            setBookingDetail(updatedBooking);
+            onBookingUpdated?.(updatedBooking);
+        }
+
+        await onRefresh?.();
+    }
+
+    if ((loading || detailLoading) && !booking) {
+        return (
+            <section className="booking-review-page my-bookings-page">
+                <section className="booking-review-card my-bookings-empty">
+                    <span><Icon name="clock" size={34} /></span>
+                    <h2>Mohon tunggu...</h2>
+                    <p>Data booking sedang disiapkan.</p>
+                </section>
+            </section>
+        );
+    }
+
+    if (!booking || detailError) {
+        return (
+            <section className="booking-review-page my-bookings-page">
+                <section className="booking-review-card my-bookings-empty">
+                    <span><Icon name="info" size={34} /></span>
+                    <h2>Booking not found</h2>
+                    <p>{detailError || 'This booking is not in your customer account.'}</p>
+                    <Link className="btn btn-primary" to="/my-bookings">Back to My Bookings</Link>
+                </section>
+            </section>
+        );
+    }
+
+    return (
+        <section className="booking-review-page my-bookings-page booking-action-page">
+            <section className="booking-review-hero my-bookings-hero">
+                <div>
+                    <nav className="booking-review-breadcrumb" aria-label="Reschedule booking breadcrumb">
+                        <Link to="/"><Icon name="store" size={18} /> Home</Link>
+                        <span />
+                        <Link to="/my-bookings">My Bookings</Link>
+                        <span />
+                        <Link to={`/my-bookings/${booking.id}`}>{booking.booking_code || 'Detail'}</Link>
+                        <span />
+                        <strong>Reschedule</strong>
+                    </nav>
+                    <h1>Reschedule Booking</h1>
+                    <p>Choose a new visit date and slot. Reschedule is only available until H-1 before the current visit date.</p>
+                </div>
+                <div className="my-bookings-mark" aria-hidden="true"><Icon name="calendar" size={42} /></div>
+            </section>
+
+            <div className="booking-action-layout">
+                <main className="booking-review-main">
+                    <section className="booking-action-note">
+                        <Icon name="info" size={22} />
+                        <p>Pick one available slot, then save. The salon will receive the updated booking schedule automatically.</p>
+                    </section>
+                    <RescheduleBookingPanel
+                        booking={booking}
+                        authToken={authToken}
+                        onRescheduled={handleRescheduled}
+                        defaultOpen
+                        standalone
+                    />
+                </main>
+                <aside className="booking-action-sidebar">
+                    <BookingActionSummary booking={booking} />
+                    <Link className="btn btn-outline" to={`/my-bookings/${booking.id}`}>Back to Details</Link>
+                </aside>
+            </div>
+        </section>
+    );
+}
+
+function MyBookingCancelPage({ authUser, authToken, bookings, loading, onRefresh, onCancel, openAuthModal }) {
+    const { bookingId } = useParams();
+    const bookingFromList = useMemo(
+        () => bookings.find((booking) => sameId(booking.id, bookingId) || sameId(booking.booking_code, bookingId)),
+        [bookings, bookingId]
+    );
+    const [bookingDetail, setBookingDetail] = useState(null);
+    const [detailLoading, setDetailLoading] = useState(false);
+    const [detailError, setDetailError] = useState('');
+    const [cancelLoading, setCancelLoading] = useState(false);
+    const [cancelError, setCancelError] = useState('');
+    const [cancelSuccess, setCancelSuccess] = useState('');
+    const booking = bookingDetail || bookingFromList;
+
+    useEffect(() => {
+        if (!authUser || !authToken || !bookingId) return undefined;
+
+        let mounted = true;
+
+        async function loadDetail() {
+            setDetailError('');
+
+            if (bookingFromList) {
+                setBookingDetail(bookingFromList);
+                return;
+            }
+
+            setDetailLoading(true);
+
+            try {
+                const result = await getCustomerBooking(authToken, bookingId);
+                if (mounted) setBookingDetail(result);
+            } catch {
+                if (mounted) setDetailError('Booking was not found or could not be loaded.');
+            } finally {
+                if (mounted) setDetailLoading(false);
+            }
+        }
+
+        void loadDetail();
+
+        return () => {
+            mounted = false;
+        };
+    }, [authUser?.id, authToken, bookingId, bookingFromList]);
+
+    if (!authUser) {
+        return <MyBookingsAuthPrompt openAuthModal={openAuthModal} />;
+    }
+
+    async function confirmCancelBooking() {
+        if (!booking || cancelLoading || !canCancelBooking(booking)) return;
 
         setCancelLoading(true);
+        setCancelError('');
+        setCancelSuccess('');
 
         try {
-            await onCancel(booking.id);
-            setBookingDetail((current) => {
-                const source = current || booking;
+            const updatedBooking = await onCancel(booking.id);
 
-                return {
-                    ...source,
-                    status: 'cancelled',
-                    payment_status: source.payment_status === 'paid' ? source.payment_status : 'failed',
-                    payment: source.payment
-                        ? {
-                            ...source.payment,
-                            status: source.payment.status === 'paid' ? source.payment.status : 'failed',
-                        }
-                        : source.payment,
-                };
-            });
+            if (updatedBooking) {
+                setBookingDetail(updatedBooking);
+            } else {
+                setBookingDetail((current) => ({ ...(current || booking), status: 'cancelled' }));
+            }
+
+            setCancelSuccess('Booking berhasil dibatalkan.');
             await onRefresh?.();
+        } catch (error) {
+            setCancelError(firstErrorMessage(error, 'Booking tidak bisa dibatalkan saat ini.'));
         } finally {
             setCancelLoading(false);
         }
+    }
+
+    if ((loading || detailLoading) && !booking) {
+        return (
+            <section className="booking-review-page my-bookings-page">
+                <section className="booking-review-card my-bookings-empty">
+                    <span><Icon name="clock" size={34} /></span>
+                    <h2>Mohon tunggu...</h2>
+                    <p>Data booking sedang disiapkan.</p>
+                </section>
+            </section>
+        );
+    }
+
+    if (!booking || detailError) {
+        return (
+            <section className="booking-review-page my-bookings-page">
+                <section className="booking-review-card my-bookings-empty">
+                    <span><Icon name="info" size={34} /></span>
+                    <h2>Booking not found</h2>
+                    <p>{detailError || 'This booking is not in your customer account.'}</p>
+                    <Link className="btn btn-primary" to="/my-bookings">Back to My Bookings</Link>
+                </section>
+            </section>
+        );
+    }
+
+    const paymentStatus = bookingEffectivePaymentStatus(booking);
+    const canCancel = canCancelBooking(booking);
+    const cancellationDone = cancelSuccess || bookingIsCancelled(booking);
+    const cancelHeroState = cancelLoading
+        ? { className: 'is-pending', icon: 'clock', title: 'Cancelling Booking', description: 'Mohon tunggu, permintaan pembatalan sedang diproses.' }
+        : cancellationDone
+            ? { className: 'is-cancelled', icon: 'x', title: 'Booking Cancelled', description: 'Booking sudah dibatalkan dan statusnya sudah diperbarui.' }
+            : { className: '', icon: 'info', title: 'Cancel Booking', description: 'Review the booking and cancellation impact before confirming.' };
+
+    return (
+        <section className="booking-review-page my-bookings-page booking-action-page">
+            <section className="booking-review-hero my-bookings-hero">
+                <div>
+                    <nav className="booking-review-breadcrumb" aria-label="Cancel booking breadcrumb">
+                        <Link to="/"><Icon name="store" size={18} /> Home</Link>
+                        <span />
+                        <Link to="/my-bookings">My Bookings</Link>
+                        <span />
+                        <Link to={`/my-bookings/${booking.id}`}>{booking.booking_code || 'Detail'}</Link>
+                        <span />
+                        <strong>Cancel</strong>
+                    </nav>
+                    <h1>{cancelHeroState.title}</h1>
+                    <p>{cancelHeroState.description}</p>
+                </div>
+                <div className={`my-bookings-mark ${cancelHeroState.className}`} aria-hidden="true">
+                    <Icon name={cancelHeroState.icon} size={42} />
+                </div>
+            </section>
+
+            <div className="booking-action-layout">
+                <main className="booking-review-main">
+                    <section className="booking-review-card booking-cancel-card">
+                        <header>
+                            <h2><Icon name="info" size={34} /> Cancellation Details</h2>
+                            <span className={`booking-status ${bookingDisplayStatus(booking)}`}>{statusLabel(bookingDisplayStatus(booking))}</span>
+                        </header>
+                        <div className="booking-cancel-body">
+                            {cancelSuccess ? (
+                                <div className="alert success">{cancelSuccess}</div>
+                            ) : (
+                                <div className="booking-action-note danger">
+                                    <Icon name="info" size={22} />
+                                    <p>Pastikan kamu benar-benar ingin membatalkan booking ini. Setelah dibatalkan, jadwal tidak dapat dipakai untuk check-in.</p>
+                                </div>
+                            )}
+
+                            {cancelError && <div className="alert error">{cancelError}</div>}
+
+                            {cancelLoading && (
+                                <div className="booking-action-processing">
+                                    <Icon name="clock" size={18} /> Mohon tunggu, booking sedang dibatalkan.
+                                </div>
+                            )}
+
+                            <div className="booking-action-policy">
+                                <article>
+                                    <strong>Status booking</strong>
+                                    <p>Booking akan ditandai sebagai cancelled dan provider akan menerima pembaruan status.</p>
+                                </article>
+                                <article>
+                                    <strong>Payment</strong>
+                                    <p>{paymentStatus === 'paid'
+                                        ? 'Pembayaran yang sudah paid tetap tercatat. Refund perlu dikonfirmasi dengan provider atau support.'
+                                        : 'Payment pending atau unpaid akan dihentikan otomatis setelah cancellation berhasil.'}</p>
+                                </article>
+                                <article>
+                                    <strong>Slot jadwal</strong>
+                                    <p>Slot yang dibatalkan dapat kembali tersedia untuk customer lain sesuai aturan provider.</p>
+                                </article>
+                            </div>
+
+                            {!canCancel && !cancelSuccess && (
+                                <div className="booking-review-alert">Booking ini sudah tidak bisa dibatalkan dari akun customer.</div>
+                            )}
+
+                            <footer className="booking-action-buttons">
+                                <Link className="btn btn-outline" to={`/my-bookings/${booking.id}`}>Back to Details</Link>
+                                <button
+                                    className="btn btn-primary danger"
+                                    type="button"
+                                    disabled={!canCancel || cancelLoading || Boolean(cancelSuccess)}
+                                    onClick={confirmCancelBooking}
+                                >
+                                    {cancelLoading ? 'Mohon tunggu...' : cancelSuccess ? 'Cancelled' : 'Confirm Cancel'}
+                                </button>
+                            </footer>
+                        </div>
+                    </section>
+                </main>
+                <aside className="booking-action-sidebar">
+                    <BookingActionSummary booking={booking} />
+                    <Link className="btn btn-outline" to="/my-bookings">Back to My Bookings</Link>
+                </aside>
+            </div>
+        </section>
+    );
+}
+
+function MyBookingDetailPage({ authUser, authToken, bookings, loading, onRefresh, openAuthModal }) {
+    const { bookingId } = useParams();
+    const bookingFromList = useMemo(
+        () => bookings.find((booking) => sameId(booking.id, bookingId) || sameId(booking.booking_code, bookingId)),
+        [bookings, bookingId]
+    );
+    const [bookingDetail, setBookingDetail] = useState(null);
+    const [detailLoading, setDetailLoading] = useState(false);
+    const [detailError, setDetailError] = useState('');
+    const [checkingPayment, setCheckingPayment] = useState(false);
+    const booking = bookingDetail || bookingFromList;
+
+    useEffect(() => {
+        if (!authUser || !authToken || !bookingId) return undefined;
+
+        let mounted = true;
+
+        async function loadDetail() {
+            setDetailError('');
+
+            if (bookingFromList) {
+                setBookingDetail(bookingFromList);
+                return;
+            }
+
+            setDetailLoading(true);
+
+            try {
+                const result = await getCustomerBooking(authToken, bookingId);
+                if (mounted) setBookingDetail(result);
+            } catch {
+                if (mounted) setDetailError('Booking was not found or could not be loaded.');
+            } finally {
+                if (mounted) setDetailLoading(false);
+            }
+        }
+
+        void loadDetail();
+
+        return () => {
+            mounted = false;
+        };
+    }, [authUser?.id, authToken, bookingId, bookingFromList]);
+
+    if (!authUser) {
+        return <MyBookingsAuthPrompt openAuthModal={openAuthModal} />;
     }
 
     async function checkCurrentPaymentStatus() {
@@ -3393,7 +4542,7 @@ function MyBookingDetailPage({ authUser, authToken, bookings, loading, onRefresh
     const paymentType = payment.payment_type || booking.payment_type || 'pay_at_salon';
     const isBookingCancelled = bookingIsCancelled(booking);
     const paymentStatus = bookingEffectivePaymentStatus(booking);
-    const paymentAmount = isBookingCancelled ? 0 : Number(payment.amount ?? 0);
+    const paymentAmount = isBookingCancelled || paymentStatus === 'expired' ? 0 : Number(payment.amount ?? 0);
     const totalAmount = Number(booking.total_price || booking.amount || payment.amount || 0);
     const staffName = booking.staff?.full_name || booking.staff?.name || booking.staff?.email || 'Any Available Staff';
     const bookingTime = booking.start_time || booking.booking_time;
@@ -3438,10 +4587,11 @@ function MyBookingDetailPage({ authUser, authToken, bookings, loading, onRefresh
                         />
                         <div className="booking-success-actions">
                             <Link className="btn btn-outline" to="/my-bookings">Back</Link>
+                            {canRescheduleBooking(booking) && (
+                                <Link className="btn btn-primary" to={`/my-bookings/${booking.id}/reschedule`}>Reschedule</Link>
+                            )}
                             {canCancelBooking(booking) && (
-                                <button className="btn btn-primary danger" type="button" onClick={cancelCurrentBooking} disabled={cancelLoading}>
-                                    {cancelLoading ? 'Cancelling...' : 'Cancel Booking'}
-                                </button>
+                                <Link className="btn btn-primary danger" to={`/my-bookings/${booking.id}/cancel`}>Cancel Booking</Link>
                             )}
                         </div>
                     </section>

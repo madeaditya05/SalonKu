@@ -173,6 +173,7 @@ $registerProviderDashboardRoutes = function () {
         */
 
         Route::get('/dashboard', [ProviderDashboardController::class, 'index'])
+            ->middleware(['provider.document.verified'])
             ->name('dashboard');
 
         /*
@@ -199,7 +200,7 @@ $registerProviderDashboardRoutes = function () {
                 ->name('profile.password.update');
         });
 
-        Route::middleware(['provider.menu:chat'])->group(function () {
+        Route::middleware(['provider.document.verified', 'provider.menu:chat'])->group(function () {
             Route::get('/chat', [SupportChatController::class, 'providerIndex'])
                 ->name('chat.index');
 
@@ -216,7 +217,7 @@ $registerProviderDashboardRoutes = function () {
                 ->name('chat.internal.start');
         });
 
-        Route::middleware(['provider.menu:tickets'])->group(function () {
+        Route::middleware(['provider.document.verified', 'provider.menu:tickets'])->group(function () {
             Route::get('/tickets', [SupportChatController::class, 'providerTicketsIndex'])
                 ->name('tickets.index');
 

@@ -69,7 +69,6 @@ export function LandingContent({
     locationQuery,
     setLocationQuery,
     submitLocation,
-    isBooting,
     bookingDate,
     setBookingDate,
     searchError,
@@ -81,11 +80,13 @@ export function LandingContent({
     const minBookingDate = todayInputValue();
     const formBookingDate = bookingDate || minBookingDate;
 
-    async function useCurrentPosition() {
+    async function useCurrentPosition(event) {
+        event.preventDefault();
+        event.stopPropagation();
         setLocating(true);
 
         try {
-            await useCurrentLocation();
+            await useCurrentLocation({ refreshResults: true });
         } finally {
             setLocating(false);
         }
@@ -158,7 +159,7 @@ export function LandingContent({
                             />
                         </span>
                     </label>
-                    <button type="submit" disabled={isBooting} aria-label="Search salons">
+                    <button type="submit" aria-label="Search salons">
                         <Icon name="search" size={32} />
                     </button>
                     {searchError && <p className="search-date-error" role="alert">{searchError}</p>}

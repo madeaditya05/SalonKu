@@ -146,12 +146,12 @@ class UnifiedLoginController extends Controller
             ]
         );
 
-        if ($providerProfile->status !== 'active') {
+        if ($providerProfile->status !== 'active' && $providerProfile->document_status === 'verified') {
             $providerGuard->logout();
 
             $request->session()->regenerateToken();
 
-            return $this->redirectToProviderFrontend('Akun provider kamu masih menunggu ACC admin.');
+            return $this->redirectToProviderFrontend('Akun provider kamu belum diaktifkan oleh admin.');
         }
 
         return redirect()->to(route(

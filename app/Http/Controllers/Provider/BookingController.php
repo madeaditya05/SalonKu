@@ -56,6 +56,7 @@ class BookingController extends Controller
             'paid' => 'Paid',
             'failed' => 'Failed',
             'refunded' => 'Refunded',
+            'expired' => 'Expired',
         ];
 
         $bookingTypes = [
@@ -401,6 +402,7 @@ class BookingController extends Controller
             'paid' => 'Paid',
             'failed' => 'Failed',
             'refunded' => 'Refunded',
+            'expired' => 'Expired',
         ];
         $paymentTypes = [
             'all' => 'All Types',

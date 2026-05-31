@@ -103,16 +103,25 @@ class ExampleTest extends TestCase
         $this->assertSame('/provider-branch/dashboard', provider_route('provider.dashboard', [], false, true));
     }
 
-    public function test_provider_chat_route_does_not_require_verified_documents(): void
+    public function test_provider_locked_routes_require_verified_documents(): void
     {
-        $route = Route::getRoutes()->getByName('provider.chat.index');
+        $dashboardRoute = Route::getRoutes()->getByName('provider.dashboard');
+        $chatRoute = Route::getRoutes()->getByName('provider.chat.index');
+        $ticketsRoute = Route::getRoutes()->getByName('provider.tickets.index');
 
-        $this->assertNotNull($route);
+        $this->assertNotNull($dashboardRoute);
+        $this->assertNotNull($chatRoute);
+        $this->assertNotNull($ticketsRoute);
 
-        $middleware = $route->gatherMiddleware();
+        $this->assertContains('provider.document.verified', $dashboardRoute->gatherMiddleware());
 
-        $this->assertContains('provider.menu:chat', $middleware);
-        $this->assertNotContains('provider.document.verified', $middleware);
+        $chatMiddleware = $chatRoute->gatherMiddleware();
+        $this->assertContains('provider.menu:chat', $chatMiddleware);
+        $this->assertContains('provider.document.verified', $chatMiddleware);
+
+        $ticketsMiddleware = $ticketsRoute->gatherMiddleware();
+        $this->assertContains('provider.menu:tickets', $ticketsMiddleware);
+        $this->assertContains('provider.document.verified', $ticketsMiddleware);
     }
 
     public function test_provider_tickets_routes_use_tickets_menu_access(): void

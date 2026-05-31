@@ -13,6 +13,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 
 class PublicCatalogController extends ApiController
 {
@@ -118,6 +119,7 @@ class PublicCatalogController extends ApiController
                 'provider:id,name,email',
                 'provider.providerProfile:user_id,status,document_status,image',
             ])
+            ->when($bookingDate, fn ($query) => $query->with('staffs.schedules'))
             ->withCount(['staffs' => fn ($query) => $query->where('status', 'active')])
             ->where('status', 'active')
             ->whereHas('provider', fn ($providerQuery) => $this->activeApprovedProviderQuery($providerQuery))
@@ -139,7 +141,8 @@ class PublicCatalogController extends ApiController
 
         if ($latitude !== null && $longitude !== null) {
             $payloads = $query->get()
-                ->map(fn (ProviderBranch $branch) => $this->branchPayload($branch, $latitude, $longitude))
+                ->filter(fn (ProviderBranch $branch) => ! $bookingDate || $this->branchAcceptsBookingsOnDate($branch, $bookingDate))
+                ->map(fn (ProviderBranch $branch) => $this->branchPayload($branch, $latitude, $longitude, $bookingDate?->toDateString()))
                 ->filter(fn (array $branch) => $radiusKm === null || (
                     isset($branch['distance_km'])
                     && $branch['distance_km'] <= $radiusKm
@@ -147,6 +150,23 @@ class PublicCatalogController extends ApiController
                 ->sortBy(fn (array $branch) => $branch['distance_km'] ?? PHP_FLOAT_MAX)
                 ->values();
 
+            $page = LengthAwarePaginator::resolveCurrentPage();
+            $items = $payloads->slice(($page - 1) * $perPage, $perPage)->values();
+
+            return response()->json(new LengthAwarePaginator(
+                $items,
+                $payloads->count(),
+                $perPage,
+                $page,
+                ['path' => $request->url(), 'query' => $request->query()]
+            ));
+        }
+
+        if ($bookingDate) {
+            $payloads = $query->get()
+                ->filter(fn (ProviderBranch $branch) => $this->branchAcceptsBookingsOnDate($branch, $bookingDate))
+                ->map(fn (ProviderBranch $branch) => $this->branchPayload($branch, null, null, $bookingDate->toDateString()))
+                ->values();
             $page = LengthAwarePaginator::resolveCurrentPage();
             $items = $payloads->slice(($page - 1) * $perPage, $perPage)->values();
 
@@ -302,7 +322,12 @@ class PublicCatalogController extends ApiController
         });
     }
 
-    private function branchPayload(ProviderBranch $branch, ?float $latitude = null, ?float $longitude = null): array
+    private function branchPayload(
+        ProviderBranch $branch,
+        ?float $latitude = null,
+        ?float $longitude = null,
+        ?string $bookingDate = null
+    ): array
     {
         $services = $this->servicesForBranch($branch);
         $minPrice = $services->min('price');
@@ -328,7 +353,7 @@ class PublicCatalogController extends ApiController
             'services_count' => $services->count(),
             'staffs_count' => $branch->staffs_count ?? $branch->staffs()->where('status', 'active')->count(),
             'min_price' => $minPrice !== null ? (float) $minPrice : null,
-            'next_available_slot' => $this->nextAvailableSlot($branch, $services),
+            'next_available_slot' => $this->nextAvailableSlot($branch, $services, $bookingDate),
             'rating' => 4.8,
             'review_count' => 0,
             'service_categories' => $serviceCategories,
@@ -382,6 +407,9 @@ class PublicCatalogController extends ApiController
             'name' => $staff->full_name ?: $staff->email,
             'first_name' => $staff->first_name,
             'last_name' => $staff->last_name,
+            'gender' => $staff->gender,
+            'bio' => $staff->bio,
+            'role' => $staff->role,
             'image' => $staff->image,
             'image_url' => $this->storageUrl($staff->image),
             'rating' => $staff->rating ? (float) $staff->rating : null,
@@ -435,7 +463,7 @@ class PublicCatalogController extends ApiController
             ->values();
     }
 
-    private function nextAvailableSlot(ProviderBranch $branch, Collection $services): ?string
+    private function nextAvailableSlot(ProviderBranch $branch, Collection $services, ?string $bookingDate = null): ?string
     {
         if ($services->isEmpty()) {
             return null;
@@ -447,9 +475,76 @@ class PublicCatalogController extends ApiController
             return null;
         }
 
-        $slots = $this->bookingFlow->availableSlots($branch, collect([$firstService]), now()->toDateString());
+        $slots = $this->bookingFlow->availableSlots($branch, collect([$firstService]), $bookingDate ?: now()->toDateString());
 
         return $slots[0]['time'] ?? null;
+    }
+
+    private function branchAcceptsBookingsOnDate(ProviderBranch $branch, Carbon $date): bool
+    {
+        if (! $this->branchWorksOnDate($branch, $date)) {
+            return false;
+        }
+
+        return $branch->staffs
+            ->filter(fn (ProviderStaff $staff) => $staff->status === 'active' && $staff->current_status !== 'offline')
+            ->contains(fn (ProviderStaff $staff) => $this->staffWorksOnDate($staff, $date));
+    }
+
+    private function branchWorksOnDate(ProviderBranch $branch, Carbon $date): bool
+    {
+        $dateValue = $date->toDateString();
+        $holidays = collect((array) $branch->holidays)
+            ->map(fn ($holiday) => substr((string) $holiday, 0, 10))
+            ->filter()
+            ->all();
+
+        if (in_array($dateValue, $holidays, true)) {
+            return false;
+        }
+
+        $workingDays = collect((array) $branch->working_days)
+            ->map(fn ($day) => Str::lower((string) $day))
+            ->filter()
+            ->all();
+
+        if (empty($workingDays)) {
+            return true;
+        }
+
+        return count(array_intersect($workingDays, $this->dayAliases($date))) > 0;
+    }
+
+    private function staffWorksOnDate(ProviderStaff $staff, Carbon $date): bool
+    {
+        $staff->loadMissing('schedules');
+        $schedules = $staff->schedules;
+
+        if ($schedules->isEmpty()) {
+            return true;
+        }
+
+        $dayAliases = $this->dayAliases($date);
+
+        return $schedules->contains(function ($schedule) use ($dayAliases) {
+            return $schedule->is_available
+                && in_array(Str::lower((string) $schedule->day_of_week), $dayAliases, true);
+        });
+    }
+
+    private function dayAliases(Carbon $date): array
+    {
+        $aliases = [
+            0 => ['0', 'sunday', 'sun', 'minggu', 'ahad'],
+            1 => ['1', 'monday', 'mon', 'senin'],
+            2 => ['2', 'tuesday', 'tue', 'selasa'],
+            3 => ['3', 'wednesday', 'wed', 'rabu'],
+            4 => ['4', 'thursday', 'thu', 'kamis'],
+            5 => ['5', 'friday', 'fri', 'jumat', 'jum\'at'],
+            6 => ['6', 'saturday', 'sat', 'sabtu'],
+        ];
+
+        return $aliases[(int) $date->dayOfWeek] ?? [];
     }
 
     private function storageUrl(?string $path): ?string

@@ -253,6 +253,10 @@ export async function cancelCustomerBooking(token, bookingId) {
     return sendJson(`/customer/bookings/${bookingId}/cancel`, {}, token, 'PATCH');
 }
 
+export async function rescheduleCustomerBooking(token, bookingId, payload) {
+    return sendJson(`/customer/bookings/${bookingId}/reschedule`, payload, token, 'PATCH');
+}
+
 export const links = {
     providerFrontend: localizeLoopbackUrl(import.meta.env.VITE_PROVIDER_FRONTEND_URL || localFrontendUrl(5173)),
     customerApp: localizeLoopbackUrl(import.meta.env.VITE_CUSTOMER_APP_URL || localFrontendUrl(5174)),

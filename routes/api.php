@@ -71,6 +71,8 @@ Route::middleware('auth:sanctum')->group(function () {
             ->name('bookings.payment.charge');
         Route::get('/bookings/{booking}/payment/status', [CustomerPaymentController::class, 'status'])
             ->name('bookings.payment.status');
+        Route::patch('/bookings/{booking}/reschedule', [CustomerBookingController::class, 'reschedule'])
+            ->name('bookings.reschedule');
         Route::patch('/bookings/{booking}/cancel', [CustomerBookingController::class, 'cancel'])
             ->name('bookings.cancel');
     });

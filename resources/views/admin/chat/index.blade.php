@@ -561,5 +561,5 @@
 @endsection
 
 @push('scripts')
-    <script src="{{ asset('js/support-chat.js') }}"></script>
+    <script src="{{ asset('js/support-chat.js') }}" defer></script>
 @endpush

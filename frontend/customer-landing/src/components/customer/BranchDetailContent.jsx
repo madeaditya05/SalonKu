@@ -23,30 +23,6 @@ function sameId(left, right) {
     return String(left) === String(right);
 }
 
-function dateInputValue(date) {
-    const nextDate = new Date(date);
-    nextDate.setMinutes(nextDate.getMinutes() - nextDate.getTimezoneOffset());
-
-    return nextDate.toISOString().slice(0, 10);
-}
-
-function nextDateOptions() {
-    const today = new Date();
-
-    return Array.from({ length: 7 }, (_, index) => {
-        const date = new Date(today);
-        date.setDate(today.getDate() + index);
-
-        return {
-            value: dateInputValue(date),
-            month: new Intl.DateTimeFormat(customerDateLocale(), { month: 'short' }).format(date),
-            day: new Intl.DateTimeFormat(customerDateLocale(), { day: '2-digit' }).format(date),
-            weekday: new Intl.DateTimeFormat(customerDateLocale(), { weekday: 'short' }).format(date),
-            badge: index === 0 ? 'Today' : index === 1 ? 'Tomorrow' : '',
-        };
-    });
-}
-
 function uniqueImages(images) {
     return Array.from(new Set(images.filter(Boolean)));
 }
@@ -73,19 +49,12 @@ export function BranchDetailContent({
     selectedServiceIds,
     toggleService,
     bookingDate,
-    setBookingDate,
     bookingType,
-    setBookingType,
+    onPrepareSchedule,
     staffs = [],
-    selectedStaffId,
-    setSelectedStaffId,
     selectedStaff,
-    availabilityLoading,
-    visibleSlots = [],
     startTime,
-    setStartTime,
     queueEstimation,
-    canContinueToPayment,
     totals = { price: 0, duration: 0 },
 }) {
     const summaryAnchorRef = useRef(null);
@@ -99,12 +68,8 @@ export function BranchDetailContent({
     });
     const selectedServices = allServices.filter((service) => selectedServiceIds.some((serviceId) => sameId(serviceId, service.id)));
     const selectedDateLabel = bookingDate ? formatDateLabel(bookingDate) : '-';
-    const canContinue = Boolean(canContinueToPayment);
-    const dateOptions = nextDateOptions();
     const hasSelectedServices = selectedServiceIds.length > 0;
-    const hasStaffOptions = staffs.length > 0;
-    const hasVisibleSlots = visibleSlots.length > 0;
-    const hasScheduled = selectedServices.length > 0 && selectedServices.every((service) => service.isScheduledEnabled);
+    const canContinue = hasSelectedServices;
     const hasQueue = selectedServices.length > 0 && selectedServices.every((service) => service.isQueueEnabled);
     const galleryImages = fallbackGallery(uniqueImages([
         ...(branch?.galleryImages || []),
@@ -140,7 +105,22 @@ export function BranchDetailContent({
     const bookingLabel = bookingType === 'scheduled'
         ? (startTime ? `${selectedDateLabel}, ${startTime}` : 'Choose an available slot')
         : (formatWaitLabel(queueEstimation?.label) || 'Today queue');
+    const mobileSummaryPrice = totals.price > 0 ? totals.price : displayPrice;
+    const mobileSummaryText = selectedServices.length > 0
+        ? `${selectedServices.length} services - ${totals.duration || 0} minutes`
+        : `${activeServiceCount} services available`;
     const reviewBars = [85, 75, 60, 35, 15];
+    const warmSchedule = () => {
+        if (canContinue) onPrepareSchedule?.();
+    };
+    const handleScheduleLinkClick = (event) => {
+        if (!canContinue) {
+            event.preventDefault();
+            return;
+        }
+
+        warmSchedule();
+    };
 
     useEffect(() => {
         let frame = 0;
@@ -264,8 +244,8 @@ export function BranchDetailContent({
                             This branch is located in {branch?.locationLabel || 'your selected area'} with operating hours {branch?.workingStart || '09:00'} - {branch?.workingEnd || '18:00'}.
                         </p>
                         <p>
-                            Choose available services, select your favorite staff, then continue with an open time slot.
-                            The booking summary appears on the card on the right so it is easy to review before payment.
+                            Choose available services first, then continue to a focused staff and schedule page.
+                            The booking summary appears on the card on the right so it is easy to review before continuing.
                         </p>
 
                         <h3>Advantages</h3>
@@ -368,7 +348,7 @@ export function BranchDetailContent({
                                     return (
                                         <article className={`hotel-service-card ${selected ? 'selected' : ''}`} key={service.id}>
                                             <div className="hotel-service-media">
-                                                <img src={service.image} alt={service.title} loading="lazy" />
+                                                <img src={service.image || branch?.image} alt={service.title} loading="lazy" />
                                                 <span>{service.category}</span>
                                                 <button type="button" aria-label="Previous"><Icon name="chevron" size={22} /></button>
                                                 <button type="button" aria-label="Next"><Icon name="chevron" size={22} /></button>
@@ -396,103 +376,6 @@ export function BranchDetailContent({
                                 })
                             )}
                         </div>
-                    </section>
-
-                    <section className="hotel-section" id="staff-section">
-                        <h2>Staff Options</h2>
-                        <div className="hotel-section-divider" />
-
-                        {availabilityLoading && hasSelectedServices && !hasStaffOptions ? (
-                            <div className="branch-inline-empty">Checking matching staff...</div>
-                        ) : hasSelectedServices && !hasStaffOptions ? (
-                            <div className="branch-inline-empty">No staff are available for this service yet.</div>
-                        ) : (
-                            <div className="branch-staff-grid">
-                                <button className={`branch-staff-card ${selectedStaffId === '' ? 'active' : ''}`} type="button" disabled={!hasSelectedServices} onClick={() => setSelectedStaffId('')}>
-                                    <span className="branch-staff-avatar"><Icon name="users" size={22} /></span>
-                                    <strong>Any Available Staff</strong>
-                                    <small>The system picks the fastest staff member</small>
-                                </button>
-
-                                {staffs.map((staff) => (
-                                    <button className={`branch-staff-card ${String(selectedStaffId) === String(staff.id) ? 'active' : ''}`} type="button" disabled={!hasSelectedServices} key={staff.id} onClick={() => setSelectedStaffId(String(staff.id))}>
-                                        {staff.image ? <img src={staff.image} alt={staff.name} /> : <span className="branch-staff-avatar">{staff.name.slice(0, 1)}</span>}
-                                        <strong>{staff.name}</strong>
-                                        <small>{staff.rating ? `${staff.rating} rating` : staff.status}</small>
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-                    </section>
-
-                    <section className="hotel-section" id="schedule-section">
-                        <h2>Available Schedule</h2>
-                        <div className="hotel-section-divider" />
-
-                        <div className="branch-mode-row">
-                            <button className={bookingType === 'scheduled' ? 'active' : ''} type="button" disabled={!hasScheduled} onClick={() => setBookingType('scheduled')}>
-                                <Icon name="calendar" size={17} />
-                                Fixed time
-                            </button>
-                            <button className={bookingType === 'queue' ? 'active' : ''} type="button" disabled={!hasQueue} onClick={() => setBookingType('queue')}>
-                                <Icon name="users" size={17} />
-                                Queue
-                            </button>
-                        </div>
-
-                        {bookingType === 'scheduled' ? (
-                            <>
-                                <div className="branch-date-row">
-                                    {dateOptions.map((date) => (
-                                        <button className={bookingDate === date.value ? 'active' : ''} type="button" disabled={!hasSelectedServices} key={date.value} onClick={() => setBookingDate(date.value)}>
-                                            <span>{date.weekday}</span>
-                                            <strong>{date.day}</strong>
-                                            <small>{date.month}</small>
-                                            {date.badge && <b>{date.badge}</b>}
-                                        </button>
-                                    ))}
-                                </div>
-
-                                {availabilityLoading && hasSelectedServices && !hasVisibleSlots ? (
-                                    <div className="branch-inline-empty">Calculating slots...</div>
-                                ) : !hasSelectedServices ? (
-                                    <div className="branch-inline-empty">Choose services to see the schedule.</div>
-                                ) : !hasVisibleSlots ? (
-                                    <div className="branch-inline-empty">No slots are available for this selection yet.</div>
-                                ) : (
-                                    <div className="branch-slot-grid">
-                                        {visibleSlots.map((slot) => {
-                                            const expired = Boolean(slot.expired);
-                                            const active = startTime === slot.time && !expired;
-
-                                            return (
-                                                <button
-                                                    className={active ? 'active' : ''}
-                                                    type="button"
-                                                    disabled={expired}
-                                                    key={`${slot.time}-${slot.staff_id}`}
-                                                    onClick={() => {
-                                                        if (!expired) setStartTime(slot.time);
-                                                    }}
-                                                >
-                                                    <strong>{slot.time}</strong>
-                                                    <span>{expired ? 'Passed' : slot.staff_name}</span>
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
-                                )}
-                            </>
-                        ) : (
-                            <div className="branch-queue-card">
-                                <Icon name="users" size={28} />
-                                <div>
-                                    <span>Estimated wait</span>
-                                    <strong>{formatWaitLabel(queueEstimation?.label) || '10 - 25 minutes'}</strong>
-                                    <p>{queueEstimation?.waiting_count || 0} customers are waiting.</p>
-                                </div>
-                            </div>
-                        )}
                     </section>
 
                     <section className="hotel-section hotel-review-section" id="reviews">
@@ -588,13 +471,14 @@ export function BranchDetailContent({
 
                                 <Link
                                     className={`hotel-sidebar-cta${canContinue ? '' : ' disabled'}`}
-                                    to="/booking/payment"
+                                    to="/booking/staff"
                                     aria-disabled={!canContinue}
-                                    onClick={(event) => {
-                                        if (!canContinue) event.preventDefault();
-                                    }}
+                                    onMouseEnter={warmSchedule}
+                                    onFocus={warmSchedule}
+                                    onTouchStart={warmSchedule}
+                                    onClick={handleScheduleLinkClick}
                                 >
-                                    Continue Booking
+                                    Choose Staff & Schedule
                                 </Link>
                             </section>
                         </div>
@@ -612,6 +496,25 @@ export function BranchDetailContent({
                     </section>
                 </aside>
             </div>
+
+            <section className="hotel-mobile-summary-bar" aria-label="Booking summary">
+                <div>
+                    <span>{mobileSummaryText}</span>
+                    <strong>{formatPrice(mobileSummaryPrice)}</strong>
+                    <small>{selectedServices.length > 0 ? bookingLabel : 'Choose services to unlock schedule'}</small>
+                </div>
+                <Link
+                    className={`hotel-mobile-summary-cta${canContinue ? '' : ' disabled'}`}
+                    to="/booking/staff"
+                    aria-disabled={!canContinue}
+                    onMouseEnter={warmSchedule}
+                    onFocus={warmSchedule}
+                    onTouchStart={warmSchedule}
+                    onClick={handleScheduleLinkClick}
+                >
+                    Choose Staff
+                </Link>
+            </section>
         </section>
     );
 }

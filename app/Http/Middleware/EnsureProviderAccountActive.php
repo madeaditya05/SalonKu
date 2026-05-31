@@ -24,9 +24,15 @@ class EnsureProviderAccountActive
             return $next($request);
         }
 
-        $profile = ProviderProfile::where('user_id', ProviderMenuAccess::providerOwnerId($user))->first();
+        $profile = ProviderProfile::firstOrCreate(
+            ['user_id' => ProviderMenuAccess::providerOwnerId($user)],
+            [
+                'status' => 'inactive',
+                'document_status' => 'pending',
+            ]
+        );
 
-        if (!$profile || $profile->status !== 'active') {
+        if ($profile->status !== 'active' && $profile->document_status === 'verified') {
             $providerGuard->logout();
 
             $request->session()->regenerateToken();

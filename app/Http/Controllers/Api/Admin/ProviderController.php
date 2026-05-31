@@ -78,10 +78,16 @@ class ProviderController extends ApiController
             ['status' => 'inactive', 'document_status' => 'pending']
         );
 
-        $profile->update([
+        $profileData = [
             'document_status' => $validated['document_status'],
             'document_note' => $validated['document_note'] ?? null,
-        ]);
+        ];
+
+        if ($validated['document_status'] === 'verified') {
+            $profileData['status'] = 'active';
+        }
+
+        $profile->update($profileData);
 
         return response()->json(['message' => 'Status dokumen provider berhasil diperbarui.', 'data' => $provider->load('providerProfile')]);
     }

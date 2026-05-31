@@ -39,6 +39,7 @@
         'paid' => 'Paid',
         'failed' => 'Failed',
         'refunded' => 'Refunded',
+        'expired' => 'Expired',
     ];
 
     $bookingTypes = $bookingTypes ?? [
@@ -121,7 +122,7 @@
             'completed', 'order_completed', 'refund_completed', 'paid' => 'success',
             'pending', 'pending_payment', 'waiting', 'confirmed', 'rescheduled', 'unpaid', 'dp' => 'warning',
             'checked_in', 'inprogress', 'in_progress', 'scheduled', 'queue', 'walk_in', 'pay_at_salon', 'full_payment' => 'info',
-            'provider_cancelled', 'customer_cancelled', 'cancelled', 'no_show', 'rejected', 'failed' => 'danger',
+            'provider_cancelled', 'customer_cancelled', 'cancelled', 'no_show', 'rejected', 'failed', 'expired' => 'danger',
             default => 'neutral',
         };
     };

@@ -48,6 +48,14 @@ class BookingFlowService
         'rescheduled',
     ];
 
+    public const RESCHEDULABLE_STATUSES = [
+        'open',
+        'pending',
+        'pending_payment',
+        'confirmed',
+        'rescheduled',
+    ];
+
     public function __construct(private readonly CouponService $coupons)
     {
     }
@@ -159,7 +167,7 @@ class BookingFlowService
         return [
             'eligible_staff' => $eligibleStaff->map(fn (ProviderStaff $staff) => $this->staffPayload($staff))->values(),
             'available_slots' => $bookingType === 'scheduled'
-                ? $this->availableSlots($branch, $services, $date, $staffId)
+                ? $this->availableSlots($branch, $services, $date, $staffId, $eligibleStaff)
                 : [],
             'estimated_duration' => $totals['total_duration'],
             'total_price' => $totals['total_price'],
@@ -169,10 +177,21 @@ class BookingFlowService
         ];
     }
 
-    public function availableSlots(ProviderBranch $branch, Collection $services, string $date, ?int $staffId = null): array
+    public function availableSlots(
+        ProviderBranch $branch,
+        Collection $services,
+        string $date,
+        ?int $staffId = null,
+        ?Collection $eligibleStaff = null
+    ): array
     {
         $duration = $this->totals($services)['total_duration'];
-        $eligibleStaff = $this->eligibleStaff($branch, $services, $date, $staffId);
+        $eligibleStaff ??= $this->eligibleStaff($branch, $services, $date, $staffId);
+
+        if ($eligibleStaff->isEmpty()) {
+            return [];
+        }
+
         $activeBookings = Booking::query()
             ->whereIn('staff_id', $eligibleStaff->pluck('id'))
             ->whereDate('booking_date', $date)
@@ -336,13 +355,14 @@ class BookingFlowService
         Collection $services,
         string $date,
         string $startTime,
-        ?int $staffId = null
+        ?int $staffId = null,
+        ?int $ignoreBookingId = null
     ): ProviderStaff {
         $duration = $this->totals($services)['total_duration'];
         $eligibleStaff = $this->eligibleStaff($branch, $services, $date, $staffId);
 
         foreach ($eligibleStaff as $staff) {
-            if ($this->staffCanTakeSlot($branch, $staff, $date, $startTime, $duration)) {
+            if ($this->staffCanTakeSlot($branch, $staff, $date, $startTime, $duration, $ignoreBookingId)) {
                 return $staff;
             }
         }
@@ -352,6 +372,89 @@ class BookingFlowService
                 ? 'Staff tidak tersedia untuk service dan slot yang dipilih.'
                 : 'Belum ada staff yang tersedia untuk slot ini.',
         ]);
+    }
+
+    public function rescheduleBooking(Booking $booking, array $payload): Booking
+    {
+        $booking->loadMissing(['branch.provider.providerProfile', 'service', 'services']);
+
+        if ($booking->booking_type !== 'scheduled') {
+            throw ValidationException::withMessages([
+                'booking_type' => 'Hanya booking jam pasti yang bisa di-reschedule.',
+            ]);
+        }
+
+        if (! in_array($booking->status, self::RESCHEDULABLE_STATUSES, true)) {
+            throw ValidationException::withMessages([
+                'status' => 'Booking ini tidak bisa di-reschedule.',
+            ]);
+        }
+
+        $currentBookingDate = $booking->booking_date
+            ? Carbon::parse($booking->booking_date)->startOfDay()
+            : null;
+
+        if (! $currentBookingDate || $currentBookingDate->lte(now()->startOfDay())) {
+            throw ValidationException::withMessages([
+                'booking_date' => 'Reschedule hanya bisa dilakukan paling lambat H-1 dari tanggal booking.',
+            ]);
+        }
+
+        $branch = $booking->branch;
+
+        if (! $branch || ! $this->branchIsBookable($branch)) {
+            throw ValidationException::withMessages([
+                'branch_id' => 'Branch belum tersedia untuk reschedule.',
+            ]);
+        }
+
+        $serviceIds = $booking->services->isNotEmpty()
+            ? $booking->services->pluck('id')->map(fn ($id) => (int) $id)->all()
+            : ($booking->service_id ? [(int) $booking->service_id] : []);
+        $services = $this->servicesForBooking($branch, $serviceIds, 'scheduled');
+        $bookingDate = $payload['booking_date'] ?? null;
+        $startTime = $payload['start_time'] ?? $payload['booking_time'] ?? null;
+
+        if (blank($bookingDate) || blank($startTime)) {
+            throw ValidationException::withMessages([
+                'booking_date' => 'Tanggal dan jam baru wajib diisi.',
+                'start_time' => 'Tanggal dan jam baru wajib diisi.',
+            ]);
+        }
+
+        if (Carbon::parse($bookingDate)->isBefore(now()->startOfDay())) {
+            throw ValidationException::withMessages([
+                'booking_date' => 'Tanggal baru tidak boleh di masa lalu.',
+            ]);
+        }
+
+        if (Carbon::parse($bookingDate . ' ' . $startTime)->lte(now())) {
+            throw ValidationException::withMessages([
+                'start_time' => 'Jam baru sudah lewat. Pilih jam berikutnya.',
+            ]);
+        }
+
+        $staffId = filled($payload['staff_id'] ?? null) ? (int) $payload['staff_id'] : null;
+        $staff = $this->chooseStaffForScheduled($branch, $services, $bookingDate, $startTime, $staffId, (int) $booking->id);
+        $totals = $this->totals($services);
+        $estimatedEndTime = Carbon::parse($bookingDate . ' ' . $startTime)
+            ->addMinutes($totals['total_duration'])
+            ->format('H:i');
+
+        return DB::transaction(function () use ($booking, $bookingDate, $startTime, $staff, $estimatedEndTime, $totals) {
+            $booking->update([
+                'booking_date' => $bookingDate,
+                'booking_time' => $startTime,
+                'start_time' => $startTime,
+                'estimated_end_time' => $estimatedEndTime,
+                'staff_id' => $staff->id,
+                'queue_number' => null,
+                'total_duration' => $totals['total_duration'],
+                'status' => 'rescheduled',
+            ]);
+
+            return $booking->refresh()->load($this->bookingRelations());
+        });
     }
 
     public function chooseStaffForQueue(
@@ -432,7 +535,14 @@ class BookingFlowService
         ];
     }
 
-    public function staffCanTakeSlot(ProviderBranch $branch, ProviderStaff $staff, string $date, string $startTime, int $duration): bool
+    public function staffCanTakeSlot(
+        ProviderBranch $branch,
+        ProviderStaff $staff,
+        string $date,
+        string $startTime,
+        int $duration,
+        ?int $ignoreBookingId = null
+    ): bool
     {
         $slotStart = Carbon::parse($date . ' ' . $startTime);
         $slotEnd = $slotStart->copy()->addMinutes($duration);
@@ -449,15 +559,22 @@ class BookingFlowService
                 return $slotStart->gte($windowStart) && $slotEnd->lte($windowEnd);
             });
 
-        return $insideWorkingWindow && ! $this->hasStaffConflict($staff, $date, $startTime, $duration);
+        return $insideWorkingWindow && ! $this->hasStaffConflict($staff, $date, $startTime, $duration, $ignoreBookingId);
     }
 
-    public function hasStaffConflict(ProviderStaff $staff, string $date, string $startTime, int $duration): bool
+    public function hasStaffConflict(
+        ProviderStaff $staff,
+        string $date,
+        string $startTime,
+        int $duration,
+        ?int $ignoreBookingId = null
+    ): bool
     {
         $bookings = Booking::query()
             ->where('staff_id', $staff->id)
             ->whereDate('booking_date', $date)
             ->whereIn('status', self::ACTIVE_BOOKING_STATUSES)
+            ->when($ignoreBookingId, fn ($query) => $query->where('id', '!=', $ignoreBookingId))
             ->get();
 
         return $this->slotConflictsWithBookings($bookings, $date, $startTime, $duration);
@@ -579,6 +696,10 @@ class BookingFlowService
             'name' => $staff->full_name ?: $staff->email,
             'first_name' => $staff->first_name,
             'last_name' => $staff->last_name,
+            'gender' => $staff->gender,
+            'bio' => $staff->bio,
+            'role' => $staff->role,
+            'image' => $staff->image,
             'rating' => $staff->rating,
             'current_status' => $staff->current_status,
             'status' => $staff->status,
@@ -586,6 +707,13 @@ class BookingFlowService
             'skills' => $staff->skills->map(fn (Service $service) => [
                 'id' => $service->id,
                 'title' => $service->title,
+            ])->values(),
+            'schedules' => $staff->schedules->map(fn ($schedule) => [
+                'id' => $schedule->id,
+                'day_of_week' => $schedule->day_of_week,
+                'start_time' => substr((string) $schedule->start_time, 0, 5),
+                'end_time' => substr((string) $schedule->end_time, 0, 5),
+                'is_available' => (bool) $schedule->is_available,
             ])->values(),
         ];
     }

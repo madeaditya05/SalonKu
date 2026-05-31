@@ -28,8 +28,7 @@ class EnsureProviderDocumentVerified
         $profile = ProviderProfile::where('user_id', ProviderMenuAccess::providerOwnerId($user))->first();
 
         if (!$profile || $profile->document_status !== 'verified') {
-            return redirect()
-                ->route('provider.profile')
+            return provider_route_redirect('provider.profile.edit')
                 ->with('error', 'Lengkapi dan tunggu verifikasi dokumen terlebih dahulu agar semua menu terbuka.');
         }
 

@@ -1,38 +1,38 @@
 @import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Poppins:wght@400;500;700&display=swap");
 
 :root {
-    --primary: #de746d;
-    --primary-focus: #c95f58;
-    --primary-active: #b84f49;
-    --primary-on-dark: #f4c5bd;
-    --secondary: #d9a36f;
-    --secondary-strong: #b77a42;
-    --tertiary: #f8e9df;
+    --primary: #5744d7;
+    --primary-focus: #4938c6;
+    --primary-active: #3f32a9;
+    --primary-on-dark: #ece9fb;
+    --secondary: #14b8a6;
+    --secondary-strong: #0f766e;
+    --tertiary: #f4f2ff;
     --success: #22c55e;
-    --warning: #f59e0b;
+    --warning: #64748b;
     --error: #ef4444;
     --info: #3b82f6;
     --ink: #252832;
     --body: #252832;
     --body-on-dark: #ffffff;
     --body-muted: #e5e5e5;
-    --muted: #8a817c;
-    --muted-strong: #5f5651;
-    --divider-soft: #f6eee8;
-    --hairline: #eaded6;
+    --muted: #747681;
+    --muted-strong: #4b5563;
+    --divider-soft: #ece9fb;
+    --hairline: #dedee6;
     --canvas: #ffffff;
-    --parchment: #fffaf6;
-    --pearl: #fff3ef;
-    --tile-1: #2d2522;
-    --tile-2: #3a302c;
-    --tile-3: #51423d;
+    --parchment: #f7f8fb;
+    --pearl: #f0edff;
+    --tile-1: #080811;
+    --tile-2: #1f2937;
+    --tile-3: #374151;
     --black: #252832;
-    --chip: rgba(255, 247, 241, 0.92);
-    --shadow-subtle: 0 2px 8px rgba(91, 62, 48, 0.05);
-    --shadow-medium: 0 8px 24px rgba(91, 62, 48, 0.08);
-    --shadow-large: 0 18px 48px rgba(91, 62, 48, 0.12);
-    --shadow-overlay: 0 26px 70px rgba(91, 62, 48, 0.18);
-    --product-shadow: 0 16px 36px rgba(125, 86, 66, 0.13);
+    --chip: rgba(240, 237, 255, 0.92);
+    --shadow-subtle: 0 2px 8px rgba(8, 8, 17, 0.05);
+    --shadow-medium: 0 8px 24px rgba(8, 8, 17, 0.08);
+    --shadow-large: 0 18px 48px rgba(8, 8, 17, 0.12);
+    --shadow-overlay: 0 26px 70px rgba(8, 8, 17, 0.18);
+    --product-shadow: 0 16px 36px rgba(87, 68, 215, 0.13);
     --radius-sm: 8px;
     --radius-md: 12px;
     --radius-lg: 16px;
@@ -718,19 +718,13 @@ svg {
     font-weight: 600;
 }
 
-.round-icon.amber,
 .round-icon.sky,
 .round-icon.blue,
 .round-icon.teal,
-.round-icon.orange,
-.round-icon.yellow,
 .round-icon.slate,
-.avatar-icon.amber,
 .avatar-icon.sky,
 .avatar-icon.blue,
 .avatar-icon.teal,
-.avatar-icon.orange,
-.avatar-icon.yellow,
 .avatar-icon.slate {
     color: var(--primary);
     background: var(--pearl);
@@ -917,6 +911,7 @@ svg {
 
 .date-field input,
 .date-field textarea,
+.date-field select,
 .auth-form input,
 .auth-form select {
     width: min(420px, 100%);
@@ -1181,6 +1176,12 @@ svg {
     color: #991b1b;
     background: #fef2f2;
     border: 1px solid #fecaca;
+}
+
+.alert.success {
+    color: #166534;
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
 }
 
 .partner-cta {
@@ -1486,9 +1487,18 @@ svg {
 
 .booking-status.pending_payment,
 .booking-success-pill.pending_payment {
-    color: #7c2d12;
-    background: #ffedd5;
-    border-color: #fed7aa;
+    color: #3730a3;
+    background: #eef2ff;
+    border-color: #c7d2fe;
+}
+
+.booking-status.payment_expired,
+.booking-status.expired,
+.booking-success-pill.payment_expired,
+.booking-success-pill.expired {
+    color: #334155;
+    background: #f1f5f9;
+    border-color: #cbd5e1;
 }
 
 .booking-status.cancelled,
@@ -2417,6 +2427,7 @@ svg {
 .results-search,
 .date-field input,
 .date-field textarea,
+.date-field select,
 .auth-form input,
 .auth-form select {
     background: var(--canvas);
@@ -2429,6 +2440,7 @@ svg {
 .results-search:focus-within,
 .date-field input:focus,
 .date-field textarea:focus,
+.date-field select:focus,
 .auth-form input:focus,
 .auth-form select:focus {
     border-color: var(--primary);
@@ -2480,8 +2492,8 @@ svg {
 }
 
 .landing-benefit-card:nth-child(2) span {
-    color: #a16207;
-    background: #fef9c3;
+    color: #3730a3;
+    background: #eef2ff;
 }
 
 .landing-benefit-card:nth-child(3) span {
@@ -2581,7 +2593,7 @@ svg {
 }
 
 .results-category-row button:nth-child(3n) svg {
-    color: #a16207;
+    color: #3730a3;
 }
 
 .results-filter-panel,
@@ -2877,16 +2889,14 @@ svg {
 
 body,
 .customer-app {
-    background:
-        linear-gradient(90deg, rgba(222, 116, 109, 0.035) 0 1px, transparent 1px) 0 0 / 72px 72px,
-        var(--parchment);
+    background: var(--parchment);
 }
 
 .site-header {
     min-height: 70px;
     background: rgba(255, 255, 255, 0.94);
-    border-bottom: 1px solid #eaded6;
-    box-shadow: 0 2px 18px rgba(91, 62, 48, 0.05);
+    border-bottom: 1px solid #dedee6;
+    box-shadow: 0 2px 18px rgba(8, 8, 17, 0.05);
 }
 
 .brand {
@@ -2957,7 +2967,7 @@ body,
     height: 34px;
     color: #252832;
     background: #ffffff;
-    border: 1px solid #dbc9bf;
+    border: 1px solid #dedee6;
     border-radius: 50%;
     font-weight: 800;
 }
@@ -2971,20 +2981,20 @@ body,
 }
 
 .btn-primary {
-    background: linear-gradient(180deg, #e2827a 0%, #d86d66 100%);
-    border-color: #d86d66;
-    box-shadow: 0 10px 22px rgba(216, 109, 102, 0.18);
+    background: linear-gradient(180deg, #5a46dc 0%, #4938c6 100%);
+    border-color: #4938c6;
+    box-shadow: 0 10px 22px rgba(87, 68, 215, 0.18);
 }
 
 .btn-primary:hover:not(:disabled) {
-    background: linear-gradient(180deg, #dc746d 0%, #c95f58 100%);
-    border-color: #c95f58;
+    background: linear-gradient(180deg, #4938c6 0%, #3f32a9 100%);
+    border-color: #3f32a9;
 }
 
 .btn-outline {
     color: var(--primary);
     background: #ffffff;
-    border-color: #e4aaa5;
+    border-color: #cfc8ff;
 }
 
 .site-header .btn {
@@ -2996,10 +3006,7 @@ body,
 .landing-page,
 .results-page,
 .branch-detail-page {
-    background:
-        radial-gradient(circle at 3% 18%, rgba(217, 163, 111, 0.18), transparent 18%),
-        radial-gradient(circle at 98% 44%, rgba(222, 116, 109, 0.08), transparent 18%),
-        var(--parchment);
+    background: var(--parchment);
 }
 
 .landing-hero {
@@ -3008,8 +3015,8 @@ body,
     min-height: 360px;
     max-width: none;
     padding: 0;
-    background: #fff7f1;
-    border-bottom: 1px solid #f1e4dc;
+    background: #f7f8fb;
+    border-bottom: 1px solid #dedee6;
 }
 
 .landing-copy {
@@ -3057,9 +3064,9 @@ body,
     margin: -64px auto 0;
     padding: 18px;
     background: #ffffff;
-    border: 1px solid #efe2dc;
+    border: 1px solid #dedee6;
     border-radius: 14px;
-    box-shadow: 0 20px 45px rgba(91, 62, 48, 0.12);
+    box-shadow: 0 20px 45px rgba(8, 8, 17, 0.08);
 }
 
 .landing-search-panel::before {
@@ -3088,9 +3095,9 @@ body,
     align-items: center;
     min-height: 48px;
     padding: 0 14px;
-    color: #6d6661;
+    color: #747681;
     background: #ffffff;
-    border: 1px solid #e7d9d2;
+    border: 1px solid #dedee6;
     border-radius: 7px;
 }
 
@@ -3124,7 +3131,7 @@ body,
     display: grid;
     gap: 8px;
     justify-items: center;
-    color: #4f4a47;
+    color: #4b5563;
     background: transparent;
     border: 0;
     font-size: 13px;
@@ -3138,8 +3145,8 @@ body,
     width: 56px;
     height: 56px;
     color: #252832;
-    background: #fff8f4;
-    border: 1px solid #ead7cb;
+    background: #f0edff;
+    border: 1px solid #ded8ff;
     border-radius: 50%;
 }
 
@@ -3209,9 +3216,9 @@ body,
 .modal,
 .booking-list-item {
     background: #ffffff;
-    border: 1px solid #eaded6;
+    border: 1px solid #dedee6;
     border-radius: 12px;
-    box-shadow: 0 8px 28px rgba(91, 62, 48, 0.07);
+    box-shadow: 0 8px 28px rgba(8, 8, 17, 0.05);
 }
 
 .landing-salon-card {
@@ -3290,9 +3297,9 @@ body,
     min-height: 164px;
     overflow: hidden;
     background:
-        linear-gradient(30deg, transparent 47%, rgba(216, 109, 102, 0.18) 48%, transparent 50%),
-        linear-gradient(120deg, transparent 47%, rgba(217, 163, 111, 0.24) 48%, transparent 50%),
-        #f4eee9;
+        linear-gradient(30deg, transparent 47%, rgba(87, 68, 215, 0.14) 48%, transparent 50%),
+        linear-gradient(120deg, transparent 47%, rgba(20, 184, 166, 0.14) 48%, transparent 50%),
+        #f1f3f8;
     border-radius: 10px;
 }
 
@@ -3322,7 +3329,7 @@ body,
     text-align: left;
     background: transparent;
     border: 0;
-    border-top: 1px solid #f1e4dc;
+    border-top: 1px solid #dedee6;
 }
 
 .nearby-item img,
@@ -3361,7 +3368,7 @@ body,
     grid-template-columns: 48px 1fr;
     gap: 12px 14px;
     align-items: center;
-    background: #fff8f3;
+    background: #f7f8fb;
     border: 0;
     border-radius: 0;
     box-shadow: none;
@@ -3370,7 +3377,7 @@ body,
 .landing-benefit-card span {
     grid-row: span 2;
     color: var(--secondary-strong);
-    background: #fff2e8;
+    background: #e8fbf5;
 }
 
 .landing-benefit-card h2 {
@@ -3400,7 +3407,7 @@ body,
     grid-template-columns: 38px minmax(0, 1fr);
     gap: 10px;
     align-items: center;
-    color: #6d6661;
+    color: #747681;
 }
 
 .booking-progress-item:not(:last-child)::after {
@@ -3410,7 +3417,7 @@ body,
     right: -16px;
     width: 28px;
     height: 1px;
-    border-top: 1px dashed #d9c9bf;
+    border-top: 1px dashed #d8d2fb;
 }
 
 .booking-progress-mark {
@@ -3419,9 +3426,9 @@ body,
     justify-content: center;
     width: 38px;
     height: 38px;
-    color: #6d6661;
+    color: #747681;
     background: #ffffff;
-    border: 1px solid #d9c9bf;
+    border: 1px solid #d8d2fb;
     border-radius: 50%;
     font-weight: 700;
 }
@@ -3437,7 +3444,7 @@ body,
 }
 
 .booking-progress-copy small {
-    color: #6d6661;
+    color: #747681;
     font-size: 11px;
 }
 
@@ -3461,9 +3468,9 @@ body,
     min-height: auto;
     padding: 16px;
     background: #ffffff;
-    border: 1px solid #eaded6;
+    border: 1px solid #dedee6;
     border-radius: 10px;
-    box-shadow: 0 12px 30px rgba(91, 62, 48, 0.08);
+    box-shadow: 0 12px 30px rgba(8, 8, 17, 0.06);
 }
 
 .results-layout {
@@ -3533,7 +3540,7 @@ body,
     min-height: 38px;
     padding: 0 14px;
     background: #ffffff;
-    border: 1px solid #eaded6;
+    border: 1px solid #dedee6;
     border-radius: 999px;
     box-shadow: none;
     color: #4f4a47;
@@ -3560,7 +3567,7 @@ body,
 
 .result-card:hover {
     transform: none;
-    box-shadow: 0 12px 28px rgba(91, 62, 48, 0.09);
+    box-shadow: 0 12px 28px rgba(8, 8, 17, 0.08);
 }
 
 .result-card-media {
@@ -3578,7 +3585,7 @@ body,
     height: 28px;
     color: var(--primary);
     background: #ffffff;
-    border: 1px solid #eaded6;
+    border: 1px solid #dedee6;
     border-radius: 50%;
 }
 
@@ -3610,8 +3617,8 @@ body,
 .summary-tags span {
     min-height: 24px;
     padding: 4px 9px;
-    color: #7d6253;
-    background: #fff5ef;
+    color: #5744d7;
+    background: #f0edff;
     border: 0;
     font-size: 11px;
 }
@@ -3692,7 +3699,7 @@ body,
     min-height: 110px;
     padding: 16px;
     background: #ffffff;
-    border: 1px solid #eaded6;
+    border: 1px solid #dedee6;
     border-radius: 12px;
 }
 
@@ -3747,7 +3754,7 @@ body,
     aspect-ratio: 4 / 3;
     object-fit: cover;
     border-radius: 12px;
-    background: #f6eee9;
+    background: #f3f4f8;
 }
 
 .detail-tabs {
@@ -3770,7 +3777,7 @@ body,
 
 .detail-tabs a.active {
     color: #ffffff;
-    background: linear-gradient(180deg, #e2827a 0%, #d86d66 100%);
+    background: linear-gradient(180deg, #5a46dc 0%, #4938c6 100%);
 }
 
 .package-card {
@@ -3815,7 +3822,7 @@ body,
     align-content: center;
     gap: 10px;
     padding: 24px;
-    border-right: 1px solid #eaded6;
+    border-right: 1px solid #dedee6;
 }
 
 .service-group-info span {
@@ -3846,7 +3853,7 @@ body,
     align-items: center;
     min-height: 96px;
     padding: 12px 16px;
-    border-bottom: 1px solid #f1e4dc;
+    border-bottom: 1px solid #dedee6;
 }
 
 .service-row:last-child {
@@ -3857,8 +3864,8 @@ body,
     width: 72px;
     height: 72px;
     overflow: hidden;
-    background: #f6eee9;
-    border: 1px solid #f1e4dc;
+    background: #f3f4f8;
+    border: 1px solid #dedee6;
     border-radius: 10px;
 }
 
@@ -3889,7 +3896,7 @@ body,
     justify-self: start;
     padding: 3px 8px;
     color: var(--primary);
-    background: #fff0ec;
+    background: #f0edff;
     border-radius: 999px;
     font-size: 11px;
     font-weight: 700;
@@ -3916,7 +3923,7 @@ body,
     gap: 14px;
     align-items: center;
     padding: 18px;
-    background: #fff8f3;
+    background: #f7f8fb;
     box-shadow: none;
 }
 
@@ -3970,7 +3977,7 @@ body,
 .branch-booking-panel {
     padding: 18px;
     background: #ffffff;
-    border: 1px solid #eaded6;
+    border: 1px solid #dedee6;
     border-radius: 14px;
     box-shadow: none;
 }
@@ -3990,8 +3997,8 @@ body,
     justify-content: center;
     width: 42px;
     height: 42px;
-    color: #d86d66;
-    background: #fff0ec;
+    color: #5744d7;
+    background: #f0edff;
     border-radius: 10px;
 }
 
@@ -4022,8 +4029,8 @@ body,
 .branch-about-grid article {
     min-width: 0;
     padding: 14px;
-    background: #fff8f3;
-    border: 1px solid #f1e4dc;
+    background: #f7f8fb;
+    border: 1px solid #dedee6;
     border-radius: 10px;
 }
 
@@ -4065,8 +4072,8 @@ body,
     min-height: 132px;
     padding: 14px 10px;
     color: #252832;
-    background: #fff8f3;
-    border: 1px solid #f1e4dc;
+    background: #f7f8fb;
+    border: 1px solid #dedee6;
     border-radius: 12px;
     text-align: center;
 }
@@ -4076,8 +4083,8 @@ body,
 .branch-date-row button.active,
 .branch-slot-grid button.active {
     color: #ffffff;
-    background: linear-gradient(180deg, #e2827a 0%, #d86d66 100%);
-    border-color: #d86d66;
+    background: linear-gradient(180deg, #5a46dc 0%, #4938c6 100%);
+    border-color: #4938c6;
 }
 
 .branch-staff-card:disabled,
@@ -4102,9 +4109,9 @@ body,
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    color: #d86d66;
+    color: #5744d7;
     background: #ffffff;
-    border: 1px solid #f1e4dc;
+    border: 1px solid #dedee6;
     font-weight: 800;
 }
 
@@ -4132,8 +4139,8 @@ body,
     min-height: 38px;
     padding: 0 14px;
     color: #252832;
-    background: #fff8f3;
-    border: 1px solid #f1e4dc;
+    background: #f7f8fb;
+    border: 1px solid #dedee6;
     border-radius: 999px;
     font-size: 13px;
     font-weight: 800;
@@ -4153,8 +4160,8 @@ body,
     min-height: 86px;
     padding: 10px 6px;
     color: #252832;
-    background: #fff8f3;
-    border: 1px solid #f1e4dc;
+    background: #f7f8fb;
+    border: 1px solid #dedee6;
     border-radius: 11px;
 }
 
@@ -4173,7 +4180,7 @@ body,
 .branch-date-row b {
     min-height: 18px;
     padding: 3px 7px;
-    color: #d86d66;
+    color: #5744d7;
     background: #ffffff;
     border-radius: 999px;
     font-size: 10px;
@@ -4192,7 +4199,7 @@ body,
     padding: 10px;
     color: #252832;
     background: #ffffff;
-    border: 1px solid #eaded6;
+    border: 1px solid #dedee6;
     border-radius: 10px;
     text-align: left;
 }
@@ -4219,8 +4226,8 @@ body,
 .branch-inline-empty {
     padding: 18px;
     color: #8a817c;
-    background: #fff8f3;
-    border: 1px dashed #eaded6;
+    background: #f7f8fb;
+    border: 1px dashed #dedee6;
     border-radius: 12px;
     font-size: 13px;
     text-align: center;
@@ -4233,13 +4240,13 @@ body,
     align-items: center;
     padding: 16px;
     color: #252832;
-    background: #fff8f3;
-    border: 1px solid #f1e4dc;
+    background: #f7f8fb;
+    border: 1px solid #dedee6;
     border-radius: 12px;
 }
 
 .branch-queue-card > svg {
-    color: #d86d66;
+    color: #5744d7;
 }
 
 .branch-queue-card span,
@@ -4286,7 +4293,7 @@ body,
 .staff-card,
 .payment-grid button,
 .slot-grid button {
-    border-color: #eaded6;
+    border-color: #dedee6;
     box-shadow: none;
 }
 
@@ -4295,7 +4302,7 @@ body,
 .payment-grid button.active,
 .slot-grid button.active {
     color: #ffffff;
-    background: linear-gradient(180deg, #e2827a 0%, #d86d66 100%);
+    background: linear-gradient(180deg, #5a46dc 0%, #4938c6 100%);
     border-color: var(--primary);
 }
 
@@ -4326,13 +4333,13 @@ body,
     min-height: 94px;
     color: #252832;
     background: #ffffff;
-    border: 1px solid #eaded6;
+    border: 1px solid #dedee6;
     border-radius: 10px;
 }
 
 .schedule-date-row button.active {
     color: #ffffff;
-    background: linear-gradient(180deg, #e2827a 0%, #d86d66 100%);
+    background: linear-gradient(180deg, #5a46dc 0%, #4938c6 100%);
     border-color: var(--primary);
 }
 
@@ -4589,7 +4596,7 @@ body,
     .service-group-info {
         padding: 18px;
         border-right: 0;
-        border-bottom: 1px solid #eaded6;
+        border-bottom: 1px solid #dedee6;
     }
 
     .service-row {
@@ -5720,8 +5727,8 @@ body {
 }
 
 .topbar-route-page-articles .topbar-route-copy > span {
-    color: #7a4b00;
-    background: #fff4d6;
+    color: #3730a3;
+    background: #eef2ff;
 }
 
 .topbar-route-page-business .topbar-route-copy > span {
@@ -7790,6 +7797,7 @@ body {
     background: #5744d7;
     border: 0;
     border-radius: 50%;
+    cursor: pointer;
 }
 
 .findservice-search-panel button[type="submit"] svg {
@@ -8185,6 +8193,17 @@ body {
     background: #f4f4f6;
     border: 0;
     border-radius: 50%;
+    cursor: pointer;
+}
+
+.findservice-card-actions button.is-saved {
+    color: #e11d48;
+    background: #ffe4ec;
+}
+
+.findservice-card-actions button:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
 }
 
 .findservice-stars {
@@ -8768,6 +8787,7 @@ body {
     font-size: 11px;
     font-weight: 700;
     white-space: nowrap;
+    cursor: pointer;
     transform: translateY(-50%);
 }
 
@@ -8796,6 +8816,7 @@ body {
     height: 54px;
     background: #5947d7;
     border-radius: 50%;
+    cursor: pointer;
     transform: none;
     box-shadow: 0 14px 28px rgba(89, 71, 215, 0.22);
 }
@@ -11783,8 +11804,13 @@ body {
 }
 
 .booking-success-mark.is-pending {
-    background: #f59e0b;
-    box-shadow: 0 18px 36px rgba(245, 158, 11, 0.22);
+    background: #64748b;
+    box-shadow: 0 18px 36px rgba(100, 116, 139, 0.22);
+}
+
+.booking-success-mark.is-expired {
+    background: #334155;
+    box-shadow: 0 18px 36px rgba(51, 65, 85, 0.22);
 }
 
 .booking-success-mark.is-failed {
@@ -11918,8 +11944,8 @@ body {
 
 .midtrans-status {
     padding: 7px 10px;
-    color: #7c2d12;
-    background: #ffedd5;
+    color: #3730a3;
+    background: #eef2ff;
     border-radius: 999px;
     font-size: 12px;
     white-space: nowrap;
@@ -11933,6 +11959,11 @@ body {
 .midtrans-status.is-failed {
     color: #991b1b;
     background: #fee2e2;
+}
+
+.midtrans-status.is-expired {
+    color: #334155;
+    background: #f1f5f9;
 }
 
 .midtrans-live-qr {
@@ -12017,8 +12048,49 @@ body {
     border: 1px solid #fecaca;
 }
 
+.midtrans-empty-instruction.is-expired {
+    color: #334155;
+    background: #f8fafc;
+    border: 1px solid #cbd5e1;
+}
+
 .midtrans-empty-instruction p {
     margin: 0;
+}
+
+.midtrans-countdown {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 6px 12px;
+    align-items: center;
+    padding: 14px 16px;
+    color: #334155;
+    background: #f8fafc;
+    border: 1px solid #dbe2ea;
+    border-radius: 12px;
+}
+
+.midtrans-countdown span,
+.midtrans-countdown small {
+    color: var(--review-muted);
+}
+
+.midtrans-countdown span {
+    font-size: 12px;
+    font-weight: 900;
+    text-transform: uppercase;
+}
+
+.midtrans-countdown strong {
+    color: var(--review-ink);
+    font-size: 24px;
+    font-weight: 900;
+    letter-spacing: 0;
+}
+
+.midtrans-countdown small {
+    grid-column: 2 / -1;
+    font-size: 13px;
 }
 
 .midtrans-instruction-card footer {
@@ -12079,6 +12151,268 @@ body {
     border-color: #991b1b;
 }
 
+.reschedule-toggle {
+    min-height: 40px;
+    padding: 0 16px;
+    color: #ffffff;
+    background: var(--review-purple);
+    border: 1px solid var(--review-purple);
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 900;
+}
+
+.reschedule-toggle:disabled {
+    cursor: default;
+    opacity: 0.58;
+}
+
+.reschedule-body {
+    display: grid;
+    gap: 16px;
+    padding: 20px 24px 24px;
+}
+
+.reschedule-body .booking-review-alert {
+    margin: 0;
+}
+
+.reschedule-current {
+    display: grid;
+    gap: 5px;
+    padding: 15px 16px;
+    background: var(--review-soft);
+    border-radius: 12px;
+}
+
+.reschedule-current span,
+.reschedule-current small {
+    color: var(--review-muted);
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.reschedule-current strong {
+    color: var(--review-ink);
+    font-size: 20px;
+    font-weight: 900;
+    line-height: 1.2;
+}
+
+.reschedule-form {
+    display: grid;
+    gap: 16px;
+}
+
+.reschedule-fields {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.reschedule-fields .date-field input,
+.reschedule-fields .date-field select {
+    width: 100%;
+}
+
+.reschedule-slot-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.reschedule-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    justify-content: flex-end;
+}
+
+.booking-action-page {
+    padding-bottom: 72px;
+}
+
+.booking-action-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 360px);
+    gap: 24px;
+    align-items: start;
+    padding-top: 28px;
+}
+
+.booking-action-sidebar {
+    position: sticky;
+    top: 96px;
+    display: grid;
+    gap: 14px;
+}
+
+.booking-action-summary {
+    display: grid;
+    gap: 14px;
+    padding: 18px;
+    background: #ffffff;
+    border: 1px solid var(--review-border);
+    border-radius: 14px;
+    box-shadow: 0 12px 32px rgba(8, 8, 17, 0.05);
+}
+
+.booking-action-summary img {
+    width: 100%;
+    height: 156px;
+    object-fit: cover;
+    border-radius: 12px;
+}
+
+.booking-action-summary > div span,
+.booking-action-summary article span {
+    display: block;
+    color: var(--review-muted);
+    font-size: 12px;
+    font-weight: 900;
+    text-transform: uppercase;
+}
+
+.booking-action-summary h2,
+.booking-action-summary p {
+    margin: 0;
+}
+
+.booking-action-summary h2 {
+    margin-top: 4px;
+    color: var(--review-ink);
+    font-size: 24px;
+    font-weight: 900;
+}
+
+.booking-action-summary p {
+    color: var(--review-muted);
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1.45;
+}
+
+.booking-action-summary article {
+    padding-top: 12px;
+    border-top: 1px solid var(--review-border);
+}
+
+.booking-action-summary article strong {
+    display: block;
+    margin-top: 4px;
+    color: var(--review-ink);
+    font-size: 15px;
+    line-height: 1.35;
+}
+
+.booking-action-summary footer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 12px;
+    border-top: 1px solid var(--review-border);
+}
+
+.booking-action-summary footer > span:first-child {
+    color: var(--review-purple);
+    font-size: 13px;
+    font-weight: 900;
+}
+
+.booking-action-note,
+.booking-action-processing {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    padding: 14px 16px;
+    color: var(--review-purple);
+    background: #f4f2ff;
+    border: 1px solid #dad6ff;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 800;
+    line-height: 1.45;
+}
+
+.booking-action-note p,
+.booking-action-processing p {
+    margin: 0;
+}
+
+.booking-action-note.danger {
+    color: #991b1b;
+    background: #fef2f2;
+    border-color: #fecaca;
+}
+
+.booking-cancel-card {
+    overflow: hidden;
+}
+
+.booking-cancel-body {
+    display: grid;
+    gap: 16px;
+    padding: 20px 24px 24px;
+}
+
+.booking-action-policy {
+    display: grid;
+    gap: 12px;
+}
+
+.booking-action-policy article {
+    padding: 14px 16px;
+    background: var(--review-soft);
+    border-radius: 12px;
+}
+
+.booking-action-policy strong,
+.booking-action-policy p {
+    margin: 0;
+}
+
+.booking-action-policy strong {
+    display: block;
+    color: var(--review-ink);
+    font-size: 15px;
+    font-weight: 900;
+}
+
+.booking-action-policy p {
+    margin-top: 5px;
+    color: var(--review-muted);
+    font-size: 14px;
+    line-height: 1.45;
+}
+
+.booking-action-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    justify-content: flex-end;
+    padding-top: 2px;
+}
+
+@media (max-width: 720px) {
+    .reschedule-fields {
+        grid-template-columns: 1fr;
+    }
+
+    .reschedule-slot-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 960px) {
+    .booking-action-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .booking-action-sidebar {
+        position: static;
+    }
+}
+
 .my-bookings-page {
     --review-purple: #5744d7;
     --review-purple-soft: #ece9fb;
@@ -12109,8 +12443,13 @@ body {
 }
 
 .my-bookings-mark.is-pending {
-    background: #f59e0b;
-    box-shadow: 0 18px 36px rgba(245, 158, 11, 0.22);
+    background: #64748b;
+    box-shadow: 0 18px 36px rgba(100, 116, 139, 0.22);
+}
+
+.my-bookings-mark.is-expired {
+    background: #334155;
+    box-shadow: 0 18px 36px rgba(51, 65, 85, 0.22);
 }
 
 .my-bookings-mark.is-paid {
@@ -12176,9 +12515,9 @@ body {
 
 .my-booking-card {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: 124px minmax(0, 1fr);
     gap: 16px;
-    align-items: center;
+    align-items: stretch;
     padding: 16px;
     background: #ffffff;
     border: 1px solid var(--review-border);
@@ -12186,39 +12525,51 @@ body {
     box-shadow: 0 12px 32px rgba(8, 8, 17, 0.05);
 }
 
-.my-booking-card-main {
-    display: grid;
-    grid-template-columns: 116px minmax(0, 1fr);
-    gap: 16px;
-    align-items: center;
+.my-booking-card-thumb {
+    display: block;
     min-width: 0;
 }
 
-.my-booking-card-main img {
-    width: 116px;
-    height: 92px;
+.my-booking-card-thumb img {
+    width: 124px;
+    height: 100%;
+    min-height: 112px;
     object-fit: cover;
     border-radius: 12px;
+}
+
+.my-booking-card-content {
+    display: grid;
+    align-content: start;
+    gap: 8px;
+    min-width: 0;
 }
 
 .my-booking-card-top {
     display: flex;
     gap: 12px;
-    align-items: flex-start;
+    align-items: center;
     justify-content: space-between;
     min-width: 0;
 }
 
-.my-booking-card-top strong {
+.my-booking-card-top a {
     min-width: 0;
+    overflow: hidden;
     color: var(--review-ink);
     font-size: 19px;
     font-weight: 900;
     line-height: 1.25;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.my-booking-card-top .booking-status {
+    flex: 0 0 auto;
 }
 
 .my-booking-card p {
-    margin: 5px 0 0;
+    margin: 0;
     color: var(--review-muted);
     font-size: 14px;
     font-weight: 700;
@@ -12228,7 +12579,7 @@ body {
     display: flex;
     flex-wrap: wrap;
     gap: 8px 14px;
-    margin-top: 10px;
+    margin-top: 2px;
 }
 
 .my-booking-meta span {
@@ -12242,40 +12593,114 @@ body {
 
 .my-booking-card small {
     display: block;
-    margin-top: 8px;
     color: var(--review-purple);
     font-size: 13px;
     font-weight: 900;
 }
 
 .my-booking-card-actions {
-    display: grid;
-    gap: 10px;
-    min-width: 118px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    margin-top: 6px;
 }
 
 .my-booking-card-actions a,
-.my-booking-card-actions button {
+.my-booking-card-actions button,
+.my-booking-card-actions span {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     min-height: 40px;
-    padding: 0 16px;
+    padding: 0 18px;
     border-radius: 10px;
     font-size: 14px;
     font-weight: 900;
     white-space: nowrap;
 }
 
-.my-booking-card-actions a {
+.my-booking-card-actions .primary {
     color: #ffffff;
     background: var(--review-purple);
 }
 
-.my-booking-card-actions button {
+.my-booking-card-actions .secondary {
+    color: var(--review-purple);
+    background: #f4f2ff;
+    border: 1px solid #d8d2fb;
+}
+
+.my-booking-card-actions .danger {
     color: #991b1b;
     background: #ffffff;
     border: 1px solid #fecaca;
+}
+
+.my-booking-card-skeleton {
+    pointer-events: none;
+}
+
+.my-booking-card-skeleton .my-booking-card-thumb,
+.my-booking-card-skeleton i,
+.my-booking-card-skeleton b,
+.my-booking-card-skeleton p,
+.my-booking-card-skeleton small,
+.my-booking-card-skeleton .my-booking-meta span,
+.my-booking-card-skeleton .my-booking-card-actions span {
+    display: block;
+    overflow: hidden;
+    color: transparent;
+    background:
+        linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.72), transparent),
+        #f0f1f6;
+    background-size: 180% 100%, 100% 100%;
+    border-radius: 10px;
+    animation: bookingSkeletonPulse 1.15s ease-in-out infinite;
+}
+
+.my-booking-card-skeleton .my-booking-card-thumb {
+    min-height: 112px;
+}
+
+.my-booking-card-skeleton i {
+    width: min(420px, 72%);
+    height: 22px;
+}
+
+.my-booking-card-skeleton b {
+    width: 110px;
+    height: 30px;
+}
+
+.my-booking-card-skeleton p {
+    width: 190px;
+    height: 16px;
+}
+
+.my-booking-card-skeleton small {
+    width: 220px;
+    height: 15px;
+}
+
+.my-booking-card-skeleton .my-booking-meta span {
+    width: 132px;
+    height: 17px;
+}
+
+.my-booking-card-skeleton .my-booking-card-actions span {
+    width: 110px;
+    height: 40px;
+}
+
+@keyframes bookingSkeletonPulse {
+    from {
+        background-position: 180% 0, 0 0;
+    }
+
+    to {
+        background-position: -180% 0, 0 0;
+    }
 }
 
 .my-bookings-empty {
@@ -12396,7 +12821,7 @@ body {
         border-radius: 18px;
     }
 
-    .booking-review-breadcrumb {    
+    .booking-review-breadcrumb {
         gap: 10px;
         font-size: 14px;
     }
@@ -12484,17 +12909,25 @@ body {
         aspect-ratio: 1;
     }
 
+    .midtrans-countdown {
+        grid-template-columns: auto 1fr;
+    }
+
+    .midtrans-countdown strong,
+    .midtrans-countdown small {
+        grid-column: 1 / -1;
+    }
+
     .booking-success-actions .btn {
         width: 100%;
     }
 
     .my-bookings-stats,
-    .my-booking-card,
-    .my-booking-card-main {
+    .my-booking-card {
         grid-template-columns: 1fr;
     }
 
-    .my-booking-card-main img {
+    .my-booking-card-thumb img {
         width: 100%;
         height: 210px;
     }
@@ -12504,6 +12937,7 @@ body {
     }
 
     .my-booking-card-actions {
+        display: grid;
         grid-template-columns: 1fr 1fr;
     }
 
@@ -12519,4 +12953,3095 @@ body {
 .customer-app *::after,
 .customer-app input::placeholder {
     font-family: "DM Sans", Poppins, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+}
+
+/* Customer responsive polish */
+html,
+body,
+#root,
+.customer-app {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+.customer-app img {
+    max-width: 100%;
+}
+
+.booking-site-header,
+.booking-hero-section,
+.booking-promos,
+.booking-holiday,
+.featured-hotels,
+.booking-logo-strip,
+.booking-testimonial,
+.explore-nearby,
+.booking-support-strip,
+.booking-footer,
+.findservice-page,
+.hotel-detail-page,
+.booking-review-page,
+.booking-auth-page {
+    min-width: 0;
+}
+
+.booking-main-nav,
+.booking-header-actions,
+.booking-hero-copy,
+.findservice-card-body,
+.hotel-detail-main,
+.booking-review-main {
+    min-width: 0;
+}
+
+.booking-main-nav a,
+.booking-auth-button,
+.booking-primary-action,
+.booking-story-action,
+.findservice-select-button,
+.hotel-sidebar-cta,
+.booking-review-page .btn {
+    white-space: nowrap;
+}
+
+.booking-hero-copy h1,
+.holiday-copy h2,
+.featured-hotels h2,
+.explore-nearby h2,
+.findservice-hero h1,
+.hotel-title-row h1,
+.booking-review-hero h1 {
+    overflow-wrap: anywhere;
+}
+
+@media (min-width: 1181px) {
+    .booking-site-header.is-guest,
+    .booking-site-header.is-authenticated {
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        min-height: 72px;
+    }
+
+    .booking-main-nav {
+        justify-content: center;
+    }
+
+    .booking-hero-section {
+        grid-template-columns: minmax(0, 1fr) minmax(420px, 0.92fr);
+        min-height: 720px;
+    }
+
+    .booking-hero-art {
+        min-height: 650px;
+    }
+
+    .booking-availability {
+        width: min(940px, calc(100% - 96px));
+    }
+
+    .findservice-results-layout {
+        grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
+    }
+}
+
+@media (max-width: 1180px) {
+    .booking-site-header.is-guest,
+    .booking-site-header.is-authenticated {
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        gap: 12px 18px;
+        padding: 12px 22px;
+    }
+
+    .booking-main-nav {
+        grid-column: 1 / -1;
+        justify-content: flex-start;
+        gap: 12px;
+        overflow-x: auto;
+        padding: 4px 0 2px;
+        scrollbar-width: none;
+    }
+
+    .booking-main-nav::-webkit-scrollbar {
+        display: none;
+    }
+
+    .booking-main-nav a {
+        flex: 0 0 auto;
+        min-height: 38px;
+        padding: 0 12px;
+        background: #f7f7fb;
+        border: 1px solid #ececf3;
+        border-radius: 999px;
+        font-size: 15px !important;
+    }
+
+    .booking-main-nav a.active {
+        background: #efecff;
+    }
+
+    .booking-hero-section {
+        grid-template-columns: 1fr;
+        gap: 28px;
+        min-height: 0;
+        padding: 54px 28px 0;
+    }
+
+    .booking-hero-copy {
+        align-self: start;
+        max-width: 760px;
+        padding-bottom: 0;
+    }
+
+    .booking-hero-copy h1 {
+        font-size: 56px;
+        line-height: 1.12;
+    }
+
+    .booking-hero-art {
+        min-height: 420px;
+    }
+
+    .booking-hero-main-img {
+        position: static;
+        width: 100%;
+        height: 420px;
+        border-radius: 16px;
+    }
+
+    .booking-support-card {
+        top: 18px;
+        right: 18px;
+    }
+
+    .booking-availability {
+        position: relative;
+        left: auto;
+        bottom: auto;
+        grid-template-columns: minmax(0, 1fr) minmax(180px, 0.72fr) 54px;
+        width: calc(100% - 56px);
+        margin: -42px auto 42px;
+    }
+
+    .booking-promos,
+    .featured-hotel-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .booking-holiday,
+    .booking-testimonial {
+        grid-template-columns: 1fr;
+        gap: 34px;
+    }
+
+    .booking-testimonial {
+        padding-right: 36px;
+        padding-left: 36px;
+    }
+
+    .testimonial-photo {
+        justify-self: center;
+    }
+
+    .booking-logo-strip {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .nearby-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .booking-support-strip,
+    .booking-footer-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .findservice-search-panel {
+        right: 28px;
+        left: 28px;
+        grid-template-columns: minmax(0, 1fr) minmax(180px, 0.74fr) 58px;
+    }
+
+    .findservice-results-layout {
+        grid-template-columns: minmax(230px, 280px) minmax(0, 1fr);
+        padding-right: 24px;
+        padding-left: 24px;
+    }
+
+    .findservice-hotel-card {
+        grid-template-columns: minmax(260px, 0.48fr) minmax(0, 1fr);
+    }
+
+    .hotel-detail-page .hotel-detail-layout,
+    .booking-review-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .hotel-detail-page .hotel-booking-sidebar,
+    .booking-review-sidebar {
+        position: static;
+    }
+
+    .hotel-summary-pin,
+    .hotel-summary-pin.is-pinned {
+        position: static !important;
+        width: auto !important;
+        max-height: none !important;
+        padding: 0;
+        margin: 0;
+        overflow: visible;
+    }
+}
+
+@media (max-width: 900px) {
+    .booking-availability,
+    .findservice-search-panel {
+        grid-template-columns: 1fr;
+    }
+
+    .booking-availability button[type="submit"],
+    .findservice-search-panel > button[type="submit"] {
+        width: 100%;
+        border-radius: 12px;
+    }
+
+    .booking-promos,
+    .booking-holiday,
+    .featured-hotel-grid,
+    .booking-testimonial,
+    .booking-logo-strip,
+    .nearby-grid,
+    .booking-support-strip,
+    .booking-footer-grid,
+    .findservice-results-layout,
+    .findservice-hotel-card,
+    .findservice-hotel-list.is-grid,
+    .hotel-detail-page .hotel-service-card,
+    .hotel-detail-page .hotel-amenity-grid,
+    .hotel-detail-page .branch-staff-grid,
+    .hotel-detail-page .branch-slot-grid,
+    .booking-review-hero,
+    .booking-review-layout,
+    .booking-info-body,
+    .guest-field-grid,
+    .guest-contact-grid,
+    .payment-type-grid,
+    .midtrans-channel-grid,
+    .my-bookings-stats,
+    .my-booking-card {
+        grid-template-columns: 1fr !important;
+    }
+
+    .booking-payment-row {
+        display: grid;
+        grid-template-columns: 1fr !important;
+    }
+
+    .findservice-filter-panel {
+        position: static;
+    }
+
+    .findservice-card-media {
+        aspect-ratio: 16 / 10;
+        min-height: 0;
+    }
+
+    .findservice-card-body h2 {
+        max-width: none;
+    }
+
+    .hotel-detail-page .hotel-gallery-grid {
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: 220px 160px 160px;
+        height: auto;
+    }
+
+    .hotel-detail-page .hotel-gallery-main,
+    .hotel-detail-page .hotel-gallery-wide {
+        grid-column: 1 / -1;
+        grid-row: auto;
+    }
+
+    .booking-auth-card {
+        grid-template-columns: 1fr;
+    }
+
+    .booking-auth-visual {
+        display: none;
+    }
+}
+
+@media (max-width: 760px) {
+    .booking-site-header.is-guest,
+    .booking-site-header.is-authenticated {
+        grid-template-columns: auto minmax(0, 1fr);
+        gap: 10px;
+        padding: 10px 14px;
+    }
+
+    .booking-brand-mark {
+        width: 40px;
+        height: 40px;
+    }
+
+    .booking-brand strong {
+        font-size: 20px;
+    }
+
+    .booking-header-actions {
+        justify-content: flex-end;
+        gap: 8px;
+    }
+
+    .booking-auth-button {
+        min-height: 36px;
+        padding: 0 11px;
+        font-size: 13px;
+    }
+
+    .booking-site-header.is-guest .booking-header-actions {
+        grid-column: 1 / -1;
+        justify-content: stretch;
+    }
+
+    .booking-site-header.is-guest .booking-auth-button {
+        flex: 1 1 0;
+        display: inline-flex !important;
+        justify-content: center;
+    }
+
+    .booking-main-nav {
+        gap: 8px;
+        margin-right: -14px;
+        margin-left: -14px;
+        padding: 2px 14px 4px;
+    }
+
+    .booking-main-nav a {
+        min-height: 34px;
+        padding: 0 10px;
+        font-size: 14px !important;
+    }
+
+    .booking-profile-dropdown {
+        position: fixed;
+        top: 74px;
+        right: 12px;
+        left: 12px;
+        width: auto;
+    }
+
+    .booking-hero-section {
+        padding: 34px 16px 0;
+    }
+
+    .booking-hero-copy h1 {
+        font-size: 40px;
+        line-height: 1.08;
+    }
+
+    .booking-hero-underline {
+        width: 220px;
+        min-width: 0;
+        height: 7px;
+        margin: 4px 0 18px 10px;
+    }
+
+    .booking-hero-copy p {
+        font-size: 16px;
+    }
+
+    .booking-hero-actions {
+        align-items: stretch;
+        flex-direction: column;
+        gap: 14px;
+        margin-top: 22px;
+    }
+
+    .booking-primary-action,
+    .booking-story-action {
+        justify-content: center;
+        width: 100%;
+    }
+
+    .booking-hero-art {
+        min-height: 310px;
+    }
+
+    .booking-hero-main-img {
+        height: 310px;
+    }
+
+    .booking-float-thumb,
+    .booking-confetti {
+        display: none;
+    }
+
+    .booking-support-card {
+        top: 14px;
+        right: 14px;
+        width: 118px;
+        height: 108px;
+        border-radius: 14px;
+    }
+
+    .booking-support-card strong {
+        font-size: 22px;
+    }
+
+    .booking-support-card small {
+        font-size: 13px;
+    }
+
+    .booking-availability {
+        width: calc(100% - 32px);
+        margin-top: -24px;
+        padding: 22px 16px;
+    }
+
+    .booking-availability h2 {
+        position: static;
+        grid-column: 1 / -1;
+        margin: 0;
+    }
+
+    .booking-availability label,
+    .findservice-search-panel label {
+        grid-template-columns: 34px minmax(0, 1fr);
+        gap: 10px;
+    }
+
+    .booking-availability input,
+    .findservice-search-panel input,
+    .findservice-search-panel select {
+        min-height: 52px;
+        font-size: 16px;
+    }
+
+    .current-location-button {
+        position: static;
+        width: fit-content;
+        margin-top: 6px;
+    }
+
+    .booking-promos,
+    .booking-holiday,
+    .featured-hotels,
+    .booking-logo-strip,
+    .booking-testimonial,
+    .explore-nearby,
+    .booking-support-strip {
+        padding-right: 16px;
+        padding-left: 16px;
+    }
+
+    .booking-promos {
+        gap: 16px;
+        padding-top: 52px;
+    }
+
+    .booking-promo-card {
+        grid-template-columns: 118px minmax(0, 1fr);
+        min-height: 136px;
+    }
+
+    .booking-promo-card h2 {
+        font-size: 18px;
+    }
+
+    .booking-promo-card p {
+        font-size: 14px;
+    }
+
+    .promo-arrow {
+        display: none;
+    }
+
+    .booking-holiday {
+        gap: 22px;
+        padding-top: 28px;
+        padding-bottom: 56px;
+    }
+
+    .holiday-image::before {
+        display: none;
+    }
+
+    .holiday-image img {
+        height: 280px;
+    }
+
+    .holiday-copy h2,
+    .featured-hotels h2,
+    .explore-nearby h2 {
+        font-size: 34px;
+        line-height: 1.1;
+    }
+
+    .holiday-copy p {
+        margin: 20px 0 24px;
+        font-size: 16px;
+    }
+
+    .holiday-feature-grid {
+        grid-template-columns: 1fr;
+        gap: 18px;
+    }
+
+    .featured-hotels {
+        padding-bottom: 56px;
+    }
+
+    .featured-hotel-grid {
+        gap: 18px;
+    }
+
+    .featured-hotel-card img {
+        aspect-ratio: 16 / 11;
+        height: auto;
+    }
+
+    .featured-hotel-card h3 {
+        font-size: 21px;
+    }
+
+    .featured-hotel-card p {
+        font-size: 16px;
+    }
+
+    .booking-logo-strip {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 14px;
+        padding-top: 36px;
+        padding-bottom: 42px;
+    }
+
+    .booking-logo-strip span {
+        font-size: 18px;
+    }
+
+    .booking-testimonial {
+        gap: 18px;
+        padding-top: 24px;
+        padding-bottom: 52px;
+    }
+
+    .booking-testimonial > button {
+        display: none;
+    }
+
+    .testimonial-photo img {
+        width: 100%;
+        height: auto;
+        aspect-ratio: 1;
+    }
+
+    .testimonial-copy p {
+        font-size: 20px;
+    }
+
+    .nearby-grid {
+        gap: 18px;
+    }
+
+    .nearby-grid article {
+        grid-template-columns: 74px minmax(0, 1fr);
+        text-align: left;
+    }
+
+    .nearby-grid img {
+        width: 74px;
+        height: 74px;
+    }
+
+    .booking-support-strip {
+        gap: 14px;
+        padding-bottom: 46px;
+    }
+
+    .booking-support-strip article {
+        min-height: 0;
+    }
+
+    .booking-footer {
+        padding: 42px 16px 18px;
+    }
+
+    .booking-footer-grid {
+        gap: 26px;
+    }
+
+    .booking-footer-bottom {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .findservice-hero {
+        min-height: 0;
+        margin: 10px 10px 28px;
+        padding: 48px 12px 14px;
+    }
+
+    .findservice-hero h1 {
+        padding: 0 8px;
+        font-size: 32px;
+    }
+
+    .findservice-search-panel {
+        position: relative;
+        right: auto;
+        bottom: auto;
+        left: auto;
+        margin: 26px 0 0;
+        padding: 18px;
+        border-radius: 14px;
+    }
+
+    .findservice-toolbar,
+    .findservice-results-layout {
+        padding-right: 14px;
+        padding-left: 14px;
+    }
+
+    .findservice-toolbar {
+        justify-content: stretch;
+    }
+
+    .findservice-view-toggle {
+        margin-left: auto;
+    }
+
+    .findservice-hotel-card {
+        gap: 0;
+        padding: 8px;
+        border-radius: 16px;
+    }
+
+    .findservice-card-body {
+        padding: 16px 14px 18px;
+    }
+
+    .findservice-card-actions {
+        position: static;
+        justify-content: flex-end;
+        order: -1;
+        margin-bottom: 8px;
+    }
+
+    .findservice-location,
+    .findservice-amenities,
+    .findservice-benefits p {
+        font-size: 15px;
+    }
+
+    .findservice-card-footer {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .findservice-select-button {
+        width: 100%;
+    }
+
+    .hotel-detail-page .hotel-detail-hero,
+    .hotel-detail-page .hotel-detail-layout {
+        padding-right: 14px;
+        padding-left: 14px;
+    }
+
+    .hotel-detail-page .hotel-title-row h1 {
+        font-size: 32px;
+    }
+
+    .hotel-detail-page .hotel-address-row {
+        align-items: flex-start;
+        flex-direction: column;
+        font-size: 15px;
+    }
+
+    .hotel-detail-page .hotel-action-row {
+        justify-content: flex-start;
+    }
+
+    .hotel-detail-page .hotel-gallery-grid {
+        grid-template-columns: 1fr;
+        grid-template-rows: repeat(4, 180px);
+    }
+
+    .hotel-detail-page .hotel-section {
+        padding-bottom: 24px;
+        margin-bottom: 24px;
+    }
+
+    .hotel-detail-page .hotel-section h2,
+    .hotel-detail-page .hotel-section-title-row h2 {
+        font-size: 28px;
+    }
+
+    .hotel-detail-page .hotel-highlight-grid {
+        grid-template-columns: repeat(4, 48px);
+        gap: 8px;
+    }
+
+    .hotel-detail-page .hotel-service-bottom {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .hotel-detail-page .hotel-service-bottom .btn {
+        width: 100%;
+    }
+
+    .hotel-selected-services-head,
+    .hotel-detail-page .hotel-price-row,
+    .midtrans-channel-head,
+    .midtrans-instruction-card header,
+    .midtrans-instruction-card footer,
+    .payment-due-row {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .booking-review-page {
+        padding: 10px 12px 36px;
+    }
+
+    .booking-review-hero {
+        padding: 24px 18px;
+    }
+
+    .booking-review-hero h1 {
+        font-size: 32px;
+    }
+
+    .booking-review-card > header,
+    .guest-form-body,
+    .payment-options-body,
+    .booking-info-body,
+    .booking-info-stats,
+    .booking-included-body,
+    .booking-success-actions,
+    .booking-success-services > div {
+        padding-right: 16px;
+        padding-left: 16px;
+    }
+
+    .booking-info-body > img,
+    .my-booking-card-thumb img {
+        width: 100%;
+        height: auto;
+        aspect-ratio: 16 / 10;
+    }
+
+    .booking-success-actions .btn,
+    .payment-due-row button,
+    .my-bookings-stats button {
+        width: 100%;
+    }
+
+    .my-booking-card-actions {
+        display: grid;
+        grid-template-columns: 1fr;
+    }
+
+    .booking-auth-page {
+        padding: 14px;
+    }
+
+    .booking-auth-card {
+        min-height: calc(100vh - 28px);
+    }
+
+    .booking-auth-panel {
+        padding: 34px 18px;
+    }
+
+    .booking-auth-panel h1 {
+        font-size: 30px;
+    }
+}
+
+@media (max-width: 420px) {
+    .booking-brand strong {
+        font-size: 18px;
+    }
+
+    .booking-auth-button {
+        padding: 0 9px;
+        font-size: 12px;
+    }
+
+    .booking-hero-copy h1 {
+        font-size: 35px;
+    }
+
+    .booking-promo-card {
+        grid-template-columns: 1fr;
+    }
+
+    .booking-promo-card img {
+        height: 150px;
+    }
+
+    .holiday-copy h2,
+    .featured-hotels h2,
+    .explore-nearby h2,
+    .findservice-hero h1,
+    .hotel-detail-page .hotel-title-row h1,
+    .booking-review-hero h1 {
+        font-size: 29px;
+    }
+
+    .nearby-grid article {
+        grid-template-columns: 1fr;
+        text-align: center;
+    }
+
+    .nearby-grid img {
+        justify-self: center;
+    }
+
+    .hotel-detail-page .hotel-highlight-grid {
+        grid-template-columns: repeat(2, 48px);
+    }
+
+    .findservice-pagination {
+        flex-wrap: wrap;
+    }
+}
+
+/* Customer detailed responsive pass */
+.booking-home *,
+.findservice-page *,
+.hotel-detail-page *,
+.booking-review-page *,
+.booking-auth-page *,
+.booking-footer * {
+    box-sizing: border-box;
+}
+
+.booking-main-nav a,
+.findservice-card-footer,
+.hotel-service-bottom,
+.booking-review-card > header,
+.payment-login-discount,
+.booking-success-actions,
+.my-booking-card-actions,
+.booking-footer-bottom {
+    min-width: 0;
+}
+
+.booking-main-nav,
+.booking-logo-strip,
+.findservice-filter-panel,
+.findservice-hotel-list,
+.hotel-service-list,
+.hotel-selected-service-list,
+.branch-date-row,
+.branch-slot-grid,
+.booking-review-card,
+.price-summary-card,
+.offer-discount-card,
+.booking-login-benefits,
+.my-booking-card,
+.booking-auth-card {
+    max-width: 100%;
+}
+
+.booking-home input,
+.booking-home select,
+.findservice-page input,
+.findservice-page select,
+.hotel-detail-page input,
+.hotel-detail-page select,
+.booking-review-page input,
+.booking-review-page select,
+.booking-review-page textarea,
+.booking-auth-page input {
+    max-width: 100%;
+}
+
+.hotel-mobile-summary-bar {
+    display: none;
+}
+
+.booking-top-links p,
+.findservice-location,
+.findservice-amenities,
+.hotel-address-row span,
+.hotel-service-copy h3,
+.hotel-summary-selected-list span,
+.booking-info-body h3,
+.booking-included-body span,
+.price-summary-card span,
+.offer-discount-card span,
+.my-booking-card p,
+.my-booking-meta span,
+.booking-auth-panel p {
+    overflow-wrap: anywhere;
+}
+
+.booking-bell,
+.booking-profile-trigger,
+.booking-main-nav a,
+.findservice-view-toggle button,
+.findservice-slider-button,
+.hotel-action-row button,
+.branch-mode-row button,
+.branch-date-row button,
+.branch-slot-grid button,
+.payment-type-grid button,
+.midtrans-channel-grid button,
+.my-bookings-stats button {
+    touch-action: manipulation;
+}
+
+@media (min-width: 1440px) {
+    .booking-hero-section,
+    .booking-promos,
+    .booking-holiday,
+    .featured-hotels,
+    .booking-logo-strip,
+    .booking-testimonial,
+    .explore-nearby,
+    .booking-support-strip,
+    .booking-footer {
+        padding-right: 56px;
+        padding-left: 56px;
+    }
+
+    .booking-promos,
+    .booking-holiday,
+    .featured-hotels,
+    .booking-logo-strip,
+    .booking-testimonial,
+    .explore-nearby,
+    .booking-support-strip,
+    .booking-footer-grid,
+    .booking-top-links,
+    .booking-payment-row,
+    .booking-footer-bottom {
+        width: min(100%, 1680px);
+        margin-right: auto;
+        margin-left: auto;
+    }
+
+    .findservice-toolbar,
+    .findservice-results-layout {
+        width: min(100%, 1500px);
+        margin-right: auto;
+        margin-left: auto;
+    }
+}
+
+@media (max-width: 1360px) and (min-width: 1181px) {
+    .booking-site-header.is-guest,
+    .booking-site-header.is-authenticated {
+        gap: 20px;
+        padding-right: 24px;
+        padding-left: 24px;
+    }
+
+    .booking-main-nav {
+        gap: 22px;
+    }
+
+    .booking-main-nav a {
+        font-size: 17px !important;
+    }
+
+    .booking-hero-copy h1 {
+        font-size: 64px;
+        line-height: 1.08;
+    }
+
+    .booking-hero-section {
+        grid-template-columns: minmax(0, 0.92fr) minmax(460px, 1fr);
+        gap: 32px;
+        min-height: 760px;
+    }
+
+    .findservice-results-layout {
+        grid-template-columns: minmax(250px, 290px) minmax(0, 1fr);
+        gap: 22px;
+    }
+
+    .findservice-hotel-card {
+        grid-template-columns: minmax(280px, 0.46fr) minmax(0, 1fr);
+    }
+
+    .hotel-detail-page .hotel-detail-layout {
+        grid-template-columns: minmax(0, 1fr) minmax(340px, 400px);
+        gap: 44px;
+    }
+}
+
+@media (max-width: 1180px) and (min-width: 901px) {
+    .booking-site-header.is-authenticated .booking-header-actions {
+        justify-content: flex-end;
+    }
+
+    .booking-profile-dropdown {
+        right: 0;
+        max-width: min(376px, calc(100vw - 32px));
+    }
+
+    .booking-hero-copy h1 {
+        max-width: 680px;
+    }
+
+    .booking-hero-actions {
+        flex-wrap: wrap;
+    }
+
+    .booking-promo-card {
+        grid-template-columns: 150px minmax(0, 1fr);
+    }
+
+    .findservice-filter-panel {
+        top: 120px;
+        align-self: start;
+        max-height: calc(100vh - 148px);
+        overflow: auto;
+    }
+
+    .findservice-card-footer {
+        flex-wrap: wrap;
+        gap: 14px;
+    }
+
+    .hotel-detail-page .hotel-section-title-row {
+        grid-template-columns: minmax(0, 1fr) minmax(220px, 280px);
+    }
+
+    .hotel-detail-page .hotel-service-card {
+        grid-template-columns: minmax(220px, 300px) minmax(0, 1fr);
+        gap: 24px;
+        padding: 20px;
+    }
+
+    .hotel-detail-page .branch-date-row {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .hotel-detail-page .branch-slot-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .booking-review-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .booking-review-sidebar {
+        position: static;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .booking-login-benefits,
+    .payment-side-note {
+        grid-column: 1 / -1;
+    }
+}
+
+@media (max-width: 900px) {
+    .booking-site-header {
+        align-items: center;
+        min-height: 0;
+    }
+
+    .booking-main-nav {
+        scroll-padding-inline: 18px;
+        scroll-snap-type: x proximity;
+    }
+
+    .booking-main-nav a {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        scroll-snap-align: start;
+    }
+
+    .booking-hero-art,
+    .holiday-image,
+    .testimonial-photo,
+    .featured-hotel-card > div,
+    .findservice-card-media,
+    .hotel-gallery-grid figure,
+    .hotel-service-media,
+    .booking-info-body > img,
+    .my-booking-card-thumb img {
+        overflow: hidden;
+    }
+
+    .booking-holiday {
+        align-items: start;
+    }
+
+    .booking-promo-card,
+    .featured-hotel-card,
+    .booking-support-strip article,
+    .findservice-hotel-card,
+    .hotel-service-card,
+    .booking-review-card,
+    .my-booking-card {
+        box-shadow: 0 12px 28px rgba(8, 8, 17, 0.06);
+    }
+
+    .findservice-filter-panel {
+        width: 100%;
+        padding: 16px;
+        border-radius: 16px;
+    }
+
+    .findservice-filter-head {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        padding-bottom: 12px;
+        background: #ffffff;
+    }
+
+    .findservice-check-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .findservice-check-list label {
+        position: relative;
+        flex: 0 1 auto;
+        width: auto;
+        min-height: 38px;
+        padding: 8px 12px;
+        border: 1px solid #e3e3ea;
+        border-radius: 999px;
+    }
+
+    .findservice-check-list label input {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        opacity: 0;
+        pointer-events: none;
+    }
+
+    .findservice-filter-actions {
+        position: sticky;
+        bottom: 0;
+        z-index: 2;
+        padding-top: 12px;
+        background: #ffffff;
+    }
+
+    .findservice-filter-actions button,
+    .findservice-select-button {
+        min-height: 46px;
+    }
+
+    .findservice-hotel-list.is-grid .findservice-hotel-card {
+        min-width: 0;
+    }
+
+    .hotel-detail-page .hotel-title-row,
+    .hotel-detail-page .hotel-section-title-row {
+        grid-template-columns: 1fr;
+    }
+
+    .hotel-detail-page .hotel-booking-sidebar {
+        order: -1;
+        display: grid;
+        gap: 16px;
+    }
+
+    .hotel-detail-page .hotel-summary-pin-shell {
+        min-height: 0 !important;
+    }
+
+    .hotel-detail-page .hotel-service-media {
+        min-height: 230px;
+    }
+
+    .hotel-detail-page .branch-date-row {
+        display: flex;
+        gap: 10px;
+        overflow-x: auto;
+        padding-bottom: 6px;
+        scrollbar-width: none;
+    }
+
+    .hotel-detail-page .branch-date-row::-webkit-scrollbar {
+        display: none;
+    }
+
+    .hotel-detail-page .branch-date-row button {
+        flex: 0 0 92px;
+    }
+
+    .hotel-detail-page .branch-slot-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+
+    .hotel-selected-service-list article {
+        grid-template-columns: 52px minmax(0, 1fr) auto;
+    }
+
+    .booking-review-card > header {
+        flex-wrap: wrap;
+    }
+
+    .booking-info-stats {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .payment-login-discount {
+        grid-template-columns: auto minmax(0, 1fr);
+    }
+
+    .payment-login-discount a {
+        grid-column: 1 / -1;
+        justify-self: start;
+    }
+
+    .booking-review-sidebar {
+        position: static;
+    }
+
+    .my-booking-card-actions a,
+    .my-booking-card-actions button,
+    .my-booking-card-actions span {
+        min-height: 44px;
+    }
+}
+
+@media (max-width: 760px) {
+    .customer-app {
+        padding-bottom: 0;
+    }
+
+    .booking-site-header {
+        border-bottom-color: #ececf3;
+    }
+
+    .booking-brand {
+        min-width: 0;
+    }
+
+    .booking-brand strong {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .booking-bell,
+    .booking-profile-trigger {
+        width: 42px;
+        height: 42px;
+    }
+
+    .booking-profile-dropdown {
+        max-height: calc(100vh - 88px);
+        overflow: auto;
+    }
+
+    .booking-profile-head {
+        align-items: flex-start;
+    }
+
+    .booking-profile-links button,
+    .booking-profile-mode,
+    .booking-profile-language {
+        min-height: 44px;
+    }
+
+    .booking-hero-section,
+    .booking-holiday,
+    .featured-hotels,
+    .booking-testimonial,
+    .explore-nearby,
+    .booking-support-strip {
+        width: 100%;
+    }
+
+    .booking-hero-main-img,
+    .holiday-image img,
+    .testimonial-photo img {
+        object-position: center;
+    }
+
+    .booking-availability,
+    .findservice-search-panel {
+        gap: 14px;
+    }
+
+    .booking-availability label,
+    .findservice-search-panel label {
+        align-items: start;
+        min-width: 0;
+    }
+
+    .booking-availability label > svg,
+    .findservice-search-panel label > svg {
+        width: 30px;
+        height: 30px;
+        margin-top: 8px;
+    }
+
+    .booking-availability button[type="submit"],
+    .findservice-search-panel > button[type="submit"] {
+        min-height: 54px;
+    }
+
+    .booking-promo-card,
+    .nearby-grid article {
+        align-items: center;
+    }
+
+    .featured-hotel-card h3,
+    .nearby-grid h3,
+    .booking-support-strip h2,
+    .booking-footer h2 {
+        overflow-wrap: anywhere;
+    }
+
+    .booking-logo-strip span {
+        min-height: 54px;
+        text-align: center;
+    }
+
+    .booking-top-links {
+        padding-right: 16px;
+        padding-left: 16px;
+    }
+
+    .booking-payment-row {
+        gap: 18px;
+        padding-right: 16px;
+        padding-left: 16px;
+    }
+
+    .findservice-card-actions button,
+    .hotel-action-row button {
+        min-width: 42px;
+        min-height: 42px;
+    }
+
+    .findservice-pagination button {
+        min-width: 40px;
+        min-height: 40px;
+    }
+
+    .hotel-detail-page {
+        padding-bottom: 106px;
+    }
+
+    .hotel-detail-page .hotel-detail-hero {
+        padding-top: 28px;
+    }
+
+    .hotel-detail-page .hotel-booking-sidebar {
+        gap: 12px;
+    }
+
+    .hotel-detail-page .hotel-summary-pin-shell,
+    .hotel-detail-page .hotel-deal-card {
+        display: none;
+    }
+
+    .hotel-detail-page .hotel-booking-card {
+        padding: 18px;
+        border-radius: 14px;
+    }
+
+    .hotel-detail-page .hotel-sidebar-lines {
+        gap: 10px;
+    }
+
+    .hotel-detail-page .hotel-section-title-row {
+        gap: 16px;
+    }
+
+    .hotel-category-select select {
+        min-height: 52px;
+        padding-left: 16px;
+        font-size: 16px;
+    }
+
+    .hotel-selected-services {
+        padding: 14px;
+        border-radius: 14px;
+    }
+
+    .hotel-selected-service-list article {
+        padding: 10px;
+    }
+
+    .hotel-selected-service-list img {
+        width: 52px;
+        height: 52px;
+    }
+
+    .hotel-detail-page .hotel-service-card {
+        padding: 14px;
+        border-radius: 14px;
+    }
+
+    .hotel-detail-page .hotel-service-media {
+        min-height: 0;
+        aspect-ratio: 16 / 10;
+    }
+
+    .hotel-service-media > span {
+        top: 12px;
+        left: 12px;
+        max-width: calc(100% - 24px);
+        font-size: 13px;
+    }
+
+    .hotel-service-media button {
+        width: 38px;
+        height: 38px;
+    }
+
+    .hotel-service-copy {
+        gap: 16px;
+    }
+
+    .hotel-service-copy h3 {
+        font-size: 24px;
+    }
+
+    .hotel-service-copy p,
+    .hotel-service-copy > div > span {
+        font-size: 16px;
+    }
+
+    .hotel-service-bottom strong {
+        font-size: 24px;
+    }
+
+    .hotel-service-bottom strong span {
+        display: block;
+        margin-top: 2px;
+        font-size: 15px;
+    }
+
+    .branch-mode-row {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .branch-mode-row button,
+    .branch-slot-grid button {
+        min-height: 48px;
+    }
+
+    .branch-queue-card {
+        align-items: flex-start;
+    }
+
+    .hotel-review-summary {
+        grid-template-columns: 1fr;
+    }
+
+    .hotel-mobile-summary-bar {
+        position: fixed;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        z-index: 210;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 12px;
+        align-items: center;
+        padding: 12px 14px calc(12px + env(safe-area-inset-bottom));
+        background: rgba(255, 255, 255, 0.97);
+        border-top: 1px solid #dedee6;
+        box-shadow: 0 -14px 34px rgba(8, 8, 17, 0.12);
+        backdrop-filter: blur(12px);
+    }
+
+    .hotel-mobile-summary-bar div {
+        display: grid;
+        gap: 2px;
+        min-width: 0;
+    }
+
+    .hotel-mobile-summary-bar span,
+    .hotel-mobile-summary-bar small {
+        overflow: hidden;
+        color: #747681;
+        font-size: 12px;
+        font-weight: 700;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .hotel-mobile-summary-bar strong {
+        overflow: hidden;
+        color: #080811;
+        font-size: 20px;
+        font-weight: 900;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .hotel-mobile-summary-cta {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 132px;
+        min-height: 50px;
+        padding: 0 18px;
+        color: #ffffff;
+        background: #5744d7;
+        border-radius: 10px;
+        font-size: 15px;
+        font-weight: 900;
+        text-decoration: none;
+        white-space: nowrap;
+    }
+
+    .hotel-mobile-summary-cta.disabled {
+        color: #777882;
+        background: #ececf2;
+        pointer-events: none;
+    }
+
+    .booking-review-page {
+        width: 100%;
+    }
+
+    .booking-phone-preview {
+        display: none;
+    }
+
+    .booking-review-breadcrumb {
+        gap: 8px;
+        font-size: 13px;
+    }
+
+    .booking-review-card,
+    .price-summary-card,
+    .offer-discount-card,
+    .booking-login-benefits,
+    .payment-side-note,
+    .booking-payment-success {
+        border-radius: 12px;
+    }
+
+    .booking-info-stats {
+        grid-template-columns: 1fr;
+    }
+
+    .booking-info-stats article {
+        min-height: 76px;
+    }
+
+    .service-included-card > header a {
+        width: 100%;
+    }
+
+    .special-request-box > div {
+        display: grid;
+        grid-template-columns: 1fr;
+    }
+
+    .payment-login-discount {
+        grid-template-columns: 1fr;
+    }
+
+    .payment-login-discount svg {
+        width: 42px;
+        height: 42px;
+    }
+
+    .midtrans-preview-card,
+    .pay-at-salon-preview {
+        grid-template-columns: 1fr;
+    }
+
+    .midtrans-qr-placeholder,
+    .midtrans-code-placeholder,
+    .pay-at-salon-preview > span {
+        min-height: 128px;
+    }
+
+    .payment-due-row {
+        position: sticky;
+        bottom: calc(10px + env(safe-area-inset-bottom));
+        z-index: 20;
+        margin: 22px 0 0;
+        padding: 14px;
+        background: #ffffff;
+        border: 1px solid #dedee6;
+        border-radius: 14px;
+        box-shadow: 0 14px 36px rgba(8, 8, 17, 0.14);
+    }
+
+    .booking-success-code strong {
+        font-size: 20px;
+    }
+
+    .my-bookings-stats article,
+    .my-bookings-stats button {
+        min-height: 94px;
+    }
+
+    .my-booking-card-content {
+        gap: 14px;
+    }
+
+    .my-booking-meta {
+        grid-template-columns: 1fr;
+    }
+
+    .booking-auth-page {
+        min-height: auto;
+    }
+
+    .booking-auth-inner {
+        width: 100%;
+    }
+
+    .booking-social-buttons {
+        grid-template-columns: 1fr;
+    }
+
+    .booking-auth-row {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .booking-social-buttons button,
+    .booking-auth-submit {
+        min-height: 48px;
+    }
+}
+
+@media (max-width: 640px) {
+    .booking-site-header.is-guest,
+    .booking-site-header.is-authenticated {
+        padding-right: 12px;
+        padding-left: 12px;
+    }
+
+    .booking-header-actions {
+        gap: 7px;
+    }
+
+    .booking-main-nav {
+        margin-right: -12px;
+        margin-left: -12px;
+        padding-right: 12px;
+        padding-left: 12px;
+    }
+
+    .booking-hero-copy h1 {
+        font-size: 36px;
+    }
+
+    .booking-hero-copy p,
+    .holiday-copy p {
+        font-size: 15px;
+        line-height: 1.55;
+    }
+
+    .booking-hero-main-img {
+        height: 280px;
+    }
+
+    .booking-support-card {
+        width: 108px;
+        height: 98px;
+    }
+
+    .booking-availability {
+        width: calc(100% - 24px);
+        margin-bottom: 28px;
+    }
+
+    .current-location-button {
+        min-height: 34px;
+    }
+
+    .booking-promo-card {
+        grid-template-columns: 112px minmax(0, 1fr);
+        min-height: 126px;
+        padding: 10px;
+    }
+
+    .booking-promo-card img {
+        height: 106px;
+    }
+
+    .holiday-image img {
+        height: 236px;
+    }
+
+    .holiday-feature-grid div,
+    .booking-support-strip article,
+    .download-app {
+        padding: 18px;
+    }
+
+    .featured-hotel-card {
+        padding-bottom: 14px;
+    }
+
+    .featured-hotel-card p {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .testimonial-copy p {
+        font-size: 18px;
+    }
+
+    .findservice-hero {
+        margin-right: 0;
+        margin-left: 0;
+        border-radius: 0;
+    }
+
+    .findservice-search-panel {
+        padding: 14px;
+    }
+
+    .findservice-filter-group {
+        padding: 14px 0;
+    }
+
+    .findservice-pill-list {
+        flex-wrap: wrap;
+    }
+
+    .findservice-card-body h2 {
+        font-size: 23px;
+        line-height: 1.18;
+    }
+
+    .findservice-benefits {
+        gap: 8px;
+    }
+
+    .hotel-detail-page .hotel-detail-hero,
+    .hotel-detail-page .hotel-detail-layout {
+        padding-right: 12px;
+        padding-left: 12px;
+    }
+
+    .hotel-detail-page .hotel-gallery-grid {
+        grid-template-rows: repeat(4, 156px);
+        gap: 8px;
+    }
+
+    .hotel-detail-page .hotel-section h3 {
+        font-size: 23px;
+    }
+
+    .hotel-detail-page .hotel-section p,
+    .hotel-check-list span,
+    .hotel-amenity-grid article span {
+        font-size: 16px;
+    }
+
+    .hotel-amenity-grid article {
+        gap: 11px;
+    }
+
+    .hotel-amenity-grid article h3 {
+        font-size: 20px;
+    }
+
+    .hotel-detail-page .branch-staff-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .branch-staff-card {
+        min-height: 86px;
+    }
+
+    .branch-slot-grid {
+        gap: 9px;
+    }
+
+    .booking-review-page {
+        padding-right: 10px;
+        padding-left: 10px;
+    }
+
+    .booking-review-hero {
+        border-radius: 12px;
+    }
+
+    .booking-review-card h2,
+    .price-summary-card h2,
+    .offer-discount-card h2,
+    .booking-login-benefits h2 {
+        font-size: 21px;
+    }
+
+    .payment-type-grid button,
+    .midtrans-channel-grid button {
+        padding: 14px;
+    }
+
+    .booking-success-actions {
+        display: grid;
+        grid-template-columns: 1fr;
+    }
+
+    .my-booking-card-top {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .booking-auth-card {
+        border-radius: 14px;
+    }
+
+    .booking-auth-panel {
+        padding-right: 14px;
+        padding-left: 14px;
+    }
+}
+
+@media (max-width: 520px) {
+    .booking-auth-button {
+        min-width: 0;
+    }
+
+    .booking-site-header.is-guest .booking-auth-button {
+        padding-right: 8px;
+        padding-left: 8px;
+    }
+
+    .booking-hero-section {
+        padding-right: 12px;
+        padding-left: 12px;
+    }
+
+    .booking-hero-copy h1 {
+        font-size: 33px;
+    }
+
+    .booking-primary-action,
+    .booking-story-action {
+        min-height: 50px;
+        font-size: 15px;
+    }
+
+    .booking-availability {
+        width: 100%;
+        margin-top: -18px;
+        border-radius: 14px;
+    }
+
+    .booking-availability h2 {
+        font-size: 22px;
+    }
+
+    .booking-promos,
+    .booking-holiday,
+    .featured-hotels,
+    .booking-logo-strip,
+    .booking-testimonial,
+    .explore-nearby,
+    .booking-support-strip,
+    .booking-footer {
+        padding-right: 12px;
+        padding-left: 12px;
+    }
+
+    .booking-logo-strip {
+        grid-template-columns: 1fr !important;
+    }
+
+    .nearby-grid article {
+        grid-template-columns: 64px minmax(0, 1fr);
+        padding: 10px;
+    }
+
+    .nearby-grid img {
+        width: 64px;
+        height: 64px;
+    }
+
+    .findservice-toolbar,
+    .findservice-results-layout {
+        padding-right: 10px;
+        padding-left: 10px;
+    }
+
+    .findservice-view-toggle {
+        width: 100%;
+    }
+
+    .findservice-view-toggle button {
+        flex: 1 1 0;
+    }
+
+    .findservice-card-footer p {
+        width: 100%;
+    }
+
+    .hotel-detail-page .hotel-title-row h1 {
+        font-size: 30px;
+    }
+
+    .hotel-detail-page .hotel-section h2,
+    .hotel-detail-page .hotel-section-title-row h2 {
+        font-size: 26px;
+    }
+
+    .hotel-detail-page .hotel-gallery-grid {
+        grid-template-rows: repeat(4, 138px);
+    }
+
+    .hotel-detail-page .hotel-highlight-grid {
+        grid-template-columns: repeat(4, 42px);
+    }
+
+    .hotel-highlight-grid span {
+        width: 42px;
+        height: 42px;
+    }
+
+    .hotel-detail-page .branch-slot-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .booking-review-card > header,
+    .guest-form-body,
+    .payment-options-body,
+    .booking-info-body,
+    .booking-info-stats,
+    .booking-included-body,
+    .booking-success-actions,
+    .booking-success-services > div {
+        padding-right: 14px;
+        padding-left: 14px;
+    }
+
+    .booking-review-card > header h2 svg {
+        width: 28px;
+        height: 28px;
+    }
+
+    .payment-due-row strong {
+        font-size: 24px;
+    }
+
+    .booking-success-code {
+        align-items: flex-start;
+    }
+
+    .booking-auth-field input,
+    .booking-auth-password {
+        min-height: 48px;
+    }
+}
+
+@media (max-width: 380px) {
+    .booking-brand strong {
+        max-width: 96px;
+    }
+
+    .booking-site-header.is-guest .booking-header-actions {
+        gap: 6px;
+    }
+
+    .booking-main-nav a {
+        min-height: 32px;
+        padding-right: 9px;
+        padding-left: 9px;
+        font-size: 13px !important;
+    }
+
+    .booking-hero-copy h1 {
+        font-size: 30px;
+    }
+
+    .booking-support-card {
+        display: none;
+    }
+
+    .booking-hero-main-img {
+        height: 240px;
+    }
+
+    .booking-promo-card {
+        grid-template-columns: 1fr;
+    }
+
+    .booking-promo-card img {
+        width: 100%;
+        height: 136px;
+    }
+
+    .holiday-copy h2,
+    .featured-hotels h2,
+    .explore-nearby h2,
+    .findservice-hero h1,
+    .hotel-detail-page .hotel-title-row h1,
+    .booking-review-hero h1 {
+        font-size: 27px;
+    }
+
+    .hotel-detail-page .hotel-gallery-grid {
+        grid-template-rows: repeat(4, 122px);
+    }
+
+    .hotel-detail-page .hotel-highlight-grid {
+        grid-template-columns: repeat(2, 42px);
+    }
+
+    .branch-mode-row {
+        grid-template-columns: 1fr;
+    }
+
+    .hotel-mobile-summary-bar {
+        grid-template-columns: 1fr;
+    }
+
+    .hotel-mobile-summary-cta {
+        width: 100%;
+    }
+
+    .payment-due-row {
+        display: grid;
+        grid-template-columns: 1fr;
+    }
+
+    .booking-auth-panel h1 {
+        font-size: 27px;
+    }
+}
+
+@media (max-width: 900px) and (orientation: landscape) {
+    .booking-hero-section {
+        grid-template-columns: minmax(0, 0.95fr) minmax(280px, 1fr);
+        align-items: center;
+        padding-top: 28px;
+    }
+
+    .booking-hero-copy h1 {
+        font-size: 38px;
+    }
+
+    .booking-hero-actions {
+        flex-direction: row;
+    }
+
+    .booking-hero-art {
+        min-height: 260px;
+    }
+
+    .booking-hero-main-img {
+        height: 260px;
+    }
+
+    .booking-availability {
+        grid-column: 1 / -1;
+    }
+
+    .booking-profile-dropdown {
+        max-height: calc(100vh - 64px);
+    }
+
+    .hotel-mobile-summary-bar {
+        grid-template-columns: minmax(0, 1fr) auto;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .findservice-slide-track,
+    .booking-hero-main-img,
+    .booking-float-thumb,
+    .hotel-mobile-summary-bar {
+        transition: none !important;
+        animation: none !important;
+    }
+}
+
+.staff-schedule-page {
+    max-width: 1440px;
+    margin: 0 auto;
+    padding: 32px clamp(16px, 3vw, 42px) 64px;
+    color: #080811;
+}
+
+.staff-schedule-hero {
+    display: grid;
+    gap: 22px;
+    padding: clamp(20px, 3vw, 34px) 0;
+}
+
+.staff-schedule-hero > div {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(220px, 360px);
+    gap: 24px;
+    align-items: stretch;
+}
+
+.staff-schedule-hero > div > div {
+    display: grid;
+    align-content: center;
+    gap: 14px;
+    min-height: 260px;
+    padding: clamp(24px, 4vw, 46px);
+    background: #f7f8fb;
+    border: 1px solid #dedee8;
+    border-radius: 12px;
+}
+
+.staff-schedule-hero span {
+    display: inline-flex;
+    gap: 9px;
+    align-items: center;
+    width: fit-content;
+    color: #5744d7;
+    font-size: 14px;
+    font-weight: 900;
+}
+
+.staff-schedule-hero h1 {
+    max-width: 760px;
+    margin: 0;
+    font-size: clamp(36px, 5vw, 70px);
+    font-weight: 900;
+    line-height: 1.02;
+    letter-spacing: 0;
+}
+
+.staff-schedule-hero p {
+    max-width: 680px;
+    margin: 0;
+    color: #60626d;
+    font-size: clamp(16px, 1.6vw, 20px);
+    line-height: 1.55;
+}
+
+.staff-schedule-hero img {
+    width: 100%;
+    height: 100%;
+    min-height: 260px;
+    object-fit: cover;
+    border-radius: 12px;
+}
+
+.staff-schedule-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 380px);
+    gap: clamp(22px, 3vw, 34px);
+    align-items: start;
+}
+
+.staff-schedule-main {
+    display: grid;
+    gap: 22px;
+    min-width: 0;
+}
+
+.staff-schedule-card {
+    display: grid;
+    gap: 20px;
+    padding: clamp(18px, 2.4vw, 28px);
+    background: #ffffff;
+    border: 1px solid #dedee8;
+    border-radius: 12px;
+}
+
+.staff-schedule-card > header {
+    display: flex;
+    gap: 18px;
+    align-items: flex-start;
+    justify-content: space-between;
+    min-width: 0;
+}
+
+.staff-schedule-card header span,
+.staff-schedule-card header small {
+    color: #777a86;
+    font-size: 13px;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.staff-schedule-card h2 {
+    margin: 4px 0 0;
+    font-size: clamp(25px, 3vw, 40px);
+    font-weight: 900;
+    line-height: 1.08;
+}
+
+.staff-schedule-card header a,
+.staff-summary-back {
+    display: inline-flex;
+    gap: 7px;
+    align-items: center;
+    min-height: 40px;
+    color: #5744d7;
+    font-size: 14px;
+    font-weight: 900;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.selected-service-overview > div {
+    display: grid;
+    gap: 10px;
+}
+
+.selected-service-overview article {
+    display: grid;
+    grid-template-columns: 58px minmax(0, 1fr) auto;
+    gap: 12px;
+    align-items: center;
+    min-width: 0;
+    padding: 10px;
+    background: #f7f8fb;
+    border-radius: 10px;
+}
+
+.selected-service-overview img {
+    width: 58px;
+    height: 58px;
+    object-fit: cover;
+    border-radius: 9px;
+}
+
+.selected-service-overview strong,
+.selected-service-overview span {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.selected-service-overview span {
+    margin-top: 3px;
+    color: #70737e;
+    font-size: 13px;
+}
+
+.selected-service-overview b {
+    font-size: 15px;
+}
+
+.staff-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.staff-detail-card {
+    position: relative;
+    display: grid;
+    grid-template-columns: 64px minmax(0, 1fr);
+    gap: 14px;
+    min-height: 154px;
+    padding: 18px;
+    color: #080811;
+    background: #f7f8fb;
+    border: 1px solid #dedee8;
+    border-radius: 12px;
+    text-align: left;
+    cursor: pointer;
+}
+
+.staff-detail-card.active {
+    color: #ffffff;
+    background: #5744d7;
+    border-color: #5744d7;
+    box-shadow: 0 18px 42px rgba(87, 68, 215, 0.2);
+}
+
+.staff-detail-card img,
+.staff-detail-card .branch-staff-avatar {
+    width: 64px;
+    height: 64px;
+}
+
+.staff-detail-card img {
+    object-fit: cover;
+    border-radius: 50%;
+}
+
+.staff-detail-card strong {
+    display: block;
+    padding-right: 54px;
+    font-size: 20px;
+    font-weight: 900;
+    line-height: 1.2;
+}
+
+.staff-detail-card p {
+    margin: 8px 0 0;
+    color: inherit;
+    font-size: 14px;
+    line-height: 1.45;
+    opacity: 0.78;
+}
+
+.staff-detail-card span,
+.staff-detail-card small {
+    display: block;
+    margin-top: 9px;
+    color: inherit;
+    font-size: 12px;
+    font-weight: 800;
+    line-height: 1.35;
+    opacity: 0.82;
+}
+
+.staff-detail-card > b {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    max-width: 92px;
+    padding: 5px 9px;
+    overflow: hidden;
+    color: #18826d;
+    background: #e8fbf5;
+    border-radius: 999px;
+    font-size: 11px;
+    text-overflow: ellipsis;
+    text-transform: capitalize;
+    white-space: nowrap;
+}
+
+.staff-detail-card.active > b {
+    color: #5744d7;
+    background: #ffffff;
+}
+
+.staff-detail-card.is-auto {
+    border-color: #cfc9ff;
+}
+
+.staff-schedule-slots button {
+    min-height: 72px;
+}
+
+.staff-schedule-summary {
+    position: sticky;
+    top: 94px;
+}
+
+.staff-schedule-summary section {
+    display: grid;
+    gap: 16px;
+    padding: 22px;
+    background: #080811;
+    border-radius: 12px;
+    color: #ffffff;
+}
+
+.staff-schedule-summary h2 {
+    margin: 0 0 4px;
+    font-size: 26px;
+    font-weight: 900;
+}
+
+.staff-schedule-summary div,
+.staff-schedule-summary footer {
+    display: grid;
+    gap: 5px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+.staff-schedule-summary span {
+    color: rgba(255, 255, 255, 0.62);
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.staff-schedule-summary strong {
+    font-size: 17px;
+    line-height: 1.3;
+}
+
+.staff-schedule-summary footer strong {
+    font-size: 28px;
+}
+
+.staff-schedule-summary .hotel-sidebar-cta {
+    margin-top: 6px;
+    color: #080811;
+    background: #ffffff;
+}
+
+.staff-schedule-summary .hotel-sidebar-cta.disabled {
+    color: rgba(255, 255, 255, 0.52);
+    background: rgba(255, 255, 255, 0.14);
+}
+
+.staff-summary-back {
+    justify-content: center;
+    color: #ffffff;
+}
+
+@media (max-width: 1040px) {
+    .staff-schedule-layout,
+    .staff-schedule-hero > div {
+        grid-template-columns: 1fr;
+    }
+
+    .staff-schedule-summary {
+        position: static;
+    }
+
+    .staff-schedule-hero img {
+        max-height: 280px;
+    }
+}
+
+@media (max-width: 760px) {
+    .staff-schedule-page {
+        padding-right: 12px;
+        padding-left: 12px;
+    }
+
+    .staff-schedule-hero > div > div,
+    .staff-schedule-card,
+    .staff-schedule-summary section {
+        border-radius: 10px;
+    }
+
+    .staff-schedule-card > header {
+        display: grid;
+    }
+
+    .selected-service-overview article,
+    .staff-detail-card {
+        grid-template-columns: 52px minmax(0, 1fr);
+    }
+
+    .staff-detail-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .staff-detail-card img,
+    .staff-detail-card .branch-staff-avatar {
+        width: 52px;
+        height: 52px;
+    }
+
+    .staff-detail-card strong {
+        font-size: 18px;
+    }
+}
+
+@media (max-width: 520px) {
+    .staff-schedule-hero h1 {
+        font-size: 34px;
+    }
+
+    .staff-schedule-hero > div > div {
+        min-height: 0;
+        padding: 22px;
+    }
+
+    .selected-service-overview article {
+        grid-template-columns: 52px minmax(0, 1fr);
+    }
+
+    .selected-service-overview b {
+        grid-column: 2;
+    }
+
+    .staff-detail-card {
+        padding: 14px;
+    }
+
+    .staff-detail-card > b {
+        position: static;
+        grid-column: 2;
+        width: fit-content;
+        margin-top: 8px;
+    }
+}
+
+.staff-schedule-page .branch-staff-avatar {
+    color: #5744d7;
+    background: #f0edff;
+    border-color: #dad4ff;
+}
+
+.staff-schedule-page .branch-mode-row button,
+.staff-schedule-page .branch-date-row button,
+.staff-schedule-page .branch-slot-grid button {
+    color: #080811;
+    background: #f8f8fb;
+    border-color: #dedee8;
+}
+
+.staff-schedule-page .branch-mode-row button.active,
+.staff-schedule-page .branch-date-row button.active,
+.staff-schedule-page .branch-slot-grid button.active {
+    color: #ffffff;
+    background: #5744d7;
+    border-color: #5744d7;
+    box-shadow: 0 16px 36px rgba(87, 68, 215, 0.18);
+}
+
+.staff-schedule-page .branch-mode-row button:disabled,
+.staff-schedule-page .branch-date-row button:disabled {
+    color: #9a9ca5;
+    background: #f4f4f7;
+    border-color: #ebebf0;
+}
+
+.staff-schedule-page .branch-date-row b {
+    color: #5744d7;
+    background: #ffffff;
+}
+
+.staff-locked-date {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: 14px;
+    align-items: center;
+    padding: 16px;
+    background: #f3f1ff;
+    border: 1px solid #d9d2ff;
+    border-radius: 12px;
+}
+
+.staff-locked-date span {
+    display: inline-flex;
+    gap: 8px;
+    align-items: center;
+    min-width: 0;
+    color: #5744d7;
+    font-size: 13px;
+    font-weight: 900;
+}
+
+.staff-locked-date strong {
+    color: #080811;
+    font-size: 18px;
+    font-weight: 900;
+    white-space: nowrap;
+}
+
+.staff-locked-date a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 38px;
+    padding: 0 13px;
+    color: #ffffff;
+    background: #5744d7;
+    border-radius: 9px;
+    font-size: 13px;
+    font-weight: 900;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.staff-date-tools {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 220px;
+    gap: 14px;
+    align-items: stretch;
+}
+
+.staff-date-tools .branch-date-row {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+    scrollbar-width: thin;
+}
+
+.staff-date-tools .branch-date-row button {
+    flex: 0 0 112px;
+    min-height: 104px;
+}
+
+.staff-date-field {
+    display: grid;
+    align-content: center;
+    gap: 8px;
+    min-width: 0;
+    padding: 14px;
+    background: #ffffff;
+    border: 1px solid #dedee8;
+    border-radius: 12px;
+}
+
+.staff-date-field span {
+    color: #777a86;
+    font-size: 12px;
+    font-weight: 900;
+    text-transform: uppercase;
+}
+
+.staff-date-field input {
+    width: 100%;
+    min-height: 46px;
+    padding: 0 12px;
+    color: #080811;
+    background: #f8f8fb;
+    border: 1px solid #dedee8;
+    border-radius: 9px;
+    font-size: 15px;
+    font-weight: 800;
+}
+
+.staff-slot-skeleton {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.staff-slot-skeleton span {
+    min-height: 72px;
+    background:
+        linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.74), transparent),
+        #f0f0f5;
+    background-size: 180% 100%, 100% 100%;
+    border: 1px solid #e4e4eb;
+    border-radius: 10px;
+    animation: staffSlotPulse 1.1s ease-in-out infinite;
+}
+
+@keyframes staffSlotPulse {
+    from {
+        background-position: 180% 0, 0 0;
+    }
+
+    to {
+        background-position: -180% 0, 0 0;
+    }
+}
+
+.staff-schedule-page .selected-service-overview img,
+.staff-schedule-hero img,
+.hotel-detail-page .hotel-service-media img,
+.hotel-detail-page .hotel-gallery-grid img {
+    object-position: center;
+}
+
+.staff-schedule-page .selected-service-overview img {
+    background: #f1f1f6;
+}
+
+.queue-experience-card {
+    display: grid;
+    grid-template-columns: 58px minmax(0, 1fr) minmax(150px, 0.55fr) minmax(150px, 0.55fr);
+    gap: 14px;
+    align-items: stretch;
+    padding: 18px;
+    color: #ffffff;
+    background: #080811;
+    border-radius: 12px;
+}
+
+.queue-experience-mark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 58px;
+    height: 58px;
+    color: #5744d7;
+    background: #ffffff;
+    border-radius: 14px;
+}
+
+.queue-experience-card > div,
+.queue-experience-card article {
+    min-width: 0;
+}
+
+.queue-experience-card span,
+.queue-experience-card small {
+    color: rgba(255, 255, 255, 0.64);
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.queue-experience-card strong {
+    display: block;
+    margin-top: 5px;
+    overflow-wrap: anywhere;
+    color: #ffffff;
+    font-size: 22px;
+    font-weight: 900;
+    line-height: 1.16;
+}
+
+.queue-experience-card p {
+    margin: 8px 0 0;
+    color: rgba(255, 255, 255, 0.72);
+    font-size: 14px;
+    line-height: 1.45;
+}
+
+.queue-experience-card article {
+    padding: 14px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 10px;
+}
+
+.queue-experience-card small {
+    grid-column: 2 / -1;
+    padding-top: 8px;
+    line-height: 1.4;
+    text-transform: none;
+}
+
+@media (max-width: 860px) {
+    .staff-date-tools {
+        grid-template-columns: 1fr;
+    }
+
+    .staff-date-field {
+        align-content: start;
+    }
+
+    .staff-slot-skeleton {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .staff-locked-date,
+    .queue-experience-card {
+        grid-template-columns: 1fr;
+    }
+
+    .queue-experience-card small {
+        grid-column: auto;
+    }
+}
+
+.staff-detail-card {
+    grid-template-columns: 76px minmax(0, 1fr);
+    align-items: start;
+    min-height: 220px;
+}
+
+.staff-detail-card .staff-card-avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 76px;
+    height: 76px;
+    margin: 0;
+    opacity: 1;
+}
+
+.staff-card-content {
+    display: grid;
+    gap: 12px;
+    min-width: 0;
+}
+
+.staff-card-title-row {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    justify-content: space-between;
+    min-width: 0;
+}
+
+.staff-detail-card .staff-card-title-row strong {
+    min-width: 0;
+    padding-right: 0;
+    overflow: hidden;
+    font-size: 22px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.staff-card-title-row b {
+    flex: 0 0 auto;
+    max-width: 118px;
+    padding: 5px 9px;
+    overflow: hidden;
+    color: #18826d;
+    background: #e8fbf5;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 900;
+    line-height: 1;
+    text-overflow: ellipsis;
+    text-transform: capitalize;
+    white-space: nowrap;
+}
+
+.staff-detail-card.active .staff-card-title-row b {
+    color: #5744d7;
+    background: #ffffff;
+}
+
+.staff-detail-card .staff-card-content p {
+    display: -webkit-box;
+    min-height: 40px;
+    margin: 0;
+    overflow: hidden;
+    color: inherit;
+    font-size: 14px;
+    line-height: 1.45;
+    opacity: 0.78;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+}
+
+.staff-card-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+}
+
+.staff-detail-card .staff-card-chips span,
+.staff-detail-card .staff-skill-line {
+    display: inline-flex;
+    align-items: center;
+    width: fit-content;
+    min-height: 28px;
+    margin: 0;
+    padding: 5px 9px;
+    color: #5744d7;
+    background: #f0edff;
+    border: 1px solid #ded8ff;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 900;
+    line-height: 1.2;
+    opacity: 1;
+}
+
+.staff-detail-card.active .staff-card-chips span,
+.staff-detail-card.active .staff-skill-line {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.16);
+    border-color: rgba(255, 255, 255, 0.26);
+}
+
+.staff-card-facts {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.staff-card-facts article {
+    min-width: 0;
+    padding: 10px;
+    background: #ffffff;
+    border: 1px solid #e3e3ec;
+    border-radius: 10px;
+}
+
+.staff-detail-card.active .staff-card-facts article {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.22);
+}
+
+.staff-card-facts small,
+.staff-card-facts strong {
+    display: block;
+}
+
+.staff-detail-card .staff-card-facts small {
+    margin: 0;
+    color: #777a86;
+    font-size: 10px;
+    font-weight: 900;
+    line-height: 1.2;
+    opacity: 1;
+    text-transform: uppercase;
+}
+
+.staff-detail-card.active .staff-card-facts small {
+    color: rgba(255, 255, 255, 0.64);
+}
+
+.staff-detail-card .staff-card-facts strong {
+    margin-top: 5px;
+    padding-right: 0;
+    overflow: hidden;
+    color: #080811;
+    font-size: 13px;
+    font-weight: 900;
+    line-height: 1.25;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.staff-detail-card.active .staff-card-facts strong {
+    color: #ffffff;
+}
+
+.staff-detail-card .staff-skill-line {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+    .staff-detail-card {
+        grid-template-columns: 58px minmax(0, 1fr);
+        min-height: 0;
+    }
+
+    .staff-detail-card .staff-card-avatar {
+        width: 58px;
+        height: 58px;
+    }
+
+    .staff-card-facts {
+        grid-template-columns: 1fr;
+    }
+
+    .staff-detail-card .staff-card-title-row strong {
+        white-space: normal;
+    }
+}
+
+.staff-schedule-page {
+    max-width: 1520px;
+}
+
+.staff-schedule-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
+}
+
+.staff-detail-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+}
+
+.staff-detail-card {
+    grid-template-columns: 96px minmax(0, 1fr);
+    gap: 22px;
+    min-height: 0;
+    padding: 22px;
+    background: #ffffff;
+    border-color: #dadae8;
+}
+
+.staff-detail-card.is-auto {
+    background: #fbfaff;
+}
+
+.staff-detail-card.active {
+    background: linear-gradient(135deg, #5a46dc 0%, #4a38c7 100%);
+    box-shadow: 0 18px 40px rgba(87, 68, 215, 0.18);
+}
+
+.staff-detail-card .staff-card-avatar {
+    width: 96px;
+    height: 96px;
+    font-size: 30px;
+}
+
+.staff-card-content {
+    gap: 14px;
+}
+
+.staff-card-title-row {
+    gap: 16px;
+    align-items: center;
+}
+
+.staff-detail-card .staff-card-title-row strong {
+    font-size: clamp(22px, 2vw, 28px);
+    line-height: 1.12;
+    white-space: normal;
+}
+
+.staff-card-title-row b {
+    max-width: none;
+    padding: 7px 12px;
+    font-size: 12px;
+}
+
+.staff-detail-card .staff-card-content p {
+    min-height: 0;
+    max-width: 760px;
+    font-size: 15px;
+    line-height: 1.55;
+    -webkit-line-clamp: 3;
+}
+
+.staff-card-chips {
+    gap: 8px;
+}
+
+.staff-detail-card .staff-card-chips span,
+.staff-detail-card .staff-skill-line {
+    min-height: 32px;
+    padding: 7px 11px;
+    font-size: 12px;
+}
+
+.staff-card-facts {
+    grid-template-columns: repeat(3, minmax(150px, 1fr));
+    gap: 10px;
+}
+
+.staff-card-facts article {
+    padding: 12px;
+}
+
+.staff-detail-card .staff-card-facts strong {
+    font-size: 14px;
+    white-space: normal;
+}
+
+.staff-detail-card .staff-skill-line {
+    max-width: none;
+    white-space: normal;
+}
+
+@media (min-width: 1320px) {
+    .staff-detail-card {
+        grid-template-columns: 112px minmax(0, 1fr);
+    }
+
+    .staff-detail-card .staff-card-avatar {
+        width: 112px;
+        height: 112px;
+    }
+}
+
+@media (max-width: 760px) {
+    .staff-schedule-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .staff-detail-card {
+        grid-template-columns: 68px minmax(0, 1fr);
+        gap: 14px;
+        padding: 16px;
+    }
+
+    .staff-detail-card .staff-card-avatar {
+        width: 68px;
+        height: 68px;
+    }
+
+    .staff-card-title-row {
+        display: grid;
+        gap: 8px;
+        justify-content: stretch;
+    }
+
+    .staff-card-title-row b {
+        width: fit-content;
+    }
+
+    .staff-card-facts {
+        grid-template-columns: 1fr;
+    }
 }

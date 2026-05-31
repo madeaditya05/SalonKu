@@ -11,6 +11,8 @@ use Illuminate\Validation\ValidationException;
 
 class MidtransService
 {
+    public const PAYMENT_EXPIRY_MINUTES = 7;
+
     public const CHANNELS = [
         'qris',
         'bca_va',
@@ -61,6 +63,24 @@ class MidtransService
         return $data;
     }
 
+    public function expire(string $orderId): array
+    {
+        $response = Http::withBasicAuth($this->serverKey(), '')
+            ->acceptJson()
+            ->timeout(20)
+            ->post($this->baseUrl() . '/v2/' . rawurlencode($orderId) . '/expire');
+
+        $data = $response->json() ?: [];
+
+        if (! $response->successful()) {
+            throw ValidationException::withMessages([
+                'payment' => $data['status_message'] ?? 'Transaksi Midtrans belum bisa di-expire.',
+            ]);
+        }
+
+        return $data;
+    }
+
     public function displayFields(array $response, string $channel): array
     {
         $actions = collect($response['actions'] ?? []);
@@ -103,7 +123,8 @@ class MidtransService
             'biller_code' => $billerCode,
             'qr_url' => $qrUrl,
             'deeplink_url' => $deeplinkUrl,
-            'expiry_time' => $this->parseMidtransTime($response['expiry_time'] ?? null),
+            'expiry_time' => $this->parseMidtransTime($response['expiry_time'] ?? null)
+                ?: now()->addMinutes(self::PAYMENT_EXPIRY_MINUTES),
             'raw_response' => $response,
         ];
     }
@@ -144,6 +165,10 @@ class MidtransService
                 'paid_at' => $status === 'paid' ? ($payment->paid_at ?: now()) : $payment->paid_at,
             ];
 
+            if (! empty($response['expiry_time'])) {
+                $updates['expiry_time'] = $this->parseMidtransTime($response['expiry_time']);
+            }
+
             if (! empty($response['transaction_id'])) {
                 $updates['midtrans_transaction_id'] = $response['transaction_id'];
             }
@@ -159,6 +184,63 @@ class MidtransService
         });
     }
 
+    public function isPaymentLocallyExpired(Payment $payment): bool
+    {
+        return in_array($payment->status, ['unpaid', 'pending'], true)
+            && $payment->expiry_time
+            && $payment->expiry_time->lte(now());
+    }
+
+    public function expirePayment(Payment $payment, ?array $response = null, bool $notification = false): Payment
+    {
+        return DB::transaction(function () use ($payment, $response, $notification) {
+            $updates = [
+                'status' => 'expired',
+                'midtrans_transaction_status' => $response['transaction_status'] ?? 'expire',
+                'fraud_status' => $response['fraud_status'] ?? $payment->fraud_status,
+            ];
+
+            if (! empty($response['transaction_id'])) {
+                $updates['midtrans_transaction_id'] = $response['transaction_id'];
+            }
+
+            if (! empty($response['expiry_time'])) {
+                $updates['expiry_time'] = $this->parseMidtransTime($response['expiry_time']) ?: $payment->expiry_time;
+            }
+
+            if ($notification && $response) {
+                $updates['raw_notification'] = $response;
+            }
+
+            $payment->update($updates);
+            $this->updateBookingPaymentState($payment, 'expired');
+
+            return $payment->refresh();
+        });
+    }
+
+    public function expirePaymentIfOverdue(Payment $payment): Payment
+    {
+        return $this->isPaymentLocallyExpired($payment)
+            ? $this->expirePayment($payment)
+            : $payment;
+    }
+
+    public function expireOverduePaymentsForCustomer(int $customerId): int
+    {
+        $payments = Payment::query()
+            ->whereIn('status', ['unpaid', 'pending'])
+            ->whereNotNull('expiry_time')
+            ->where('expiry_time', '<=', now())
+            ->whereHas('booking', fn ($query) => $query->where('customer_id', $customerId))
+            ->with('booking')
+            ->get();
+
+        $payments->each(fn (Payment $payment) => $this->expirePayment($payment));
+
+        return $payments->count();
+    }
+
     public function paymentStatus(?string $transactionStatus = null, ?string $fraudStatus = null): string
     {
         return match ($transactionStatus) {
@@ -166,7 +248,8 @@ class MidtransService
             'capture' => $fraudStatus === 'challenge' ? 'pending' : 'paid',
             'pending' => 'pending',
             'refund', 'partial_refund' => 'refunded',
-            'expire', 'cancel', 'deny', 'failure' => 'failed',
+            'expire' => 'expired',
+            'cancel', 'deny', 'failure' => 'failed',
             default => 'pending',
         };
     }
@@ -237,6 +320,10 @@ class MidtransService
                 'gross_amount' => $grossAmount,
             ],
             'customer_details' => $this->customerDetails($booking),
+            'custom_expiry' => [
+                'expiry_duration' => self::PAYMENT_EXPIRY_MINUTES,
+                'unit' => 'minute',
+            ],
             'custom_field1' => $booking->booking_code,
             'custom_field2' => $payment->payment_type,
         ];

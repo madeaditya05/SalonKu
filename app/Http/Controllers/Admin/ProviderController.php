@@ -236,10 +236,16 @@ class ProviderController extends Controller
             ]
         );
 
-        $profile->update([
+        $profileData = [
             'document_status' => $validated['document_status'],
             'document_note' => $validated['document_note'] ?? null,
-        ]);
+        ];
+
+        if ($validated['document_status'] === 'verified') {
+            $profileData['status'] = 'active';
+        }
+
+        $profile->update($profileData);
 
         $statusLabels = [
             'pending' => 'Pending',

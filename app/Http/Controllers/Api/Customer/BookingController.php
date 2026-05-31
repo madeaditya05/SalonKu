@@ -7,19 +7,23 @@ use App\Models\Booking;
 use App\Models\ProviderBranch;
 use App\Services\AppNotificationService;
 use App\Services\BookingFlowService;
+use App\Services\MidtransService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 class BookingController extends ApiController
 {
-    public function __construct(private readonly BookingFlowService $bookingFlow)
-    {
+    public function __construct(
+        private readonly BookingFlowService $bookingFlow,
+        private readonly MidtransService $midtrans
+    ) {
     }
 
     public function index(Request $request): JsonResponse
     {
         $this->authorizeRole($request, 'customer');
+        $this->midtrans->expireOverduePaymentsForCustomer((int) $request->user()->id);
 
         $bookings = Booking::query()
             ->with($this->bookingFlow->bookingRelations())
@@ -99,6 +103,11 @@ class BookingController extends ApiController
     public function show(Request $request, Booking $booking): JsonResponse
     {
         $this->authorizeCustomerBooking($request, $booking);
+        $booking->loadMissing('payment');
+
+        if ($booking->payment) {
+            $this->midtrans->expirePaymentIfOverdue($booking->payment);
+        }
 
         return response()->json([
             'data' => $booking->load($this->bookingFlow->bookingRelations()),
@@ -120,6 +129,25 @@ class BookingController extends ApiController
 
         return response()->json([
             'message' => 'Booking berhasil dibatalkan.',
+            'data' => $booking,
+        ]);
+    }
+
+    public function reschedule(Request $request, Booking $booking): JsonResponse
+    {
+        $this->authorizeCustomerBooking($request, $booking);
+
+        $validated = $request->validate([
+            'booking_date' => ['required', 'date', 'after_or_equal:today'],
+            'start_time' => ['required', 'date_format:H:i'],
+            'staff_id' => ['nullable', 'integer', Rule::exists('provider_staffs', 'id')],
+        ]);
+
+        $booking = $this->bookingFlow->rescheduleBooking($booking, $validated);
+        $this->notifyProviderBookingRescheduled($booking, $request);
+
+        return response()->json([
+            'message' => 'Booking berhasil di-reschedule.',
             'data' => $booking,
         ]);
     }
@@ -149,6 +177,24 @@ class BookingController extends ApiController
             'booking.cancelled',
             'Booking dibatalkan',
             (($booking->customer_name ?: $request->user()?->name) ?: 'Customer') . ' membatalkan booking ' . $booking->booking_code . '.',
+            route('provider.bookings.index', ['date' => $booking->booking_date?->toDateString()]),
+            [
+                'booking_id' => (int) $booking->id,
+                'booking_code' => $booking->booking_code,
+                'provider_id' => (int) $booking->provider_id,
+                'branch_id' => (int) $booking->branch_id,
+            ],
+            (int) $request->user()?->id
+        );
+    }
+
+    private function notifyProviderBookingRescheduled(Booking $booking, Request $request): void
+    {
+        app(AppNotificationService::class)->createForUsers(
+            app(AppNotificationService::class)->providerRecipients((int) $booking->provider_id, 'bookings'),
+            'booking.rescheduled',
+            'Booking di-reschedule',
+            (($booking->customer_name ?: $request->user()?->name) ?: 'Customer') . ' mengubah jadwal booking ' . $booking->booking_code . '.',
             route('provider.bookings.index', ['date' => $booking->booking_date?->toDateString()]),
             [
                 'booking_id' => (int) $booking->id,

@@ -103,7 +103,7 @@ class AuthController extends Controller
         );
 
         return response()->json([
-            'message' => 'Provider registration successful. The account is waiting for admin review.',
+            'message' => 'Provider registration successful. Please sign in to complete verification documents.',
             'user' => $user,
         ], 201);
     }

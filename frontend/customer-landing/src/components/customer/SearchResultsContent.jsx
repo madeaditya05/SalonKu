@@ -4,6 +4,7 @@ import { Icon } from '../Icons.jsx';
 const heroImage = 'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=1800&q=88';
 const resultsPerPage = 4;
 const allFilterOption = 'All';
+const savedSalonStorageKey = 'glowhub_customer_saved_salons';
 const emptyFilters = {
     type: [],
     price: [],
@@ -29,6 +30,30 @@ function todayInputValue() {
 
 function displayPrice(value) {
     return `Rp${Number(value || 0).toLocaleString('id-ID')}`;
+}
+
+function readSavedSalonIds() {
+    if (typeof window === 'undefined') return [];
+
+    try {
+        const savedValue = window.localStorage.getItem(savedSalonStorageKey);
+        const savedIds = savedValue ? JSON.parse(savedValue) : [];
+
+        return Array.isArray(savedIds) ? savedIds.map(String) : [];
+    } catch {
+        window.localStorage.removeItem(savedSalonStorageKey);
+        return [];
+    }
+}
+
+function writeSavedSalonIds(ids) {
+    if (typeof window === 'undefined') return;
+
+    try {
+        window.localStorage.setItem(savedSalonStorageKey, JSON.stringify(ids));
+    } catch {
+        // Save failures should not block browsing salons.
+    }
 }
 
 function branchPrice(branch) {
@@ -243,7 +268,7 @@ function FilterGroup({ group, filters, onToggle }) {
     );
 }
 
-function SalonCard({ salon, selectedBranch, chooseBranch }) {
+function SalonCard({ salon, selectedBranch, chooseBranch, isSaved, toggleSavedSalon }) {
     const isSelected = selectedBranch?.id === salon.sourceBranch?.id;
     const canChoose = Boolean(salon.sourceBranch);
     const images = salon.images.length > 0 ? salon.images : [salon.image].filter(Boolean);
@@ -314,7 +339,17 @@ function SalonCard({ salon, selectedBranch, chooseBranch }) {
 
             <div className="findservice-card-body">
                 <div className="findservice-card-actions" aria-label="Salon actions">
-                    <button type="button" aria-label="Save salon"><Icon name="heart" size={18} /></button>
+                    <button
+                        className={isSaved ? 'is-saved' : ''}
+                        type="button"
+                        aria-label={isSaved ? `Remove ${salon.name} from saved salons` : `Save ${salon.name}`}
+                        aria-pressed={isSaved}
+                        disabled={!canChoose}
+                        title={isSaved ? 'Saved' : 'Save salon'}
+                        onClick={() => toggleSavedSalon(salon.sourceBranch)}
+                    >
+                        <Icon name="heart" size={18} />
+                    </button>
                     <button type="button" aria-label="Share salon"><Icon name="more" size={18} /></button>
                 </div>
 
@@ -477,7 +512,6 @@ export function SearchResultsContent({
     locationQuery,
     setLocationQuery,
     submitLocation,
-    isBooting,
     bookingDate,
     setBookingDate,
     searchError,
@@ -490,6 +524,7 @@ export function SearchResultsContent({
     const [draftFilters, setDraftFilters] = useState(emptyFilters);
     const [appliedFilters, setAppliedFilters] = useState(emptyFilters);
     const [isLocating, setLocating] = useState(false);
+    const [savedSalonIds, setSavedSalonIds] = useState(readSavedSalonIds);
     const locationLabel = selectedLocation?.label || locationQuery || 'all locations';
     const minBookingDate = todayInputValue();
     const formBookingDate = bookingDate || minBookingDate;
@@ -522,7 +557,9 @@ export function SearchResultsContent({
         }
     }, [currentPage, totalPages]);
 
-    async function useCurrentPosition() {
+    async function useCurrentPosition(event) {
+        event.preventDefault();
+        event.stopPropagation();
         setLocating(true);
 
         try {
@@ -563,6 +600,21 @@ export function SearchResultsContent({
         setDraftFilters(emptyFilters);
         setAppliedFilters(emptyFilters);
         setCurrentPage(1);
+    }
+
+    function toggleSavedSalon(branch) {
+        if (!branch?.id) return;
+
+        const branchId = String(branch.id);
+
+        setSavedSalonIds((current) => {
+            const nextIds = current.includes(branchId)
+                ? current.filter((id) => id !== branchId)
+                : [...current, branchId];
+
+            writeSavedSalonIds(nextIds);
+            return nextIds;
+        });
     }
 
     return (
@@ -607,7 +659,7 @@ export function SearchResultsContent({
                             />
                         </span>
                     </label>
-                    <button type="submit" disabled={isBooting} aria-label="Search salons">
+                    <button type="submit" aria-label={isLoading ? 'Searching salons' : 'Search salons'}>
                         <Icon name="search" size={35} />
                     </button>
                     {searchError && <p className="search-date-error" role="alert">{searchError}</p>}
@@ -665,6 +717,8 @@ export function SearchResultsContent({
                                 salon={salon}
                                 selectedBranch={selectedBranch}
                                 chooseBranch={chooseBranch}
+                                isSaved={savedSalonIds.includes(String(salon.sourceBranch?.id))}
+                                toggleSavedSalon={toggleSavedSalon}
                                 key={salon.id}
                             />
                         ))

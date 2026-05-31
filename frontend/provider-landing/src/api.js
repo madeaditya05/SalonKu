@@ -3,22 +3,6 @@ const defaultHeaders = {
     'Content-Type': 'application/json',
 };
 
-export async function getCategories(url) {
-    const response = await fetch(url, {
-        headers: {
-            Accept: 'application/json',
-        },
-    });
-
-    if (!response.ok) {
-        throw new Error('Kategori layanan belum bisa dimuat.');
-    }
-
-    const payload = await response.json();
-
-    return Array.isArray(payload.data) ? payload.data : [];
-}
-
 export async function registerProvider(url, payload) {
     const response = await fetch(url, {
         method: 'POST',

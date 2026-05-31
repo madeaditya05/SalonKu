@@ -13,6 +13,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 
 class DashboardController extends Controller
 {
@@ -44,14 +45,23 @@ class DashboardController extends Controller
 
         $periodOptions = $this->periodOptions();
         $periodLabel = $periodOptions[$selectedPeriod] ?? $periodOptions['6m'];
-        $stats = $this->providerStats($providerId, $branchId);
-        $summaryCards = $this->summaryCards($providerId, $branchId, $startDate, $endDate, $previousStart, $previousEnd);
-        $trendBuckets = $this->trendBuckets($providerId, $branchId, $selectedPeriod, $startDate, $endDate);
-        $revenueChart = $this->revenueTrendChart($trendBuckets);
-        $bookingSummary = $this->bookingSummaryChart($trendBuckets);
-        $bestSellingServices = $this->bestSellingServicesChart($providerId, $branchId, $startDate, $endDate);
-        $paymentStatus = $this->paymentStatusChart($providerId, $branchId, $startDate, $endDate);
-        $topStaffPerformance = $this->topStaffPerformanceChart($providerId, $branchId, $startDate, $endDate);
+        $dashboardData = Cache::remember(
+            'provider_dashboard:data:' . implode(':', [$providerId, $branchId ?: 'all', $selectedPeriod, now()->format('Ymd')]),
+            30,
+            function () use ($providerId, $branchId, $selectedPeriod, $startDate, $endDate, $previousStart, $previousEnd) {
+                $trendBuckets = $this->trendBuckets($providerId, $branchId, $selectedPeriod, $startDate, $endDate);
+
+                return [
+                    'stats' => $this->providerStats($providerId, $branchId),
+                    'summaryCards' => $this->summaryCards($providerId, $branchId, $startDate, $endDate, $previousStart, $previousEnd),
+                    'revenueChart' => $this->revenueTrendChart($trendBuckets),
+                    'bookingSummary' => $this->bookingSummaryChart($trendBuckets),
+                    'bestSellingServices' => $this->bestSellingServicesChart($providerId, $branchId, $startDate, $endDate),
+                    'paymentStatus' => $this->paymentStatusChart($providerId, $branchId, $startDate, $endDate),
+                    'topStaffPerformance' => $this->topStaffPerformanceChart($providerId, $branchId, $startDate, $endDate),
+                ];
+            }
+        );
 
         $currentPlan = [
             'label' => 'Current Plan',
@@ -66,21 +76,14 @@ class DashboardController extends Controller
             'description' => 'Our most popular plan for small teams.',
         ];
 
-        return view('provider.pages.dashboard.index', compact(
+        return view('provider.pages.dashboard.index', array_merge(compact(
             'provider',
             'periodOptions',
             'selectedPeriod',
             'periodLabel',
-            'stats',
-            'summaryCards',
-            'revenueChart',
-            'bookingSummary',
-            'bestSellingServices',
-            'paymentStatus',
-            'topStaffPerformance',
             'currentPlan',
             'allPlanPreview'
-        ));
+        ), $dashboardData));
     }
 
     private function normalizePeriod(?string $period): string

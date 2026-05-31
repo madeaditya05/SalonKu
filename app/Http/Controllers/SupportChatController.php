@@ -10,6 +10,7 @@ use App\Models\ChatThread;
 use App\Models\User;
 use App\Services\AppNotificationService;
 use App\Support\ChatMessagePresenter;
+use App\Support\ChatUnreadCounter;
 use App\Support\ProviderMenuAccess;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -25,6 +26,8 @@ class SupportChatController extends Controller
 {
     private const TYPE_PROVIDER_ADMIN = 'provider_admin';
     private const TYPE_PROVIDER_BRANCH = 'provider_branch';
+    private const THREAD_LIST_LIMIT = 40;
+    private const MESSAGE_PAGE_LIMIT = 80;
 
     public function adminIndex(Request $request)
     {
@@ -41,31 +44,48 @@ class SupportChatController extends Controller
             ->whereIn('provider_id', $providerIds)
             ->where('conversation_type', self::TYPE_PROVIDER_ADMIN)
             ->where('ticket_status', 'approved')
-            ->get()
-            ->sortByDesc(fn (ChatThread $thread) => optional(
-                $thread->last_message_at ?: $thread->ticket_requested_at ?: $thread->updated_at
-            )->timestamp ?: 0)
-            ->values();
+            ->orderByDesc('last_message_at')
+            ->orderByDesc('ticket_requested_at')
+            ->orderByDesc('updated_at')
+            ->limit(self::THREAD_LIST_LIMIT)
+            ->get();
 
         $ticketThreads = ChatThread::query()
             ->with(['provider.providerProfile', 'providerUser.providerBranch', 'ticketReviewer', 'lastMessage.sender'])
             ->whereIn('provider_id', $providerIds)
             ->where('conversation_type', self::TYPE_PROVIDER_ADMIN)
             ->whereIn('ticket_status', ['pending', 'approved', 'rejected', 'closed'])
-            ->get()
-            ->sortByDesc(fn (ChatThread $thread) => optional(
-                $thread->ticket_requested_at ?: $thread->ticket_reviewed_at ?: $thread->last_message_at ?: $thread->updated_at
-            )->timestamp ?: 0)
-            ->values();
-
-        $threads->each(function (ChatThread $thread) {
-            $thread->setAttribute('unread_count', $this->threadChatApproved($thread) ? $this->unreadCount($thread, 'admin') : 0);
-        });
+            ->orderByDesc('ticket_requested_at')
+            ->orderByDesc('ticket_reviewed_at')
+            ->orderByDesc('last_message_at')
+            ->orderByDesc('updated_at')
+            ->limit(self::THREAD_LIST_LIMIT)
+            ->get();
 
         $requestedThreadId = (int) $request->query('thread');
         $requestedTicketId = (int) $request->query('ticket');
         $listOnly = $request->boolean('list') || $activeTab === 'tickets';
         $requestedThread = $requestedThreadId > 0 ? $threads->firstWhere('id', $requestedThreadId) : null;
+
+        if ($requestedThreadId > 0 && ! $requestedThread && ! $listOnly) {
+            $requestedThread = ChatThread::query()
+                ->with(['provider.providerProfile', 'providerUser.providerBranch', 'lastMessage.sender'])
+                ->whereKey($requestedThreadId)
+                ->whereIn('provider_id', $providerIds)
+                ->where('conversation_type', self::TYPE_PROVIDER_ADMIN)
+                ->where('ticket_status', 'approved')
+                ->first();
+
+            if ($requestedThread) {
+                $threads = collect([$requestedThread])
+                    ->merge($threads)
+                    ->unique('id')
+                    ->values();
+            }
+        }
+
+        $this->applyUnreadCounts($threads, 'admin');
+
         $activeThread = $listOnly ? null : $requestedThread;
         $activeTicketThread = $activeTab === 'tickets' && $requestedTicketId > 0
             ? $ticketThreads->firstWhere('id', $requestedTicketId)
@@ -236,13 +256,29 @@ class SupportChatController extends Controller
 
         $threads = $this->providerChatThreads($providerUser);
         $internalContacts = $this->internalChatContacts($providerUser);
-        $threads->each(function (ChatThread $thread) use ($providerUser) {
-            $thread->setAttribute('unread_count', $this->unreadCount($thread, $this->readerRoleForUser($thread, $providerUser)));
-        });
 
         $requestedThreadId = (int) $request->query('thread');
         $listOnly = $request->boolean('list');
         $requestedThread = $requestedThreadId > 0 ? $threads->firstWhere('id', $requestedThreadId) : null;
+
+        if ($requestedThreadId > 0 && ! $requestedThread && ! $listOnly) {
+            $requestedThread = ChatThread::query()
+                ->with(['provider.providerProfile', 'providerUser.providerBranch', 'branchUser.providerBranch', 'lastMessage.sender'])
+                ->whereKey($requestedThreadId)
+                ->first();
+
+            if ($requestedThread && $this->providerCanAccessThread($providerUser, $requestedThread)) {
+                $threads = collect([$requestedThread])
+                    ->merge($threads)
+                    ->unique('id')
+                    ->values();
+            } else {
+                $requestedThread = null;
+            }
+        }
+
+        $this->applyUnreadCounts($threads, fn (ChatThread $thread) => $this->readerRoleForUser($thread, $providerUser));
+
         $activeThread = $listOnly ? null : $requestedThread;
         $activeThreadCanChat = $activeThread ? $this->threadChatApproved($activeThread) : false;
         $messages = collect();
@@ -920,11 +956,12 @@ class SupportChatController extends Controller
                         });
                 });
             })
-            ->get()
-            ->sortByDesc(fn (ChatThread $thread) => optional(
-                $thread->last_message_at ?: $thread->ticket_reviewed_at ?: $thread->ticket_requested_at ?: $thread->updated_at
-            )->timestamp ?: 0)
-            ->values();
+            ->orderByDesc('last_message_at')
+            ->orderByDesc('ticket_reviewed_at')
+            ->orderByDesc('ticket_requested_at')
+            ->orderByDesc('updated_at')
+            ->limit(self::THREAD_LIST_LIMIT)
+            ->get();
     }
 
     private function threadChatApproved(ChatThread $thread): bool
@@ -942,8 +979,11 @@ class SupportChatController extends Controller
     {
         return $thread->messages()
             ->with('sender')
-            ->oldest()
+            ->latest('id')
+            ->limit(self::MESSAGE_PAGE_LIMIT)
             ->get()
+            ->sortBy('id')
+            ->values()
             ->map(fn (ChatMessage $message) => ChatMessagePresenter::make($message, $viewer, $thread));
     }
 
@@ -1032,11 +1072,23 @@ class SupportChatController extends Controller
     private function messagesResponse(Request $request, ChatThread $thread, User $viewer): JsonResponse
     {
         $afterId = max(0, (int) $request->query('after_id', 0));
-        $messages = $thread->messages()
-            ->with('sender')
-            ->when($afterId > 0, fn ($query) => $query->where('id', '>', $afterId))
-            ->oldest()
-            ->get()
+
+        $query = $thread->messages()->with('sender');
+
+        $rawMessages = $afterId > 0
+            ? $query
+                ->where('id', '>', $afterId)
+                ->oldest('id')
+                ->limit(self::MESSAGE_PAGE_LIMIT)
+                ->get()
+            : $query
+                ->latest('id')
+                ->limit(self::MESSAGE_PAGE_LIMIT)
+                ->get()
+                ->sortBy('id')
+                ->values();
+
+        $messages = $rawMessages
             ->map(fn (ChatMessage $message) => ChatMessagePresenter::make($message, $viewer, $thread))
             ->values();
 
@@ -1205,15 +1257,42 @@ class SupportChatController extends Controller
         return app(AppNotificationService::class);
     }
 
-    private function unreadCount(ChatThread $thread, string $readerRole): int
+    private function applyUnreadCounts(Collection $threads, callable|string $readerRoleResolver): void
     {
-        $readAt = $thread->{$this->readColumnForRole($readerRole)};
-        $oppositeRoles = $this->oppositeSenderRoles($thread, $readerRole);
+        $threads = $threads
+            ->filter(fn ($thread) => $thread instanceof ChatThread)
+            ->unique('id')
+            ->values();
 
-        return $thread->messages()
-            ->whereIn('sender_role', $oppositeRoles)
-            ->when($readAt, fn ($query) => $query->where('created_at', '>', $readAt))
-            ->count();
+        if ($threads->isEmpty()) {
+            return;
+        }
+
+        $counts = ChatMessage::query()
+            ->select('chat_thread_id', DB::raw('COUNT(*) as aggregate'))
+            ->whereIn('chat_thread_id', $threads->pluck('id')->all())
+            ->where(function ($query) use ($threads, $readerRoleResolver) {
+                foreach ($threads as $thread) {
+                    $readerRole = is_string($readerRoleResolver)
+                        ? $readerRoleResolver
+                        : (string) $readerRoleResolver($thread);
+                    $readAt = $thread->{$this->readColumnForRole($readerRole)};
+                    $oppositeRoles = $this->oppositeSenderRoles($thread, $readerRole);
+
+                    $query->orWhere(function ($threadQuery) use ($thread, $oppositeRoles, $readAt) {
+                        $threadQuery
+                            ->where('chat_thread_id', $thread->id)
+                            ->whereIn('sender_role', $oppositeRoles)
+                            ->when($readAt, fn ($dateQuery) => $dateQuery->where('created_at', '>', $readAt));
+                    });
+                }
+            })
+            ->groupBy('chat_thread_id')
+            ->pluck('aggregate', 'chat_thread_id');
+
+        $threads->each(function (ChatThread $thread) use ($counts) {
+            $thread->setAttribute('unread_count', (int) ($counts[$thread->id] ?? 0));
+        });
     }
 
     private function markThreadRead(ChatThread $thread, string $readerRole): void
@@ -1231,6 +1310,7 @@ class SupportChatController extends Controller
         $thread->setAttribute($column, $now);
         $thread->setAttribute('updated_at', $now);
         $thread->syncOriginalAttributes([$column, 'updated_at']);
+        ChatUnreadCounter::forgetForUser(request()->user());
     }
 
     private function providerCanChatThread(?User $user, ChatThread $thread): bool

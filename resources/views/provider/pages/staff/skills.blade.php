@@ -5,7 +5,7 @@
 @section('page_subtitle', 'Manage staff skills based on active services available in each branch.')
 
 @push('styles')
-    <link rel="stylesheet" href="{{ asset('provider/css/staff-skills.css') }}">
+    <link rel="stylesheet" href="{{ asset('provider/css/staff-skills.css') }}?v=staff-skills-balanced-3">
 @endpush
 
 @section('content')

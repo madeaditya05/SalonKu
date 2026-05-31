@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useState } from 'react';
 import heroImage from './assets/provider-hero.png';
-import { getCategories, registerProvider } from './api';
+import { registerProvider } from './api';
 import { benefits, steps, testimonials } from './data/content';
 import { Icon } from './components/Icons.jsx';
 
@@ -51,7 +51,6 @@ const config = {
     loginUrl: `${backendUrl}${providerLoginPath}`,
     dashboardUrl: `${backendUrl}${providerDashboardPath}`,
     registerApiUrl: `${apiBaseUrl}/auth/register/provider`,
-    categoriesApiUrl: `${apiBaseUrl}/categories`,
     docsUrl: `${backendUrl}/docs/api`,
     adminLoginUrl: `${backendUrl}/admin/login`,
     openLogin: ['failed', 'open', '1'].includes(query.get('login')),
@@ -67,7 +66,6 @@ const emptyRegisterForm = {
     username: '',
     email: '',
     phone: '',
-    serviceCategory: '',
     password: '',
     passwordConfirmation: '',
 };
@@ -87,27 +85,12 @@ function usernameFromEmail(email) {
 }
 
 function App() {
-    const [categories, setCategories] = useState([]);
     const [isLoginOpen, setLoginOpen] = useState(Boolean(config.openLogin));
     const [isRegisterOpen, setRegisterOpen] = useState(Boolean(config.openRegister));
     const [registerForm, setRegisterForm] = useState(emptyRegisterForm);
     const [registerErrors, setRegisterErrors] = useState({});
     const [registerMessage, setRegisterMessage] = useState('');
     const [isRegistering, setRegistering] = useState(false);
-
-    useEffect(() => {
-        getCategories(config.categoriesApiUrl || '/api/categories')
-            .then(setCategories)
-            .catch(() => setCategories([]));
-    }, []);
-
-    const categoryOptions = useMemo(() => {
-        if (categories.length === 0) {
-            return ['Beauty & Wellness', 'Service Rumah', 'Cleaning', 'Service AC', 'Event & Catering'];
-        }
-
-        return categories.slice(0, 8).map((category) => category.name);
-    }, [categories]);
 
     function openRegister(prefill = {}) {
         setRegisterForm((current) => ({ ...current, ...prefill }));
@@ -136,13 +119,12 @@ function App() {
                 email: registerForm.email,
                 country_code: '+62',
                 phone_number: registerForm.phone,
-                service_category: registerForm.serviceCategory,
                 password: registerForm.password,
                 password_confirmation: registerForm.passwordConfirmation,
             });
 
             setRegisterForm(emptyRegisterForm);
-            setRegisterMessage('Registrasi berhasil. Tunggu ACC admin, lalu login sebagai mitra.');
+            setRegisterMessage('Registrasi berhasil. Silakan login untuk melengkapi dokumen verifikasi mitra.');
         } catch (error) {
             setRegisterErrors(error.errors || { form: [error.message] });
         } finally {
@@ -162,7 +144,6 @@ function App() {
                 <HowItWorks />
                 <Benefits onRegister={() => openRegister()} />
                 <JoinPanel
-                    categories={categoryOptions}
                     onRegister={openRegister}
                 />
                 <Testimonials />
@@ -183,7 +164,6 @@ function App() {
             {isRegisterOpen && (
                 <RegisterModal
                     form={registerForm}
-                    categories={categoryOptions}
                     errors={registerErrors}
                     message={registerMessage}
                     isSubmitting={isRegistering}
@@ -349,20 +329,12 @@ function Benefits({ onRegister }) {
     );
 }
 
-function JoinPanel({ categories, onRegister }) {
+function JoinPanel({ onRegister }) {
     const [lead, setLead] = useState({
         fullName: '',
         phone: '',
         email: '',
-        serviceCategory: categories[0] || '',
     });
-
-    useEffect(() => {
-        setLead((current) => ({
-            ...current,
-            serviceCategory: current.serviceCategory || categories[0] || '',
-        }));
-    }, [categories]);
 
     return (
         <section className="join-panel" id="daftar">
@@ -416,15 +388,6 @@ function JoinPanel({ categories, onRegister }) {
                         onChange={(event) => setLead({ ...lead, email: event.target.value })}
                         placeholder="nama@email.com"
                     />
-                </label>
-                <label>
-                    Jenis Layanan
-                    <select
-                        value={lead.serviceCategory}
-                        onChange={(event) => setLead({ ...lead, serviceCategory: event.target.value })}
-                    >
-                        {categories.map((category) => <option key={category}>{category}</option>)}
-                    </select>
                 </label>
                 <button className="btn solid form-submit" type="submit">Daftar Menjadi Mitra</button>
                 <p>Dengan mendaftar, kamu menyetujui Syarat & Ketentuan JasaKu.</p>
@@ -515,7 +478,7 @@ function LoginModal({ onClose }) {
     );
 }
 
-function RegisterModal({ form, categories, errors, message, isSubmitting, onClose, onChange, onSubmit }) {
+function RegisterModal({ form, errors, message, isSubmitting, onClose, onChange, onSubmit }) {
     return (
         <Modal title="Daftar Mitra" onClose={onClose}>
             <form className="modal-form two-column" onSubmit={onSubmit}>
@@ -540,13 +503,6 @@ function RegisterModal({ form, categories, errors, message, isSubmitting, onClos
                     Nomor WhatsApp
                     <input value={form.phone} onChange={(event) => onChange('phone', event.target.value)} required />
                     {errors.phone_number?.[0] && <span className="field-error">{errors.phone_number[0]}</span>}
-                </label>
-                <label>
-                    Jenis Layanan
-                    <select value={form.serviceCategory} onChange={(event) => onChange('serviceCategory', event.target.value)}>
-                        <option value="">Pilih kategori layanan</option>
-                        {categories.map((category) => <option key={category}>{category}</option>)}
-                    </select>
                 </label>
                 <label>
                     Password
